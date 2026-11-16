@@ -10,13 +10,13 @@
     failTitle: $('failTitle'), failLine: $('failLine'), failDist: $('failDist'),
     failTag: $('failTag'), failAct: $('failAct'), failFace: $('failFace'),
     meter: $('meter'), meterFill: $('meterFill'), meterLabel: $('meterLabel'),
-    startSub: $('startSub'),
   };
 
-  // レベル：おうちに届けるたびに1つ上がり、止まらずに次のおうちへ（上限なし）
+  // 道はレベルで区切らず、どこまでも続く。おうちに届けるたびに次のおうちへ（level＝何軒目か。先へ行くほど難しい）
   let game, S, stage, level = 1, hinted = new Set();
   const WT = window.YoroWaiter;
-  let waiter = WT.forLevel(1), fails = 0, faceNow = 'wait', faceT0 = 0; // 待っている人・このレベルの失敗回数・今の顔
+  let waiter = WT.forLevel(1), fails = 0, faceNow = 'wait', faceT0 = 0; // 待っている人・続けて失敗した回数・今の顔
+  const RANK = window.YoroRank || { ready: false, render() {}, loading() {}, submit: () => Promise.reject(), top: () => Promise.reject() };
   const snd = window.YoroSound || { play() {}, bgm() {}, on: false, toggle() { return false; } };
 
   // ---- 記録 ----
@@ -24,8 +24,7 @@
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存できなくても遊べる */ } },
   };
-  let maxLevel = Math.max(1, parseInt(store.get('yoro.maxLevel'), 10) || 1); // 行けた一番上のレベル
-  let runDist = 0; // 通しきょり：ゲームオーバーまでに歩けたきょり
+  let runDist = 0; // 届けたおうちまでのきょりの合計（今の道の分は入れない）
   let bestRun = Math.max(0, parseFloat(store.get('yoro.bestRun')) || 0); // 通しきょりの自己ベスト
   let prevWaiter = null, delivered = null, worldOff = 0; // 前のおうちの人・届けたときのひとこと・背景をつなぐためのずれ
   function loadLevel(n, carry) {
@@ -35,13 +34,13 @@
     S = game.state; stage = game.stage;
     if (old) { cam.x -= old.goal; cam.y -= old.gy; worldOff += old.goal; } // 前の道の続きに見えるように
     else { cam.x = 0; cam.y = 1; worldOff = 0; delivered = null; }
-    ui.meterLabel.textContent = `Lv.${n}`;
+    ui.meterLabel.textContent = `${n}軒目`;
     hinted = new Set();
     prevWaiter = n > 1 ? WT.forLevel(n - 1) : null;
-    waiter = WT.forLevel(n); fails = 0; faceNow = 'wait';
-    showBanner(n === 1 ? `レベル1「${stage.name}」<br>${waiter.name}が まってるよ<br>左・右…トン、トン、とリズムよく！`
-      : n === 3 ? `レベル3「${stage.name}」<br>${waiter.name}が まってるよ<br>じゃまな物は ジャンプで こえよう！`
-      : `レベル${n}「${stage.name}」<br>${waiter.name}が ${stage.goal}m先で まってるよ`);
+    waiter = WT.forLevel(n); faceNow = 'wait';
+    showBanner(n === 1 ? `${waiter.name}に プリンを とどけよう！<br>左・右…トン、トン、とリズムよく！`
+      : n === 3 ? `つぎは ${waiter.name}の家<br>じゃまな物は ジャンプで こえよう！`
+      : `つぎは ${waiter.name}の家<br>${stage.goal}m先で まってるよ`);
   }
   function showBanner(html) {
     ui.hint.innerHTML = html; ui.hint.style.opacity = 1;
@@ -87,7 +86,7 @@
     if (LK.includes(e.code)) keys.left = true;
     else if (RK.includes(e.code)) keys.right = true;
     else if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
-      if (ui.title.classList.contains('show')) start(maxLevel);
+      if (ui.title.classList.contains('show')) start();
       else if (ui.fail.classList.contains('show')) restart();
       return;
     } else return;
@@ -110,37 +109,41 @@
   function showOnly(el) {
     for (const o of [ui.title, ui.fail]) o.classList.toggle('show', o === el);
   }
-  function start(n) { loadLevel(n || maxLevel); restart(); }
-  // ゲームオーバーのあとは、いつもそのレベルの最初（前のおうちの前）から
-  function restart() { loadLevel(level); pops.length = 0; elapsed = 0; runDist = 0; game.spawn(0); showOnly(null); snd.play('start'); snd.bgm(true); }
+  function start() { restart(); }
+  // ゲームオーバーのあとは、いつも最初（おかしや）から
+  function restart() { loadLevel(1); pops.length = 0; elapsed = 0; runDist = 0; game.spawn(0); showOnly(null); snd.play('start'); snd.bgm(true); }
   const retry = restart;
   // おうちに着いた：プリンを届けて、止まらずに次のおうちへ
   function deliver() {
     const say = WT.happy(waiter).say;
     snd.play('clear');
-    if (level + 1 > maxLevel) { maxLevel = level + 1; store.set('yoro.maxLevel', String(maxLevel)); refreshTitle(); }
+    fails = 0;
     runDist += stage.goal;
     const snap = game.snapshot();
     loadLevel(level + 1, snap);
     game.spawn(0, snap);
     elapsed = 0; lastTick = 0;
     delivered = { say, t0: performance.now() };
-    pop(`レベル${level}へ！`, '#2f9e44');
+    pop('とどけた！ つぎへ！', '#2f9e44');
   }
   function next() { loadLevel(level + 1); restart(); }
-  $('startBtn').onclick = () => start(maxLevel);
-  ui.startSub.onclick = () => start(1);
+  $('startBtn').onclick = () => start();
   $('retryBtn').onclick = restart;
-  $('restartBtn').onclick = () => start(1);
   const sndBtn = $('sndBtn');
   const paintSnd = () => { sndBtn.textContent = snd.on ? '🔊' : '🔇'; sndBtn.setAttribute('aria-label', snd.on ? '音をけす' : '音を出す'); };
   sndBtn.onclick = () => { snd.toggle(); paintSnd(); snd.play('tap'); };
   paintSnd();
   function refreshTitle() {
-    $('startBtn').textContent = maxLevel > 1 ? `つづきから（レベル${maxLevel}）` : 'はじめる';
-    ui.startSub.hidden = maxLevel <= 1;
     $('bestRun').hidden = bestRun <= 0;
-    $('bestRun').textContent = `通しきょりの自己ベスト：${bestRun.toFixed(1)}m`;
+    $('bestRun').textContent = `自己ベスト：${bestRun.toFixed(1)}m`;
+    showTitleRank();
+  }
+  // タイトルのランキング（つながらないときは出さない）
+  function showTitleRank() {
+    if (!RANK.ready) return;
+    const el = $('titleRank');
+    if (el.hidden) RANK.loading(el);
+    RANK.top().then((d) => RANK.render(el, d, { onRename: showTitleRank })).catch(() => { el.hidden = true; });
   }
 
   let shownEnd = false;
@@ -149,16 +152,23 @@
     fails++;
     const r = WT.reaction(waiter, { reason: S.fallReason, fails, left });
     faceNow = r.face; faceT0 = performance.now();
-    runDist += Math.min(stage.goal, Math.max(0, S.bestX));
-    const newBest = runDist > bestRun + 0.05;
-    if (newBest) { bestRun = runDist; store.set('yoro.bestRun', bestRun.toFixed(1)); refreshTitle(); }
+    const total = runDist + Math.min(stage.goal, Math.max(0, S.bestX)); // ゲームオーバーまでに歩けたきょり
+    const newBest = total > bestRun + 0.05;
+    if (newBest) { bestRun = total; store.set('yoro.bestRun', bestRun.toFixed(1)); refreshTitle(); }
     ui.failTag.textContent = `ゲームオーバー（${{ pudding: 'プリンを落とした', timeup: '時間切れ', rhythm: 'リズムがくずれてころんだ', stop: '止まってころんだ', hole: '穴に落ちた' }[S.fallReason] || 'ころんだ'}）`;
     ui.failTitle.textContent = r.title;
     ui.failLine.textContent = r.say;
     ui.failAct.textContent = r.action;
-    ui.failDist.textContent = `レベル${level}・${waiter.name}のおうちまで あと ${left.toFixed(1)}m\n通しきょり ${runDist.toFixed(1)}m${newBest ? '　🎉自己ベスト！' : `（自己ベスト ${bestRun.toFixed(1)}m）`}`;
-    $('retryBtn').textContent = `もう一回（レベル${level}から）`;
-    $('restartBtn').hidden = level <= 1;
+    ui.failDist.textContent = `${level}軒目・${waiter.name}のおうちまで あと ${left.toFixed(1)}m\n歩いたきょり ${total.toFixed(1)}m${newBest ? '　🎉自己ベスト！' : `（自己ベスト ${bestRun.toFixed(1)}m）`}`;
+    $('retryBtn').textContent = 'もう一回（最初から）';
+    // 歩いたきょりをランキングに送り、上位を出す（自動。送れなくても遊べる）
+    const fr = $('failRank');
+    if (RANK.ready && total >= 1) {
+      RANK.loading(fr);
+      RANK.submit(total).then((d) => RANK.render(fr, d)).catch(() => { fr.hidden = true; });
+    } else if (RANK.ready) {
+      RANK.top().then((d) => RANK.render(fr, d)).catch(() => { fr.hidden = true; });
+    } else fr.hidden = true;
     showOnly(ui.fail);
     if (navigator.vibrate) navigator.vibrate(80);
   }
@@ -241,7 +251,7 @@
     });
     // じゃまな物
     for (const o of stage.obstacles) drawObstacle(o);
-    // スタート：レベル1はおかしや、それより上は前のおうち（届けた人が手をふっている）
+    // スタート：1軒目はおかしや、それより先は前のおうち（届けた人が手をふっている）
     if (level === 1) {
       const [sx0, sy0] = W2S(-3.2, 0); const s = scale;
       ctx.lineWidth = 3; ctx.strokeStyle = '#3b2a1e';
@@ -469,7 +479,8 @@
   let lastTick = 0;
   function updateHud() {
     const x = Math.max(0, game.charX());
-    ui.dist.textContent = `あと ${Math.max(0, stage.goal - x).toFixed(1)}m`;
+    ui.dist.innerHTML = `${(runDist + Math.min(stage.goal, S.status === 'play' ? x : S.bestX)).toFixed(1)}<small>m</small>`; // ここまで歩いたきょり
+    ui.meterLabel.textContent = `🏠あと${Math.ceil(Math.max(0, stage.goal - x))}m`;
     const tl = Math.max(0, stage.timeLimit - elapsed);
     ui.time.innerHTML = `<small>のこり</small>${tl < 10 ? tl.toFixed(1) : Math.ceil(tl)}<small>秒</small>`;
     ui.time.classList.toggle('hurry', tl < 10 && S.status === 'play');
@@ -478,12 +489,12 @@
     ui.meterFill.style.width = `${Math.round(d * 100)}%`;
     ui.meterFill.style.background = d > 0.7 ? '#ff4d4d' : d > 0.4 ? '#ffb020' : '#5cc96b';
     ui.meter.classList.toggle('danger', d > 0.7 && S.status === 'play');
-    ui.best.textContent = `最高 Lv.${maxLevel}`;
+    ui.best.innerHTML = `<small>ベスト</small>${Math.floor(bestRun)}<small>m</small>`;
   }
 
   // ---- ループ ----
   let last = performance.now(), acc = 0;
-  loadLevel(maxLevel); refreshTitle();
+  loadLevel(1); refreshTitle();
   game.spawn(0);
   function frame(now) {
     let dt = Math.min(0.1, (now - last) / 1000); last = now;

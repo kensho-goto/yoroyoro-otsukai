@@ -69,7 +69,19 @@
     width: 100%; margin-top: 10px; padding: 12px; font: inherit; font-size: 20px; text-align: center;
     border: 3px solid var(--ink); border-radius: 14px; background: #fff; color: var(--ink); user-select: text; -webkit-user-select: text;
   }
-  .overlay[hidden], .btn[hidden], .tip[hidden] { display: none !important; }
+  .overlay[hidden], .btn[hidden], .tip[hidden], .rank[hidden] { display: none !important; }
+  .overlay { overflow-y: auto; }
+  .card { max-height: calc(100dvh - 32px); overflow-y: auto; }
+  .rank { margin: 8px 0 10px; border: 3px solid var(--ink); border-radius: 14px; background: #fff; padding: 6px 10px; text-align: left; font-size: 14px; }
+  .rank h3 { margin: 0 0 4px; font-size: 15px; text-align: center; }
+  .rank ol { margin: 0; padding: 0; list-style: none; }
+  .rank li { display: flex; gap: 6px; padding: 1px 0; }
+  .rank li .n { width: 2.2em; font-weight: 900; }
+  .rank li .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rank li .d { font-weight: 900; }
+  .rank li.me { background: #fff3c4; border-radius: 6px; }
+  .rank .who-me { margin-top: 4px; text-align: center; font-size: 12px; opacity: .8; }
+  .rank .who-me button { font: inherit; font-size: 12px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; padding: 0 6px; margin-left: 4px; }
   #gate { z-index: 10; background: #ffe7b3; }
   .btn {
     display: block; width: 100%; margin-top: 12px; padding: 14px; font: inherit; font-size: 20px; font-weight: 900;
@@ -116,12 +128,12 @@
 <canvas id="c"></canvas>
 
 <div class="hud">
-  <div class="chip" id="dist">あと 40m</div>
+  <div class="chip" id="dist">0<small>m</small></div>
   <div class="chip" id="time"><small>のこり</small>20<small>秒</small></div>
   <div class="chip" id="best">ベスト ―</div>
 </div>
 
-<div class="meter" id="meter"><b class="lv" id="meterLabel">Lv.1</b><span>ぐらぐら</span><div class="bar"><div class="fill" id="meterFill"></div></div></div>
+<div class="meter" id="meter"><b class="lv" id="meterLabel">🏠あと12m</b><span>ぐらぐら</span><div class="bar"><div class="fill" id="meterFill"></div></div></div>
 
 <button class="snd" id="sndBtn" type="button" aria-label="音をけす">🔊</button>
 
@@ -145,15 +157,15 @@
 <div class="overlay show" id="title">
   <div class="card">
     <h1>ヨロヨロおつかい</h1>
-    <p>おうちで待っている人に、<br>プリンを落とさず届けよう！<br>ころぶ・プリンを落とす・時間切れで<b>ゲームオーバー</b>。<br>待っている人に、がっかりされます…<br>届けたら、そのまま次のおうちへ。<br>コースは毎回同じ。おぼえれば上達する！<br>どこまで行けるかな？</p>
+    <p>おうちで待っている人に、<br>プリンを落とさず届けよう！<br>ころぶ・プリンを落とす・時間切れで<b>ゲームオーバー</b>。<br>待っている人に、がっかりされます…<br>届けたら、そのまま次のおうちへ。<br>道はどこまでも続く！ コースは毎回同じ。<br>何m歩けるかな？</p>
     <p class="tip" id="bestRun" hidden></p>
+    <div class="rank" id="titleRank" hidden></div>
     <div class="how">
       <div class="l">画面の左半分<br>＝ ひだり足</div>
       <div class="r">画面の右半分<br>＝ みぎ足</div>
     </div>
     <p class="tip">左右を交互に押すと歩けます。押しているあいだ足が上がり、はなすと地面をけります。<br><b>同じ足を続けて押す・リズムがばらばら・止まる と、ころびます。</b><br>足ぶみしながら前に進んでいないと、体を保てず ふらふらして ころびます（何も押さないと、すぐ転びます）。<br>トン、トン、と同じ間かくで！<br><b>両方いっしょに押して、はなすとジャンプ！</b>長く押すほど高く飛びます。穴もジャンプでこえよう。<br>ジャンプ台に乗ると、ピョーンと飛ばしてくれます。<br>ガクガク歩くと「ぐらぐらメーター」がたまり、満タンでプリンが飛んでいきます。<br>パソコンは「F」と「J」キーでも遊べます。</p>
     <button class="btn" id="startBtn">はじめる</button>
-    <button class="btn sub" id="startSub" hidden>レベル1からはじめる</button>
   </div>
 </div>
 
@@ -164,8 +176,8 @@
     <div class="who"><canvas class="face" id="failFace" width="240" height="240"></canvas><div class="bubble" id="failLine"></div></div>
     <p class="act" id="failAct"></p>
     <p class="tip" id="failDist" style="white-space:pre-line"></p>
+    <div class="rank" id="failRank" hidden></div>
     <button class="btn" id="retryBtn">もう一回</button>
-    <button class="btn sub" id="restartBtn" hidden>レベル1から</button>
   </div>
 </div>
 
@@ -174,6 +186,7 @@
 <script src="src/sound.js"></script>
 <script src="src/waiter.js"></script>
 <script src="src/gate.js"></script>
+<script src="src/rank.js"></script>
 <script src="src/main.js"></script>
 </body>
 </html>

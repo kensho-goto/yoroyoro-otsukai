@@ -1,6 +1,6 @@
 // ヨロヨロおつかい — おうちで待っている人（失敗したときの反応を、組み合わせで毎回ちがうものにする）
 (function () {
-  // 待っている人（レベルごとに決まる）
+  // 待っている人（何軒目かで決まる）
   const WAITERS = [
     { id: 'mom', name: 'お母さん', call: 'あんた', hair: '#6b3e26', skin: '#ffd9b8', style: 'long' },
     { id: 'grandma', name: 'おばあちゃん', call: 'ぼうや', hair: '#d8d8d8', skin: '#ffe0c4', style: 'bun', glasses: true },
@@ -79,11 +79,11 @@
     'ごくろうさま！ スプーン用意してあるよ！', 'まってました！'];
 
   const pick = (a) => a[Math.floor(Math.random() * a.length)];
-  function forLevel(n) { return WAITERS[((n - 1) * 5) % WAITERS.length]; } // 12レベルで全員が1回ずつ出る
+  function forLevel(n) { return WAITERS[((n - 1) * 5) % WAITERS.length]; } // 12軒で全員が1回ずつ出る
   function fill(t, ctx) {
     return t.replace(/\{(\w+)\}/g, (_, k) => (ctx[k] != null ? ctx[k] : ''));
   }
-  // 失敗したときの反応をつくる（fails = このレベルで何回目の失敗か）
+  // 失敗したときの反応をつくる（fails = 続けて何回目の失敗か）
   function reaction(w, { reason, fails, left }) {
     const pool = fails <= 1 ? ['sad', 'sad', 'shock', 'sigh'] : fails <= 3 ? ['sigh', 'sulk', 'shock', 'sad', 'angry'] : ['angry', 'cry', 'sulk', 'sigh', 'angry', 'cry'];
     const mood = pick(pool);
