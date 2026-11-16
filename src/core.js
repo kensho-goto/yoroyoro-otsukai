@@ -27,12 +27,13 @@
     spinSafe: 1.4, // このくらいのぐらつきまでは平気
     spinGain: 0.01,
     calm: 0.008, // 落ち着いているときに下がる速さ
-    stopLimit: 40, // これだけ（コマ）新しく足を出さないと、止まって転ぶ
+    stopLimit: 40, // これだけ（コマ）新しく足を出さないと、止まって転ぶ（レベルごとに上書き）
     firstStopLimit: 80, // 出てすぐ、最初の1歩までの待ち時間
     steadyDecay: 0.008, // 「体を保つ力」が毎コマへる量（足ぶみでためる）
     steadyIdle: 0.02, // ボタンを何も押していないと、さらにへる
     steadySlow: 0.012, // 前に進んでいないと、さらにへる
     steadyStep: 0.24, // よい1歩でたまる量
+    steadyFloor: 0.12, // 体を保つ力が0でも残る手助け
     rhythmFree: 1.35, // 前の1歩とくらべて、この倍率までの間かくのずれはOK
     rhythmKick: 5.5, // リズムがくずれたときに体をゆらす強さ
     sameFootKick: 1.0, // 同じ足を続けて出したときの重さ（くずれ量）
@@ -134,18 +135,25 @@
     // 時間制限：はじめはゆっくりでも間に合い、レベルが上がると少しずつきびしく（5秒きざみ）
     const needSpeed = Math.min(1.15, lerp(0.6, 0.85, 1 - Math.exp(-(n - 1) / 10)) + 0.05 * e); // 必要な速さ（m/秒）
     const timeLimit = Math.ceil(goal / needSpeed / 5) * 5;
+    const d2 = 1 - Math.exp(-(n - 1) / 9); // 体を保つ力は、ゆっくりきびしく
     return {
       level: n, timeLimit, name, points, checkpoints, goal, obstacles, pits, springs, hard,
       // 自動テスト用：ジャンプが必要な場所（左はし）
       hazards: [...obstacles.map((o) => ({ x: o.x - o.w / 2, kind: 'ob' })), ...pits.filter((p) => !p.bySpring).map((p) => ({ x: p.x0, kind: 'pit' }))].sort((a, b) => a.x - b.x),
       tuning: {
         // むずかしさは途中で頭打ちにして、上のレベルもずっと遊べるようにする（変化は障害物・道で出す）
-        balance: Math.max(11, lerp(24, 14.5, 1 - Math.exp(-(n - 1) / 8)) - 0.6 * e), // 体を起こす手助けがだんだん弱く
+        balance: Math.max(12.5, lerp(27, 16.5, 1 - Math.exp(-(n - 1) / 8)) - 0.6 * e), // 体を起こす手助けがだんだん弱く
         accSafe: Math.max(11, 13.5 + 6.5 * Math.exp(-(n - 1) / 3) - 0.5 * e), // プリンが揺れにだんだん敏感に（少しの差で大きく効くので、ゆっくり）
         spinSafe: lerp(2.3, 1.4, d),
         calm: lerp(0.013, 0.007, d),
-        rhythmFree: Math.max(1.06, lerp(1.36, 1.16, d) - 0.03 * e), // リズムのずれの許し：だんだんきびしく
-        rhythmKick: lerp(5, 7, d) + 0.35 * e, // リズムがずれたときのゆれ：だんだん大きく
+        rhythmFree: Math.max(1.06, lerp(1.55, 1.16, d) - 0.03 * e), // リズムのずれの許し：だんだんきびしく
+        rhythmKick: lerp(4, 7, d) + 0.35 * e,
+        // 体を保つ力：はじめはゆっくりへり、レベルが上がるほど早くへる（何も押さないとすぐ転ぶのは同じ）
+        steadyDecay: lerp(0.003, 0.007, d2),
+        steadySlow: lerp(0.005, 0.01, d2),
+        steadyFloor: lerp(0.35, 0.2, d2), // 体を保つ力が0でも残る手助け
+        stopLimit: Math.round(lerp(48, 40, d)),
+        firstStopLimit: Math.round(lerp(100, 80, d)), // リズムがずれたときのゆれ：だんだん大きく
       },
     };
   }
@@ -471,7 +479,7 @@
         }
         if (alive && !limp) {
           // リズムがくずれているほど・体を保つ力がないほど、体を立て直す力が弱い
-          const k = (0.12 + 0.88 * state.steady * state.steady) / (1 + state.stumble * 2.5);
+          const k = (T.steadyFloor + (1 - T.steadyFloor) * state.steady * state.steady) / (1 + state.stumble * 2.5);
           const tq = -T.balance * k * (c.torso.getAngle() - T.lean) - T.balanceDamp * c.torso.getAngularVelocity();
           c.torso.applyTorque(tq * c.torso.getMass());
         } else if (limp && state.status === 'play') {
