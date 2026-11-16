@@ -199,6 +199,7 @@
       input: { left: false, right: false },
       events: [], // 音を鳴らす合図（画面側が取り出す）
       feet: { L: 0, R: 0 }, // 足が地面についている数
+      wind: 0, // 横からの風の力（＋は追い風）
     };
     const emit = (type, v) => { if (state.events.length < 100) state.events.push({ type, v }); };
 
@@ -452,6 +453,7 @@
           }
           if (J.grace > 0) J.grace--;
         }
+        if (state.wind && state.status === 'play') c.torso.applyForceToCenter(Vec2(state.wind, 0), true); // 風（たまに起きる出来事）
         if (state.springHit && state.status === 'play') bounce();
         state.springHit = false;
         if (state.status === 'play') rhythm(c, J);

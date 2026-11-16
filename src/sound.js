@@ -134,6 +134,16 @@
       const t = ctx.currentTime;
       [[72, 0], [76, 0.08], [79, 0.16], [84, 0.24], [88, 0.36]].forEach(([m, d], i) => tone(N(m), t + d, i === 4 ? 0.5 : 0.12, { type: 'square', vol: 0.09 }));
     },
+    treasure(rare) { // おたからを拾った（めずらしいほど長く光る）
+      const t = ctx.currentTime, k = rare ? 6 : 3;
+      for (let i = 0; i < k; i++) tone(N(86 + i * 3), t + i * 0.06, 0.14, { type: 'sine', vol: 0.13 });
+      noise(t, 0.12, { vol: 0.05, freq: 6000, type: 'highpass' });
+    },
+    event() { // 何かが起きた（風・めずらしい人・金のプリン）
+      const t = ctx.currentTime;
+      [[79, 0], [83, 0.1], [86, 0.2], [91, 0.3]].forEach(([m, d]) => tone(N(m), t + d, 0.22, { type: 'triangle', vol: 0.12 }));
+    },
+    gust() { const t = ctx.currentTime; noise(t, 0.9, { vol: 0.16, freq: 500, q: 0.7, type: 'bandpass' }); },
     tap() { const t = ctx.currentTime; tone(880, t, 0.06, { type: 'sine', vol: 0.15 }); },
   };
 

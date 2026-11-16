@@ -18,6 +18,12 @@
   let waiter = WT.forLevel(1), fails = 0, faceNow = 'wait', faceT0 = 0; // 待っている人・続けて失敗した回数・今の顔
   const RANK = window.YoroRank || { list: () => [], add: () => null, render() {} };
   const snd = window.YoroSound || { play() {}, bgm() {}, on: false, toggle() { return false; } };
+  const ZK = window.YoroZukan || { mark: () => false, has: () => false, count: () => ({ got: 0, total: 0 }), pickTreasure: () => null, rareOf: () => false, render() {}, FALLS: [], MOOD_NAMES: {} };
+  const pickOne = (a) => a[Math.floor(Math.random() * a.length)];
+  // この回で起きたこと（ずかんに新しく入ったもの・拾ったおたから・金のプリンの日・テスト用の強制）
+  let runNew = [], runTreasure = 0, goldDay = false, boxes = [];
+  const force = {}; // テスト用：{ rare, wind, gold }
+  function noteNew(isNew, text) { if (isNew) runNew.push(text); return isNew; }
 
   // ---- 記録 ----
   const store = {
@@ -36,11 +42,55 @@
     else { cam.x = 0; cam.y = 1; worldOff = 0; delivered = null; }
     ui.meterLabel.textContent = `${n}軒目`;
     hinted = new Set();
-    prevWaiter = n > 1 ? WT.forLevel(n - 1) : null;
-    waiter = WT.forLevel(n); faceNow = 'wait';
-    showBanner(n === 1 ? `${waiter.name}に プリンを とどけよう！<br>左・右…トン、トン、とリズムよく！`
+    prevWaiter = n > 1 ? (carry ? waiter : WT.forLevel(n - 1)) : null;
+    const rare = n >= 2 && (force.rare != null ? force.rare : Math.random() < 0.05); // ごくたまに、めずらしいお客さん
+    waiter = rare ? pickOne(WT.RARE) : WT.forLevel(n); faceNow = 'wait';
+    // たまに風がふく（3軒目から）
+    const windy = n >= 3 && (force.wind != null ? force.wind !== 0 : Math.random() < 0.15);
+    S.wind = windy ? (force.wind || (Math.random() < 0.5 ? -4 : 4)) : 0;
+    makeBoxes();
+    let msg = n === 1 ? `${waiter.name}に プリンを とどけよう！<br>左・右…トン、トン、とリズムよく！`
       : n === 3 ? `つぎは ${waiter.name}の家<br>じゃまな物は ジャンプで こえよう！`
-      : `つぎは ${waiter.name}の家<br>${stage.goal}m先で まってるよ`);
+      : `つぎは ${waiter.name}の家<br>${stage.goal}m先で まってるよ`;
+    if (rare) { msg = `えっ！？ つぎは <b>${waiter.name}</b>の家！？<br>めずらしいお客さんだ！`; noteNew(ZK.mark('event', 'rare'), 'できごと「めずらしい お客さん」'); }
+    if (S.wind) { const head = S.wind < 0; msg = `${head ? '🌬️ 向かい風だ！ おされるぞ' : '🍃 追い風だ！ 前につんのめるぞ'}<br>${msg.split('<br>')[0]}`; noteNew(ZK.mark('event', head ? 'headwind' : 'tailwind'), `できごと「${head ? '向かい風' : '追い風'}」`); }
+    if (n === 1 && goldDay) msg = '✨ きょうは 金のプリンの日！ ✨<br>おたからが いつもの2ばい！';
+    showBanner(msg);
+    if (n > 1 && (rare || S.wind)) { snd.play(S.wind ? 'gust' : 'event'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 3000); }
+  }
+  // 道のおたから（？の箱）。ふつうの箱は歩くと取れる高さ、高い箱はジャンプしないと取れない
+  function makeBoxes() {
+    boxes = [];
+    const g = stage.goal;
+    const busy = (x) => stage.pits.some((q) => x > q.x0 - 1 && x < q.x1 + 1) || stage.springs.some((q) => Math.abs(q.x - x) < 1.2)
+      || stage.obstacles.some((o) => Math.abs(o.x - x) < 1) || boxes.some((b) => Math.abs(b.x - x) < 1.5);
+    const k = (1 + Math.floor(g / 18) + (Math.random() < 0.4 ? 1 : 0)) * (goldDay ? 2 : 1);
+    for (let i = 0; i < k; i++) {
+      for (let t = 0; t < 12; t++) {
+        const x = 3 + Math.random() * (g - 5.5);
+        if (busy(x)) continue;
+        const high = level >= 2 && Math.random() < 0.3;
+        boxes.push({ x, y: game.groundHeightAt(x) + (high ? 2.45 : 1.65), high, taken: 0, item: null });
+        break;
+      }
+    }
+    // じゃまな物や穴の上にも、ときどき（飛びこえるついでに取れる）
+    for (const o of stage.obstacles) if (Math.random() < 0.4) boxes.push({ x: o.x, y: game.groundHeightAt(o.x - 0.5) + 2.45, high: true, taken: 0, item: null });
+    for (const q of stage.pits) if (!q.bySpring && Math.random() < 0.4) boxes.push({ x: (q.x0 + q.x1) / 2, y: q.h + 2.35, high: true, taken: 0, item: null });
+  }
+  function pickupBoxes() {
+    const c = S.char; if (!c) return;
+    const hp = c.head.getPosition(), tp = c.torso.getPosition();
+    for (const b of boxes) {
+      if (b.taken) continue;
+      const d = Math.min(Math.hypot(hp.x - b.x, hp.y - b.y), Math.hypot(tp.x - b.x, tp.y - b.y));
+      if (d > 0.5) continue;
+      const t = ZK.pickTreasure(); if (!t) continue;
+      b.taken = performance.now(); b.item = t; runTreasure++;
+      const isNew = noteNew(ZK.mark('treasure', t.id), `おたから「${t.name}」`);
+      pop(`${t.icon} ${t.name}${isNew ? ' NEW！' : ''}`, isNew ? '#d48a00' : '#7a4ad6');
+      snd.play('treasure', ZK.rareOf(t));
+    }
   }
   function showBanner(html) {
     ui.hint.innerHTML = html; ui.hint.style.opacity = 1;
@@ -86,7 +136,8 @@
     if (LK.includes(e.code)) keys.left = true;
     else if (RK.includes(e.code)) keys.right = true;
     else if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
-      if (ui.title.classList.contains('show')) start();
+      if (zukanEl.classList.contains('show')) closeZukan();
+      else if (ui.title.classList.contains('show')) start();
       else if (ui.fail.classList.contains('show') && !ui.retry.disabled) restart();
       else if (ui.pause.classList.contains('show')) resume();
       return;
@@ -113,11 +164,17 @@
   function start() { restart(); }
   // ゲームオーバーのあとは、いつも最初（おかしや）から
   let passedBest = false, nextMile = 50, lastShare = ''; // この回で自己ベストをこえたか・次の節目のきょり・送る文
-  function restart() { loadLevel(1); pops.length = 0; elapsed = 0; runDist = 0; passedBest = false; nextMile = 50; game.spawn(0); showOnly(null); snd.play('start'); snd.bgm(true); }
+  function restart() {
+    runNew = []; runTreasure = 0;
+    goldDay = force.gold != null ? !!force.gold : Math.random() < 0.03; // ごくたまに「金のプリンの日」
+    if (goldDay) noteNew(ZK.mark('event', 'goldday'), 'できごと「金のプリンの日」');
+    loadLevel(1); pops.length = 0; elapsed = 0; runDist = 0; passedBest = false; nextMile = 50; game.spawn(0); showOnly(null); snd.play(goldDay ? 'event' : 'start'); snd.bgm(true);
+  }
   const retry = restart;
   // おうちに着いた：プリンを届けて、止まらずに次のおうちへ
   function deliver() {
     const say = WT.happy(waiter).say;
+    noteNew(ZK.mark('face', `${waiter.id}.happy`), `${waiter.name}の「にっこり」顔`);
     snd.play('clear');
     fails = 0;
     runDist += stage.goal;
@@ -131,6 +188,16 @@
   function next() { loadLevel(level + 1); restart(); }
   $('startBtn').onclick = () => start();
   $('retryBtn').onclick = restart;
+  // ゲームオーバーの画面は、ボタン以外のどこをタップしても すぐもう一回
+  ui.fail.addEventListener('click', (e) => { if (!e.target.closest('button, a, summary') && !ui.retry.disabled) restart(); });
+  // ずかん
+  const zukanEl = $('zukan');
+  function openZukan() { ZK.render($('zukanBody')); zukanEl.classList.add('show'); zukanEl.querySelector('.card').scrollTop = 0; snd.play('tap'); }
+  function closeZukan() { zukanEl.classList.remove('show'); }
+  $('titleZukanBtn').onclick = openZukan;
+  $('failZukanBtn').onclick = openZukan;
+  $('zukanClose').onclick = closeZukan;
+  zukanEl.addEventListener('click', (e) => { if (e.target === zukanEl) closeZukan(); });
   // アプリを離れたら、ひと休み（もどったら「つづける」を押してから再開）
   function pause() {
     if (S.status !== 'play' || ui.title.classList.contains('show') || ui.fail.classList.contains('show')) return;
@@ -151,7 +218,7 @@
       if (navigator.share) { await navigator.share({ title: 'ヨロヨロおつかい', text: lastShare, url }); return; }
       await navigator.clipboard.writeText(`${lastShare}\n${url}`);
       $('shareBtn').textContent = 'コピーしました！';
-      setTimeout(() => { $('shareBtn').textContent = '記録を送る・コピー'; }, 1800);
+      setTimeout(() => { $('shareBtn').textContent = '記録を送る'; }, 1800);
     } catch (e) { /* やめた・使えないときは何もしない */ }
   };
   const sndBtn = $('sndBtn');
@@ -172,6 +239,9 @@
     fails++;
     const r = WT.reaction(waiter, { reason: S.fallReason, fails, left });
     faceNow = r.face; faceT0 = performance.now();
+    const fr = ZK.FALLS.find((f) => f.id === S.fallReason);
+    if (fr) noteNew(ZK.mark('fall', fr.id), `ころび方「${fr.name}」`);
+    noteNew(ZK.mark('face', `${waiter.id}.${r.mood}`), `${waiter.name}の「${ZK.MOOD_NAMES[r.mood] || r.mood}」顔`);
     const total = runDist + Math.min(stage.goal, Math.max(0, S.bestX)); // ゲームオーバーまでに歩けたきょり
     const newBest = total > bestRun + 0.05;
     if (newBest) { bestRun = total; store.set('yoro.bestRun', bestRun.toFixed(1)); refreshTitle(); }
@@ -179,12 +249,32 @@
     ui.failTitle.textContent = r.title;
     ui.failLine.textContent = r.say;
     ui.failAct.textContent = r.action;
-    ui.failDist.textContent = `${level}軒目・${waiter.name}のおうちまで あと ${left.toFixed(1)}m\n歩いたきょり ${total.toFixed(1)}m${newBest ? '　🎉自己ベスト！' : `（自己ベスト ${bestRun.toFixed(1)}m）`}`;
-    $('retryBtn').textContent = 'もう一回（最初から）';
+    const prevBest = newBest ? Math.max(0, ...RANK.list().map((x) => x.d).filter((d) => d < total - 0.05), 0) : bestRun;
+    ui.failDist.textContent = `${level}軒目・${waiter.name}のおうちまで あと ${left.toFixed(1)}m\n歩いたきょり ${total.toFixed(1)}m${newBest ? '' : `（ベスト ${bestRun.toFixed(1)}m）`}${runTreasure ? `\nこの回のおたから ${runTreasure}こ` : ''}`;
+    $('retryBtn').textContent = 'タップで もう一回';
     ui.retry.disabled = true; setTimeout(() => { ui.retry.disabled = false; }, 700); // 歩いていた指でうっかり押さないように
     lastShare = `ヨロヨロおつかいで ${total.toFixed(1)}m 歩いた！${newBest ? '（自己ベスト！）' : ''} ${level}軒目の${waiter.name}に「${r.say}」と言われた…`;
     // 歩いたきょりを、じぶんの記録ランキングに入れて上位を出す（このスマホの中だけ）
-    RANK.render($('failRank'), total >= 0.5 ? RANK.add(total) : { list: RANK.list(), idx: -1 });
+    const rk = total >= 0.5 ? RANK.add(total) : { list: RANK.list(), idx: -1 };
+    RANK.render($('failRank'), rk);
+    // あとちょっと：すぐ上の記録まで何mだったか
+    const near = $('failNear'); near.classList.toggle('best', newBest);
+    if (newBest) near.textContent = prevBest > 0 ? `🎉 自己ベスト更新！ +${(total - prevBest).toFixed(1)}m` : '🎉 はじめての記録！';
+    else {
+      const above = rk.list.filter((x) => x.d > total + 0.05).pop(); // すぐ上の記録
+      const pos = above ? rk.list.indexOf(above) + 1 : 0;
+      const gap = bestRun - total;
+      near.innerHTML = !above ? '' : pos === 1 ? `ベストまで あと ${gap.toFixed(1)}m${gap < 5 ? '！ おしい！' : '！'}`
+        : `${pos}位まで あと ${(above.d - total).toFixed(1)}m！<small>ベストまで ${gap.toFixed(1)}m</small>`;
+    }
+    // ずかん：この回で新しく入ったもの（なければ、まだ見ていないころび方のヒント）
+    const zc = ZK.count(), nb = $('failNew');
+    if (runNew.length) nb.innerHTML = `<b>📖 NEW！ ずかんに のった</b>（${zc.got}/${zc.total}）<br>${runNew.slice(0, 4).join('・')}${runNew.length > 4 ? ` ほか${runNew.length - 4}こ` : ''}`;
+    else {
+      const rest = ZK.FALLS.filter((f) => !ZK.has('fall', f.id));
+      nb.innerHTML = `📖 ずかん ${zc.got}/${zc.total}${rest.length ? `<br>まだ見ていない ころび方：「${pickOne(rest).hint}」` : ''}`;
+    }
+    nb.hidden = false;
     showTitleRank();
     showOnly(ui.fail);
     if (navigator.vibrate) navigator.vibrate(80);
@@ -300,6 +390,38 @@
     drawHouse(stage.goal + 1.6, waiter, faceNow, level);
   }
 
+  // おたからの箱（？）。拾ったら中身が上にふわっと出る
+  function drawBoxes() {
+    const now = performance.now(), s = scale;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const b of boxes) {
+      if (b.taken) {
+        const a = (now - b.taken) / 1000; if (a > 1) continue;
+        const [x, y] = W2S(b.x, b.y + a * 0.9);
+        ctx.globalAlpha = 1 - a * a; ctx.font = `${Math.round(s * 0.55)}px sans-serif`; ctx.fillText(b.item.icon, x, y); ctx.globalAlpha = 1;
+        continue;
+      }
+      const [x, y] = W2S(b.x, b.y + Math.sin(now / 300 + b.x) * 0.05); const h = s * 0.19;
+      if (goldDay) { ctx.fillStyle = 'rgba(255,215,0,.35)'; ctx.beginPath(); ctx.arc(x, y, h * 1.8, 0, Math.PI * 2); ctx.fill(); }
+      ctx.fillStyle = b.high ? '#b46cf0' : '#ff9f1c'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 3;
+      roundRect(x - h, y - h, h * 2, h * 2, h * 0.3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffe14d'; ctx.fillRect(x - h * 0.16, y - h + 1.5, h * 0.32, h * 2 - 3);
+      ctx.font = `900 ${Math.round(h * 1.25)}px sans-serif`; ctx.lineWidth = 4; ctx.strokeStyle = '#3b2a1e'; ctx.strokeText('？', x, y + 1); ctx.fillStyle = '#fff'; ctx.fillText('？', x, y + 1);
+    }
+    ctx.textBaseline = 'alphabetic';
+  }
+  // 風の線（向かい風は左へ、追い風は右へ流れる）
+  function drawWind() {
+    if (!S.wind) return;
+    const t = performance.now() / 1000, dir = Math.sign(S.wind), span = W + 240;
+    ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    for (let i = 0; i < 16; i++) {
+      const sp = 0.5 + ((i * 37) % 10) / 12;
+      const px = (((i * 131 + t * W * sp * dir) % span) + span) % span - 120, py = ((i * 61) % 70) / 100 * H + H * 0.06;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - dir * scale * (0.6 + (i % 3) * 0.3), py); ctx.stroke();
+    }
+  }
+
   // おうちと、げんかんの前で待っている人（x はおうちのまん中）
   const ROOFS = ['#e8574f', '#4f8be8', '#4fb36b', '#b05fd1', '#e8a24f', '#5fc7c7'];
   function drawHouse(hx, who, face, n) {
@@ -312,7 +434,7 @@
     ctx.fillStyle = '#3b2a1e'; ctx.font = `900 ${Math.round(s * 0.24)}px sans-serif`; ctx.textAlign = 'center';
     ctx.fillText(`${who.name}の家`, gx, gy - s * 2.1);
     const wx = gx - s * 1.75, wy = gy;
-    ctx.fillStyle = who.animal ? who.hair : '#7bb7e8'; ctx.lineWidth = 3;
+    ctx.fillStyle = who.animal ? who.hair : who.body || '#7bb7e8'; ctx.lineWidth = 3;
     if (!who.animal) { roundRect(wx - s * 0.2, wy - s * 0.75, s * 0.4, s * 0.75, s * 0.1); ctx.fill(); ctx.stroke(); }
     else { ctx.beginPath(); ctx.ellipse(wx, wy - s * 0.2, s * 0.3, s * 0.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
     WT.drawFace(ctx, who, face, wx, wy - s * (who.animal ? 0.55 : 0.98), s * 0.26, performance.now() / 1000);
@@ -470,11 +592,15 @@
     }
     const j = onTray ? jig : 0;
     ctx.save(); ctx.translate(x, -y + 0.1); ctx.transform(1, 0, -j * 1.2, 1, 0, 0); if (onTray) { ctx.translate(0, 0.0); ctx.scale(1.5, 1.5); ctx.lineWidth /= 1.5; } ctx.scale(1 + Math.abs(j) * 0.3, 1 - Math.abs(j) * 0.3); ctx.translate(0, -0.1);
-    ctx.fillStyle = '#ffd84d';
+    ctx.fillStyle = goldDay ? '#ffe85c' : '#ffd84d';
     ctx.beginPath(); ctx.moveTo(-0.13, 0.1); ctx.lineTo(0.13, 0.1); ctx.lineTo(0.09, -0.1); ctx.lineTo(-0.09, -0.1); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#8a4b1f';
+    ctx.fillStyle = goldDay ? '#e0a800' : '#8a4b1f';
     ctx.beginPath(); ctx.moveTo(-0.095, -0.06); ctx.lineTo(0.095, -0.06); ctx.lineTo(0.09, -0.1); ctx.lineTo(-0.09, -0.1); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(-0.07, -0.02, 0.025, 0.08);
+    if (goldDay) { // キラッ
+      const k = (Math.sin(performance.now() / 200) + 1) / 2; ctx.fillStyle = `rgba(255,255,255,${0.4 + k * 0.6})`;
+      ctx.beginPath(); for (let i = 0; i < 8; i++) { const r = i % 2 ? 0.015 : 0.05, a = i * Math.PI / 4; ctx.lineTo(0.12 + Math.cos(a) * r, -0.12 + Math.sin(a) * r); } ctx.closePath(); ctx.fill();
+    }
     ctx.restore();
   }
 
@@ -570,7 +696,8 @@
         if (tot >= nextMile) { pop(`${nextMile}m とっぱ！`, '#2f6fd6'); snd.play('checkpoint'); nextMile += 50; }
       }
       if (S.status === 'clear') deliver();
-      if (S.status === 'fallen' && S.frame - S.fallFrame > 50) {
+      if (S.status === 'play') pickupBoxes();
+      if (S.status === 'fallen' && S.frame - S.fallFrame > 36) {
         if (!shownEnd) { shownEnd = true; onFall(); }
       } else if (S.status === 'play') shownEnd = false;
     }
@@ -582,6 +709,8 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     drawBackground();
     drawGround();
+    drawBoxes();
+    drawWind();
     drawChar();
     drawCharge();
     drawPops();
@@ -596,5 +725,5 @@
   requestAnimationFrame(frame);
 
   // テスト用（自動操作で動作確認するため）
-  window.__yoro = { get game() { return game; }, start, retry, restart, next, loadLevel, pause, resume };
+  window.__yoro = { get game() { return game; }, get boxes() { return boxes; }, force, start, retry, restart, next, loadLevel, pause, resume, openZukan, closeZukan };
 })();

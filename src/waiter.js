@@ -15,6 +15,12 @@
     { id: 'cat', name: 'ねこのタマ', call: 'にゃ', hair: '#f0a85a', skin: '#f0a85a', style: 'cat', animal: true },
     { id: 'dog', name: '犬のコロ', call: 'ワン', hair: '#c98a4b', skin: '#e8c08a', style: 'dog', animal: true },
   ];
+  // めずらしい待ち人（たまにしか出ない。出たら「ずかん」に入る）
+  const RARE = [
+    { id: 'king', name: '王さま', call: 'そなた', hair: '#7a4a2a', skin: '#ffd9b8', style: 'short', beard: true, crown: true, rare: true, body: '#c0392b' },
+    { id: 'ghost', name: 'おばけのフワリ', call: 'きみ', hair: '#ffffff', skin: '#f2f6ff', style: 'bald', rare: true, body: '#ffffff' },
+    { id: 'alien', name: 'うちゅう人', call: 'チキュウジン', hair: '#4fb33a', skin: '#a8f08a', style: 'spiky', rare: true, body: '#7a5af8' },
+  ];
   const TREATS = ['プリン', 'とっておきのプリン', '3時のおやつのプリン', '楽しみにしてたプリン', 'ごほうびのプリン', 'お祝いのプリン',
     '1日10個かぎりのプリン', 'カラメルたっぷりのプリン', '冷蔵庫で冷やすはずだったプリン', 'みんなで分けるはずのプリン'];
   const REASON = { pudding: ['プリンを落とした', 'プリンを飛ばした', 'プリンを宙に舞わせた'], other: ['ころんだ', 'すってんころりんした', '地面とごあいさつした'],
@@ -175,8 +181,13 @@
     }
     if (face === 'sigh') { c.fillStyle = 'rgba(200,220,255,.9)'; c.strokeStyle = '#3b2a1e'; c.lineWidth = r * 0.04; const k = (t * 0.8) % 1; c.beginPath(); c.ellipse(r * 0.7 + k * r * 0.4, my - k * r * 0.3, r * 0.22, r * 0.14, 0, 0, Math.PI * 2); c.fill(); c.stroke(); }
     if (face === 'sulk') { c.strokeStyle = '#3b2a1e'; c.lineWidth = r * 0.05; c.beginPath(); c.moveTo(r * 0.75, -r * 0.6); c.lineTo(r * 1.0, -r * 0.8); c.moveTo(r * 0.85, -r * 0.45); c.lineTo(r * 1.15, -r * 0.5); c.stroke(); }
+    if (w.crown) { // 王かん
+      c.fillStyle = '#ffd23a'; c.strokeStyle = '#3b2a1e'; c.lineWidth = Math.max(2, r * 0.06);
+      c.beginPath(); c.moveTo(-r * 0.55, -r * 0.8); c.lineTo(-r * 0.6, -r * 1.35); c.lineTo(-r * 0.28, -r * 1.05); c.lineTo(0, -r * 1.45); c.lineTo(r * 0.28, -r * 1.05); c.lineTo(r * 0.6, -r * 1.35); c.lineTo(r * 0.55, -r * 0.8); c.closePath(); c.fill(); c.stroke();
+    }
     c.restore();
   }
 
-  window.YoroWaiter = { forLevel, reaction, happy, drawFace, WAITERS };
+  const MOOD_KEYS = ['sad', 'sigh', 'sulk', 'shock', 'angry', 'cry'];
+  window.YoroWaiter = { forLevel, reaction, happy, drawFace, WAITERS, RARE, MOOD_KEYS };
 })();

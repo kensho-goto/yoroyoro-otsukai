@@ -119,6 +119,30 @@
     width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--ink); background: rgba(255, 247, 230, .92);
     box-shadow: 0 3px 0 var(--ink); font-size: 20px; padding: 0; cursor: pointer;
   }
+  .near { margin: 6px 0 2px !important; font-size: 22px !important; font-weight: 900; color: #d9531a; }
+  .near.best { color: #c48a00; }
+  .near small { display: block; font-size: 14px; color: var(--ink); opacity: .75; }
+  .newbox { margin: 6px 0; padding: 6px 10px; border: 3px dashed #c48a00; border-radius: 14px; background: #fff8d6; font-size: 14px; font-weight: 800; text-align: left; }
+  .newbox[hidden] { display: none; }
+  .newbox b { color: #d9531a; }
+  .row2 { display: flex; gap: 8px; }
+  .row2 .btn { flex: 1; }
+  #zukan { z-index: 8; }
+  #zukan .card { text-align: left; }
+  #zukan h2 { text-align: center; }
+  #zukan h3 { margin: 12px 0 6px; font-size: 16px; border-bottom: 3px solid var(--ink); }
+  #zukan h3 small { font-size: 13px; opacity: .7; }
+  .zt { text-align: center; font-size: 15px !important; }
+  .zt b { font-size: 22px; color: var(--accent-dark); }
+  .zs { font-size: 12px !important; opacity: .7; margin: 0 0 4px !important; }
+  .zg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .zk { border: 2px solid var(--ink); border-radius: 10px; background: #fff; padding: 4px; text-align: center; font-size: 12px; font-weight: 800; line-height: 1.3; }
+  .zk b { display: block; font-size: 24px; }
+  .zk.no { background: #efe6d6; color: #8a7a62; border-style: dashed; }
+  .zrow { margin: 4px 0; }
+  .zn { font-size: 13px; font-weight: 800; }
+  .zfs { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .zf { position: static; inset: auto; display: block; width: 100%; height: auto; aspect-ratio: 1; }
   .hint {
     position: fixed; left: 0; right: 0; top: 30%; text-align: center; font-weight: 900; font-size: 18px; padding: 0 12px;
     color: var(--ink); text-shadow: 0 2px 0 #fff, 0 -2px 0 #fff, 2px 0 0 #fff, -2px 0 0 #fff; pointer-events: none;
@@ -169,6 +193,7 @@
     <p class="tip">左右を交互に押すと歩けます。押しているあいだ足が上がり、はなすと地面をけります。<br><b>同じ足を続けて押す・リズムがばらばら・止まる と、ころびます。</b><br>足ぶみしながら前に進んでいないと、体を保てず ふらふらして ころびます（何も押さないと、すぐ転びます）。<br>トン、トン、と同じ間かくで！<br><b>両方いっしょに押して、はなすとジャンプ！</b>長く押すほど高く飛びます。穴もジャンプでこえよう。<br>ジャンプ台に乗ると、ピョーンと飛ばしてくれます。<br>ガクガク歩くと「ぐらぐらメーター」がたまり、満タンでプリンが飛んでいきます。<br>パソコンは「F」と「J」キーでも遊べます。<br>コースは毎回同じ。おぼえれば上達します。<br>道に立っている金色の旗が、あなたの自己ベストです。</p>
     </details>
     <button class="btn" id="startBtn">はじめる</button>
+    <button class="btn sub" id="titleZukanBtn" type="button">📖 ずかん</button>
     <p class="tip" id="bestRun" hidden></p>
     <div class="rank" id="titleRank" hidden></div>
   </div>
@@ -188,10 +213,20 @@
     <h2 id="failTitle">しょんぼり…</h2>
     <div class="who"><canvas class="face" id="failFace" width="240" height="240"></canvas><div class="bubble" id="failLine"></div></div>
     <p class="act" id="failAct"></p>
+    <p class="near" id="failNear"></p>
     <p class="tip" id="failDist" style="white-space:pre-line"></p>
-    <div class="rank" id="failRank" hidden></div>
+    <div class="newbox" id="failNew" hidden></div>
     <button class="btn" id="retryBtn">もう一回</button>
-    <button class="btn sub" id="shareBtn" type="button">記録を送る・コピー</button>
+    <div class="rank" id="failRank" hidden></div>
+    <div class="row2"><button class="btn sub" id="failZukanBtn" type="button">📖 ずかん</button><button class="btn sub" id="shareBtn" type="button">記録を送る</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="zukan">
+  <div class="card">
+    <h2>📖 ずかん</h2>
+    <div id="zukanBody"></div>
+    <button class="btn" id="zukanClose" type="button">とじる</button>
   </div>
 </div>
 
@@ -201,6 +236,7 @@
 <script src="src/waiter.js"></script>
 <script src="src/gate.js"></script>
 <script src="src/rank.js"></script>
+<script src="src/zukan.js"></script>
 <script src="src/main.js"></script>
 </body>
 </html>
