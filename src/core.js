@@ -224,6 +224,7 @@
       state.feet = { L: 0, R: 0 };
       state.jump = { phase: 'none', crouch: 0, air: 0, grace: 0 };
       state.cpReached = cpIndex;
+      state.downFrames = 0;
     }
 
     function fall(reason) {
@@ -239,6 +240,7 @@
       const a = contact.getFixtureA().getUserData();
       const b = contact.getFixtureB().getUserData();
       const other = isFloor(a) ? b : isFloor(b) ? a : null;
+      if (other === 'thigh' && delta > 0 && (a === 'ground' || b === 'ground') && state.settle <= 0) fall('knee'); // ひざをついた
       if (other === 'footL' || other === 'footR') {
         const side = other.slice(-1);
         state.feet[side] = Math.max(0, state.feet[side] + delta);
@@ -319,6 +321,12 @@
       world.step(DT, 8, 3);
       state.frame++;
       if (state.settle > 0) state.settle--;
+      else if (state.status === 'play' && c) { // しりもち・大きく倒れたまま → 転んだ
+        const tp = c.torso.getPosition();
+        const low = tp.y - groundHeightAt(stage, tp.x) < 0.82 || Math.abs(c.torso.getAngle()) > 1.25;
+        state.downFrames = low && state.jump.phase !== 'air' ? state.downFrames + 1 : 0;
+        if (state.downFrames > 12) fall('down');
+      }
       if (c && state.status === 'play') {
         // ぐらぐらメーター：おぼんの傾きとガクッとした揺れでたまり、落ち着くと下がる
         const v = c.tray.getLinearVelocity();

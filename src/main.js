@@ -9,12 +9,15 @@
     title: $('title'), fail: $('fail'), clear: $('clear'),
     failTitle: $('failTitle'), failLine: $('failLine'), failDist: $('failDist'),
     clearTime: $('clearTime'), clearBest: $('clearBest'),
+    failTag: $('failTag'), failAct: $('failAct'), failFace: $('failFace'), clearFace: $('clearFace'), clearLine: $('clearLine'),
     meter: $('meter'), meterFill: $('meterFill'), meterLabel: $('meterLabel'),
     startSub: $('startSub'), clearTitle: $('clearTitle'), nextBtn: $('nextBtn'),
   };
 
   // レベル：クリアするたびに1つ上がる（上限なし）
   let game, S, stage, level = 1, hinted = new Set();
+  const WT = window.YoroWaiter;
+  let waiter = WT.forLevel(1), fails = 0, faceNow = 'wait', faceT0 = 0; // 待っている人・このレベルの失敗回数・今の顔
   const snd = window.YoroSound || { play() {}, bgm() {}, on: false, toggle() { return false; } };
 
   // ---- 記録 ----
@@ -33,9 +36,10 @@
     cam.x = 0; cam.y = 1;
     ui.meterLabel.textContent = `Lv.${n}`;
     hinted = new Set();
-    showBanner(n === 1 ? `レベル1「${stage.name}」<br>左・右・左・右…トン、トン、とリズムよく！`
-      : n === 3 ? `レベル3「${stage.name}」<br>じゃまな物は ジャンプで こえよう！`
-      : `レベル${n}「${stage.name}」<br>${stage.goal}m 先のおうちへ！`);
+    waiter = WT.forLevel(n); fails = 0; faceNow = 'wait';
+    showBanner(n === 1 ? `レベル1「${stage.name}」<br>${waiter.name}が まってるよ<br>左・右…トン、トン、とリズムよく！`
+      : n === 3 ? `レベル3「${stage.name}」<br>${waiter.name}が まってるよ<br>じゃまな物は ジャンプで こえよう！`
+      : `レベル${n}「${stage.name}」<br>${waiter.name}が ${stage.goal}m 先で まってるよ`);
   }
   function showBanner(html) {
     ui.hint.innerHTML = html; ui.hint.style.opacity = 1;
@@ -106,8 +110,8 @@
     for (const o of [ui.title, ui.fail, ui.clear]) o.classList.toggle('show', o === el);
   }
   function start(n) { loadLevel(n || maxLevel); restart(); }
-  function restart() { elapsed = 0; game.spawn(0); showOnly(null); snd.play('start'); snd.bgm(true); }
-  function retry() { game.spawn(game.passedCheckpoint()); showOnly(null); snd.play('start'); snd.bgm(true); }
+  function restart() { faceNow = 'wait'; elapsed = 0; game.spawn(0); showOnly(null); snd.play('start'); snd.bgm(true); }
+  function retry() { faceNow = 'wait'; game.spawn(game.passedCheckpoint()); showOnly(null); snd.play('start'); snd.bgm(true); }
   function next() { loadLevel(level + 1); restart(); }
   $('startBtn').onclick = () => start(maxLevel);
   ui.startSub.onclick = () => start(1);
@@ -124,18 +128,17 @@
     ui.startSub.hidden = maxLevel <= 1;
   }
 
-  const LINES = {
-    head: ['ドテッ！', '地面とごあいさつ', 'ひざが言うことをきかない…', '足がもつれた！', 'いまのは練習です'],
-    torso: ['ドテッ！', 'しりもち！', 'ひざが言うことをきかない…', 'ちょっと休けい…（ちがう）'],
-    pudding: ['プリンーーー！', 'プリンが旅立った', 'おぼんが傾きすぎ！', 'プリン、ぷるんと落下'],
-  };
-  const pick = (a) => a[Math.floor(Math.random() * a.length)];
   let shownEnd = false;
   function onFall() {
     const left = Math.max(0, stage.goal - S.bestX);
-    ui.failTitle.textContent = S.fallReason === 'pudding' ? 'プリンがおちた！' : 'ころんだ！';
-    ui.failLine.textContent = pick(LINES[S.fallReason] || LINES.head);
-    ui.failDist.textContent = `ここまで ${Math.max(0, game.charX()).toFixed(1)}m（ゴールまで あと ${left.toFixed(1)}m）`;
+    fails++;
+    const r = WT.reaction(waiter, { reason: S.fallReason, fails, left });
+    faceNow = r.face; faceT0 = performance.now();
+    ui.failTag.textContent = `おつかい失敗（${S.fallReason === 'pudding' ? 'プリンを落とした' : 'ころんだ'}）`;
+    ui.failTitle.textContent = r.title;
+    ui.failLine.textContent = r.say;
+    ui.failAct.textContent = r.action;
+    ui.failDist.textContent = `ここまで ${Math.max(0, game.charX()).toFixed(1)}m（おうちまで あと ${left.toFixed(1)}m）`;
     const cp = game.passedCheckpoint();
     $('retryBtn').textContent = cp > 0 ? `${cp}本目の旗からやり直す` : 'スタートからやり直す';
     $('restartBtn').style.display = cp > 0 ? 'block' : 'none';
@@ -148,6 +151,7 @@
     if (isBest) { bestTime = t; store.set(`yoro.best.${level}`, String(t)); }
     if (level + 1 > maxLevel) { maxLevel = level + 1; store.set('yoro.maxLevel', String(maxLevel)); refreshTitle(); }
     ui.clearTitle.textContent = `レベル${level} クリア！`;
+    const h = WT.happy(waiter); faceNow = 'happy'; faceT0 = performance.now(); ui.clearLine.textContent = h.say;
     ui.clearTime.textContent = `${t.toFixed(1)} 秒でおうちに到着！`;
     ui.clearBest.textContent = isBest ? '★ じこベスト更新！' : `じこベスト ${bestTime.toFixed(1)} 秒`;
     ui.nextBtn.textContent = `つぎのレベル${level + 1}へ`;
@@ -246,6 +250,12 @@
     for (let i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? '#3b2a1e' : '#fff'; ctx.fillRect(lx - 4, ly - (i + 1) * s * 0.25, 8, s * 0.25); }
     ctx.fillStyle = '#3b2a1e'; ctx.font = `900 ${Math.round(s * 0.3)}px sans-serif`;
     ctx.fillText('おうち', gx, gy - s * 2.05);
+    // 待っている人（げんかんの前）
+    const wx = gx - s * 1.75, wy = gy;
+    ctx.fillStyle = waiter.animal ? waiter.hair : '#7bb7e8'; ctx.lineWidth = 3;
+    if (!waiter.animal) { roundRect(wx - s * 0.2, wy - s * 0.75, s * 0.4, s * 0.75, s * 0.1); ctx.fill(); ctx.stroke(); }
+    else { ctx.beginPath(); ctx.ellipse(wx, wy - s * 0.2, s * 0.3, s * 0.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+    WT.drawFace(ctx, waiter, faceNow, wx, wy - s * (waiter.animal ? 0.55 : 0.98), s * 0.26, performance.now() / 1000);
   }
 
   function drawObstacle(o) {
@@ -453,6 +463,11 @@
     drawChar();
     drawCharge();
     updateHud();
+    const shownFace = ui.fail.classList.contains('show') ? ui.failFace : ui.clear.classList.contains('show') ? ui.clearFace : null;
+    if (shownFace) {
+      const fc = shownFace.getContext('2d'); fc.clearRect(0, 0, 240, 240);
+      WT.drawFace(fc, waiter, faceNow, 120, 132, 82, (performance.now() - faceT0) / 1000);
+    }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
