@@ -14,7 +14,8 @@
   };
 
   // レベル：クリアするたびに1つ上がる（上限なし）
-  let game, S, stage, level = 1;
+  let game, S, stage, level = 1, hinted = new Set();
+  const snd = window.YoroSound || { play() {}, bgm() {}, on: false, toggle() { return false; } };
 
   // ---- 記録 ----
   const store = {
@@ -31,7 +32,10 @@
     bestDist = parseFloat(store.get(`yoro.dist.${n}`)) || 0;
     cam.x = 0; cam.y = 1;
     ui.meterLabel.textContent = `Lv.${n}`;
-    showBanner(n === 1 ? `レベル1「${stage.name}」<br>左・右・左・右…トン、トン、とリズムよく！` : `レベル${n}「${stage.name}」<br>${stage.goal}m 先のおうちへ！`);
+    hinted = new Set();
+    showBanner(n === 1 ? `レベル1「${stage.name}」<br>左・右・左・右…トン、トン、とリズムよく！`
+      : n === 3 ? `レベル3「${stage.name}」<br>じゃまな物は ジャンプで こえよう！`
+      : `レベル${n}「${stage.name}」<br>${stage.goal}m 先のおうちへ！`);
   }
   function showBanner(html) {
     ui.hint.innerHTML = html; ui.hint.style.opacity = 1;
@@ -62,7 +66,7 @@
   }
   const playing = () => S.status === 'play' && !ui.title.classList.contains('show');
   window.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('.overlay.show')) return;
+    if (e.target.closest('.overlay.show') || e.target.closest('#sndBtn')) return;
     pointers.set(e.pointerId, e.clientX); updateInput(); e.preventDefault();
   }, { passive: false });
   window.addEventListener('pointermove', (e) => {
@@ -102,8 +106,8 @@
     for (const o of [ui.title, ui.fail, ui.clear]) o.classList.toggle('show', o === el);
   }
   function start(n) { loadLevel(n || maxLevel); restart(); }
-  function restart() { elapsed = 0; game.spawn(0); showOnly(null); }
-  function retry() { game.spawn(game.passedCheckpoint()); showOnly(null); }
+  function restart() { elapsed = 0; game.spawn(0); showOnly(null); snd.play('start'); snd.bgm(true); }
+  function retry() { game.spawn(game.passedCheckpoint()); showOnly(null); snd.play('start'); snd.bgm(true); }
   function next() { loadLevel(level + 1); restart(); }
   $('startBtn').onclick = () => start(maxLevel);
   ui.startSub.onclick = () => start(1);
@@ -111,6 +115,10 @@
   $('restartBtn').onclick = restart;
   $('againBtn').onclick = restart;
   ui.nextBtn.onclick = next;
+  const sndBtn = $('sndBtn');
+  const paintSnd = () => { sndBtn.textContent = snd.on ? '🔊' : '🔇'; sndBtn.setAttribute('aria-label', snd.on ? '音をけす' : '音を出す'); };
+  sndBtn.onclick = () => { snd.toggle(); paintSnd(); snd.play('tap'); };
+  paintSnd();
   function refreshTitle() {
     $('startBtn').textContent = maxLevel > 1 ? `つづきから（レベル${maxLevel}）` : 'はじめる';
     ui.startSub.hidden = maxLevel <= 1;
@@ -194,7 +202,7 @@
     // 距離のかんばん
     ctx.font = `800 ${Math.round(scale * 0.22)}px sans-serif`; ctx.textAlign = 'center';
     for (let m = 5; m < stage.goal; m += 5) {
-      if (stage.checkpoints.includes(m)) continue;
+      if (stage.checkpoints.includes(m) || stage.obstacles.some((o) => Math.abs(o.x - m) < 0.9)) continue;
       const [x, y] = W2S(m, game.groundHeightAt(m));
       ctx.fillStyle = '#8a5a35'; ctx.fillRect(x - 2, y - scale * 0.5, 4, scale * 0.5);
       ctx.fillStyle = '#fff7e6'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 2;
@@ -212,6 +220,8 @@
       ctx.beginPath(); ctx.moveTo(x, y - scale * 1.4); ctx.lineTo(x + scale * 0.55, y - scale * 1.22); ctx.lineTo(x, y - scale * 1.04); ctx.closePath();
       ctx.fill(); ctx.stroke();
     });
+    // じゃまな物
+    for (const o of stage.obstacles) drawObstacle(o);
     // スタートのお店
     {
       const [sx0, sy0] = W2S(-3.2, 0); const s = scale;
@@ -236,6 +246,39 @@
     for (let i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? '#3b2a1e' : '#fff'; ctx.fillRect(lx - 4, ly - (i + 1) * s * 0.25, 8, s * 0.25); }
     ctx.fillStyle = '#3b2a1e'; ctx.font = `900 ${Math.round(s * 0.3)}px sans-serif`;
     ctx.fillText('おうち', gx, gy - s * 2.05);
+  }
+
+  function drawObstacle(o) {
+    const [cx, by] = W2S(o.x, o.y); const s = scale, w = o.w * s, h = o.h * s;
+    ctx.save(); ctx.lineWidth = 3; ctx.strokeStyle = '#3b2a1e'; ctx.lineJoin = 'round';
+    if (o.kind === 'box') { // だんボール
+      ctx.fillStyle = '#d9a066'; ctx.fillRect(cx - w / 2, by - h, w, h); ctx.strokeRect(cx - w / 2, by - h, w, h);
+      ctx.fillStyle = '#f2d5a0'; ctx.fillRect(cx - w * 0.1, by - h, w * 0.2, h * 0.45);
+      ctx.beginPath(); ctx.moveTo(cx - w / 2, by - h * 0.55); ctx.lineTo(cx + w / 2, by - h * 0.55); ctx.stroke();
+    } else if (o.kind === 'pot') { // 植木ばち
+      ctx.fillStyle = '#5bb04a';
+      for (const [dx, dy, r] of [[-0.25, 1.05, 0.28], [0.22, 1.1, 0.3], [0, 1.3, 0.3]]) {
+        ctx.beginPath(); ctx.ellipse(cx + dx * w, by - h * dy, w * r, h * 0.22, dx, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      }
+      ctx.fillStyle = '#d0693f';
+      ctx.beginPath(); ctx.moveTo(cx - w * 0.5, by - h * 0.8); ctx.lineTo(cx + w * 0.5, by - h * 0.8); ctx.lineTo(cx + w * 0.38, by); ctx.lineTo(cx - w * 0.38, by); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillRect(cx - w * 0.56, by - h * 0.95, w * 1.12, h * 0.18); ctx.strokeRect(cx - w * 0.56, by - h * 0.95, w * 1.12, h * 0.18);
+    } else if (o.kind === 'cone') { // コーン
+      ctx.fillStyle = '#ff7a2f';
+      ctx.beginPath(); ctx.moveTo(cx, by - h); ctx.lineTo(cx + w * 0.42, by - h * 0.1); ctx.lineTo(cx - w * 0.42, by - h * 0.1); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.fillRect(cx - w * 0.22, by - h * 0.6, w * 0.44, h * 0.14);
+      ctx.fillStyle = '#ff7a2f'; ctx.fillRect(cx - w * 0.65, by - h * 0.12, w * 1.3, h * 0.12); ctx.strokeRect(cx - w * 0.65, by - h * 0.12, w * 1.3, h * 0.12);
+    } else { // ねている ねこ
+      ctx.fillStyle = '#f0a85a';
+      ctx.beginPath(); ctx.ellipse(cx, by - h * 0.42, w * 0.5, h * 0.45, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + w * 0.18, by - h * 0.75); ctx.lineTo(cx + w * 0.26, by - h * 1.05); ctx.lineTo(cx + w * 0.38, by - h * 0.72); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - w * 0.02, by - h * 0.8); ctx.lineTo(cx + w * 0.06, by - h * 1.08); ctx.lineTo(cx + w * 0.18, by - h * 0.82); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + w * 0.08, by - h * 0.5); ctx.quadraticCurveTo(cx + w * 0.13, by - h * 0.45, cx + w * 0.18, by - h * 0.5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + w * 0.26, by - h * 0.5); ctx.quadraticCurveTo(cx + w * 0.31, by - h * 0.45, cx + w * 0.36, by - h * 0.5); ctx.stroke();
+      ctx.fillStyle = '#3b2a1e'; ctx.font = `900 ${Math.round(s * 0.2)}px sans-serif`; ctx.textAlign = 'center';
+      ctx.fillText('zzz', cx + w * 0.5, by - h * 1.05 - Math.sin(performance.now() / 400) * 4);
+    }
+    ctx.restore();
   }
 
   function roundRect(x, y, w, h, r) {
@@ -342,6 +385,18 @@
     ctx.restore();
   }
 
+  function drawCharge() { // ジャンプをためている量（頭の上のゲージ）
+    if (!S.char || !S.jump || S.jump.phase !== 'crouch') return;
+    const p = S.char.head.getPosition(); const [x, y] = W2S(p.x, p.y + 0.42);
+    const k = Math.min(1, S.jump.crouch / 24), w = scale * 0.8, h = scale * 0.13;
+    ctx.lineWidth = 3; ctx.strokeStyle = '#3b2a1e'; ctx.fillStyle = '#fff';
+    roundRect(x - w / 2, y - h / 2, w, h, h / 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = k >= 1 ? '#ff4d4d' : '#ffb020';
+    if (k > 0.05) { roundRect(x - w / 2 + 2, y - h / 2 + 2, (w - 4) * k, h - 4, (h - 4) / 2); ctx.fill(); }
+    ctx.fillStyle = '#3b2a1e'; ctx.font = `900 ${Math.round(scale * 0.2)}px sans-serif`; ctx.textAlign = 'center';
+    ctx.fillText(k >= 1 ? 'はなせ！' : 'ためて…', x, y - h);
+  }
+
   function updateHud() {
     const x = Math.max(0, game.charX());
     ui.dist.textContent = S.status === 'clear' ? 'ゴール！' : `あと ${Math.max(0, stage.goal - x).toFixed(1)}m`;
@@ -369,6 +424,19 @@
         if (S.status === 'play') elapsed += 1 / 60;
         game.step();
       }
+      for (const ev of S.events.splice(0)) {
+        if (ev.type === 'clear') { snd.bgm(false); snd.play('clear'); }
+        else if (ev.type === 'fall' || ev.type === 'pudding') { snd.bgm(false); snd.play(ev.type); }
+        else snd.play(ev.type, ev.v);
+      }
+      if (level <= 6 && S.status === 'play') { // 最初のうちは、じゃまな物の手前でジャンプのやり方を出す
+        const x = game.charX();
+        stage.obstacles.forEach((o, i) => {
+          if (!hinted.has(i) && o.x - x < 2.6 && o.x - x > 0) {
+            hinted.add(i); showBanner('両方の足を いっしょに押して…<br>はなすと ジャンプ！'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 3000);
+          }
+        });
+      }
       if (S.bestX > bestDist) { bestDist = S.bestX; store.set(`yoro.dist.${level}`, String(bestDist)); }
       if ((S.status === 'fallen' && S.frame - S.fallFrame > 50) || S.status === 'clear') {
         if (!shownEnd) { shownEnd = true; S.status === 'clear' ? onClear() : onFall(); }
@@ -383,6 +451,7 @@
     drawBackground();
     drawGround();
     drawChar();
+    drawCharge();
     updateHud();
     requestAnimationFrame(frame);
   }

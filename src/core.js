@@ -27,12 +27,29 @@
     spinSafe: 1.4, // このくらいのぐらつきまでは平気
     spinGain: 0.01,
     calm: 0.008, // 落ち着いているときに下がる速さ
+    crouchHip: 0.75, // 両足を押している：しゃがむ
+    crouchKnee: -1.35,
+    jumpMinFrames: 6, // これ以上ためるとジャンプ
+    jumpFullFrames: 24, // これだけためると一番高く飛ぶ
+    jumpVx: [1.0, 2.6], // ジャンプの前向きの速さ（ためなし〜ためきり）
+    jumpVy: [2.6, 4.3], // ジャンプの上向きの速さ
+    jumpAccScale: 0.15, // ジャンプ中と着地直後は揺れの影響を小さく
   };
 
   // レベルごとのコースと難しさ（x: メートル, h: 高さメートル）。レベルに上限はない
-  const LEVEL_NAMES = ['はじめてのおつかい', 'ちょっと遠くへ', 'ゆるやかな坂', 'でこぼこ道', '上って下って',
+  const LEVEL_NAMES = ['はじめてのおつかい', 'ちょっと遠くへ', 'はじめての障害物', 'でこぼこ道', '上って下って',
     '商店街', 'となり町', '峠のおばあちゃん家', '山の上の神社', '雲の上のおうち'];
+  const PLACES = ['川むこう', '駅前', '港', '森のおく', '丘の上', '線路ぞい', '公園の先', '団地', '田んぼ道', '坂の上',
+    '海ぞい', '橋のむこう', '温泉街', '山のふもと', '空き地のおく', '学校のうら', '星のよく見える丘'];
+  const DESTS = ['おばあちゃん家', '友だちの家', 'パン屋さん', '先生の家', 'おじさんの家', 'ねこの集会所', 'おうち', '親せきの家'];
   const lerp = (a, b, t) => a + (b - a) * t;
+  // 障害物の種類（w: 幅, h: 高さの倍率）
+  const OBSTACLES = [
+    { kind: 'box', w: 0.5, h: 1.0 }, // 段ボール
+    { kind: 'pot', w: 0.36, h: 0.9 }, // 植木鉢
+    { kind: 'cone', w: 0.32, h: 1.1 }, // コーン
+    { kind: 'cat', w: 0.55, h: 0.75 }, // ねむっているねこ
+  ];
 
   function makeLevel(n) {
     n = Math.max(1, Math.floor(n));
@@ -42,14 +59,25 @@
     const goal = Math.min(60, 12 + (n - 1) * 4);
     const maxSlope = Math.min(0.13, 0.05 + n * 0.006); // 坂の急さ（高さ÷長さ）
     const bumpH = Math.min(0.14, 0.05 + n * 0.006); // 段差の高さ
+    const obChance = n < 3 ? 0 : Math.min(0.32, 0.12 + (n - 3) * 0.025); // 障害物の出やすさ
+    const obH = Math.min(0.46, 0.3 + n * 0.01); // 障害物の高さ
     const points = [[-8, 0], [3, 0]];
+    const obstacles = [];
     let x = 3, h = 0;
     const add = (dx, dh) => { x += dx; h += dh; points.push([+x.toFixed(2), +h.toFixed(3)]); };
+    const nearCheckpoint = (ox) => Math.abs(ox - Math.round(ox / 10) * 10) < 1.6;
     while (x < goal - 3) {
       const r = rnd();
       const room = goal - 2 - x;
-      if (n === 1 || r < 0.3) add(Math.min(room, 2 + rnd() * 3), 0); // 平ら
-      else if (n >= 4 && r < 0.5 && room > 2) { // 段差（ブロック）
+      const wantOb = (n === 3 && obstacles.length === 0) || r < obChance;
+      if (wantOb && room > 5) { // 障害物（平らな場所に置く。ジャンプで越える）
+        const t = OBSTACLES[Math.floor(rnd() * OBSTACLES.length)];
+        let ox = x + 2.2;
+        if (nearCheckpoint(ox)) ox = x + 3.4;
+        if (!nearCheckpoint(ox)) obstacles.push({ x: +ox.toFixed(2), y: h, w: t.w, h: +(obH * t.h).toFixed(3), kind: t.kind });
+        add(5, 0);
+      } else if (n === 1 || r < obChance + 0.3) add(Math.min(room, 2 + rnd() * 3), 0); // 平ら
+      else if (n >= 4 && r < obChance + 0.5 && room > 2) { // 段差（ブロック）
         const bh = bumpH * (0.7 + rnd() * 0.3), w = 0.8 + rnd() * 0.8;
         add(0.25, bh); add(w, 0); add(0.25, -bh); add(Math.min(room, 1.5), 0);
       } else { // 坂
@@ -65,15 +93,15 @@
     add(14, 0);
     const checkpoints = [0];
     for (let c = 10; c < goal - 2; c += 10) checkpoints.push(c);
+    const name = LEVEL_NAMES[n - 1] || `${PLACES[Math.floor(rnd() * PLACES.length)]}の${DESTS[Math.floor(rnd() * DESTS.length)]}`;
     return {
-      level: n,
-      name: LEVEL_NAMES[n - 1] || `どこまでもおつかい`,
-      points, checkpoints, goal,
+      level: n, name, points, checkpoints, goal, obstacles,
       tuning: {
-        balance: lerp(30, 12, 1 - Math.exp(-(n - 1) / 8)), // 体を起こす手助けがだんだん弱く
-        accSafe: 13.0 + 7 * Math.exp(-(n - 1) / 3), // プリンが揺れにだんだん敏感に（ここは少しの差で大きく効くので、ゆっくり）
-        spinSafe: lerp(2.3, 1.3, d),
-        calm: lerp(0.013, 0.006, d),
+        // むずかしさは途中で頭打ちにして、上のレベルもずっと遊べるようにする（変化は障害物・道で出す）
+        balance: lerp(30, 15, 1 - Math.exp(-(n - 1) / 8)), // 体を起こす手助けがだんだん弱く
+        accSafe: 13.5 + 6.5 * Math.exp(-(n - 1) / 3), // プリンが揺れにだんだん敏感に（少しの差で大きく効くので、ゆっくり）
+        spinSafe: lerp(2.3, 1.4, d),
+        calm: lerp(0.013, 0.007, d),
       },
     };
   }
@@ -99,6 +127,9 @@
     const ground = world.createBody();
     ground.createFixture(Chain(stage.points.map(([x, h]) => Vec2(x, h))), { friction: 1.0, userData: 'ground' });
     ground.createFixture(Box(0.3, 3, Vec2(-2.2, 3), 0), { friction: 0.3, userData: 'wall' }); // スタートのお店（うしろの壁）
+    for (const o of stage.obstacles) { // 障害物（ジャンプで越える）
+      ground.createFixture(Box(o.w / 2, o.h / 2, Vec2(o.x, o.y + o.h / 2), 0), { friction: 0.8, userData: 'obstacle' });
+    }
 
     const state = {
       stage, tuning: T, world,
@@ -110,7 +141,10 @@
       bestX: 0,
       char: null,
       input: { left: false, right: false },
+      events: [], // 音を鳴らす合図（画面側が取り出す）
+      feet: { L: 0, R: 0 }, // 足が地面についている数
     };
+    const emit = (type, v) => { if (state.events.length < 100) state.events.push({ type, v }); };
 
     function buildChar(x0) {
       const gy = groundHeightAt(stage, x0);
@@ -137,7 +171,7 @@
         thigh.createFixture(F(Box(0.075, 0.22), 'thigh'));
         const shin = mk(0, 0.29);
         shin.createFixture(F(Box(0.065, 0.22), 'shin'));
-        shin.createFixture(F(Box(0.15, 0.035, Vec2(0.06, -0.255), 0), 'foot', { friction: 1.5 }));
+        shin.createFixture(F(Box(0.15, 0.035, Vec2(0.06, -0.255), 0), 'foot' + side, { friction: 1.5 }));
         const hip = world.createJoint(RevoluteJoint({
           enableLimit: true, lowerAngle: -1.0, upperAngle: 1.7, enableMotor: true, maxMotorTorque: T.hipTorque,
         }, torso, thigh, Vec2(x0, gy + 0.95)));
@@ -187,6 +221,9 @@
       state.settle = 20; // 出てすぐは転んだ判定をしない
       state.danger = 0; // ぐらぐらメーター（1で落ちる）
       state.trayV = null;
+      state.feet = { L: 0, R: 0 };
+      state.jump = { phase: 'none', crouch: 0, air: 0, grace: 0 };
+      state.cpReached = cpIndex;
     }
 
     function fall(reason) {
@@ -194,19 +231,45 @@
       state.status = 'fallen';
       state.fallReason = reason;
       state.fallFrame = state.frame;
+      emit(reason === 'pudding' ? 'pudding' : 'fall');
     }
 
-    world.on('begin-contact', (contact) => {
-      if (state.status !== 'play' || state.settle > 0) return;
+    const isFloor = (u) => u === 'ground' || u === 'obstacle';
+    function footContact(contact, delta) {
       const a = contact.getFixtureA().getUserData();
       const b = contact.getFixtureB().getUserData();
-      const other = a === 'ground' ? b : b === 'ground' ? a : null;
+      const other = isFloor(a) ? b : isFloor(b) ? a : null;
+      if (other === 'footL' || other === 'footR') {
+        const side = other.slice(-1);
+        state.feet[side] = Math.max(0, state.feet[side] + delta);
+        if (delta > 0 && state.status === 'play' && state.settle <= 0) emit('step', side);
+      }
+      return other;
+    }
+    world.on('begin-contact', (contact) => {
+      const other = footContact(contact, 1);
+      if (state.status !== 'play' || state.settle > 0) return;
       if (other === 'head' || other === 'torso') fall(other);
     });
+    world.on('end-contact', (contact) => { footContact(contact, -1); });
+    const grounded = () => state.feet.L + state.feet.R > 0;
 
     function drive(joint, target, speed, torque, on) {
       joint.setMaxMotorTorque(on ? torque : torque * 0.04);
       joint.setMotorSpeed(on ? speed * (target - joint.getJointAngle()) : 0);
+    }
+
+    // ジャンプ：ためた分だけ高く遠くへ（体ぜんぶに同じ速さを足す）
+    function launch() {
+      const c = state.char, J = state.jump;
+      const p = Math.min(1, (J.crouch - T.jumpMinFrames) / (T.jumpFullFrames - T.jumpMinFrames));
+      const vx = lerp(T.jumpVx[0], T.jumpVx[1], p), vy = lerp(T.jumpVy[0], T.jumpVy[1], p);
+      for (const b of [c.torso, c.tray, c.head, c.L.thigh, c.L.shin, c.R.thigh, c.R.shin]) {
+        const v = b.getLinearVelocity();
+        b.setLinearVelocity(Vec2(v.x * 0.5 + vx, Math.max(0, v.y) + vy));
+      }
+      J.phase = 'air'; J.air = 0;
+      emit('jump', p);
     }
 
     function charX() {
@@ -217,10 +280,32 @@
       const c = state.char;
       if (c) {
         const alive = state.status === 'play' || state.status === 'clear';
+        const J = state.jump;
+        const both = state.input.left && state.input.right;
+        if (state.status === 'play') {
+          J.ground = grounded() ? 0 : (J.ground || 0) + 1; // 足が地面からはなれてからのコマ数
+          const onGround = J.ground < 8;
+          if (J.phase === 'none' && both && onGround) { J.phase = 'crouch'; J.crouch = 0; }
+          if (J.phase === 'crouch') {
+            if (both) J.crouch++;
+            else if (!state.input.left && !state.input.right && J.crouch >= T.jumpMinFrames && onGround) launch();
+            else J.phase = 'none'; // 片足だけはなした：ふつうの歩きにもどる
+          } else if (J.phase === 'air') {
+            J.air++;
+            if (J.air > 8 && grounded()) { J.phase = 'none'; J.grace = 25; emit('land'); }
+          }
+          if (J.grace > 0) J.grace--;
+        }
         const idle = !state.input.left && !state.input.right;
         for (const [lg, on] of [[c.L, state.input.left], [c.R, state.input.right]]) {
-          drive(lg.hip, on ? T.hipUp : idle ? T.hipIdle : T.hipDown, T.hipSpeed, T.hipTorque, alive);
-          drive(lg.knee, on ? T.kneeUp : idle ? T.kneeIdle : T.kneeDown, T.kneeSpeed, T.kneeTorque, alive);
+          let hip = on ? T.hipUp : idle ? T.hipIdle : T.hipDown;
+          let knee = on ? T.kneeUp : idle ? T.kneeIdle : T.kneeDown;
+          if (J.phase === 'crouch') { hip = T.crouchHip; knee = T.crouchKnee; }
+          else if (J.phase === 'air') { // 空中：ひざをたたんで、あとで着地の形に
+            if (J.air < 14) { hip = 1.1; knee = -1.7; } else { hip = 0.35; knee = -0.35; }
+          }
+          drive(lg.hip, hip, T.hipSpeed, T.hipTorque, alive);
+          drive(lg.knee, knee, T.kneeSpeed, T.kneeTorque, alive);
         }
         drive(c.neck, 0, 6, 4, alive);
         // 腕：おぼんを水平に（世界に対して）
@@ -244,7 +329,8 @@
         const tilt = Math.abs(c.tray.getAngle());
         const spin = Math.abs(c.torso.getAngularVelocity()); // 体のぐらつき
         if (state.settle <= 0) {
-          state.danger += Math.max(0, acc - T.accSafe) * T.accGain + Math.max(0, spin - T.spinSafe) * T.spinGain
+          const js = state.jump.phase !== 'none' || state.jump.grace > 0 ? T.jumpAccScale : 1;
+          state.danger += Math.max(0, acc - T.accSafe) * T.accGain * js + Math.max(0, spin - T.spinSafe) * T.spinGain * js
             + Math.max(0, tilt - T.tiltSafe) * T.tiltGain;
           state.danger = Math.max(0, state.danger - T.calm);
         }
@@ -253,7 +339,11 @@
         if (state.danger >= 1) { state.danger = 1; launchPudding(); fall('pudding'); }
         const x = charX();
         if (x > state.bestX) state.bestX = x;
-        if (x >= stage.goal) state.status = 'clear';
+        if (x >= stage.goal) { state.status = 'clear'; emit('clear'); }
+        for (let i = state.cpReached + 1; i < stage.checkpoints.length; i++) {
+          if (x >= stage.checkpoints[i] + 0.3) { state.cpReached = i; emit('checkpoint', i); }
+        }
+        if (state.danger > 0.65) emit('danger', state.danger);
       }
     }
 

@@ -2,17 +2,31 @@
 const planck = require('planck');
 const Core = require('../src/core.js');
 const maxL = +(process.argv[2] || 15);
+const JUMP = !process.argv.includes('--nojump');
 function run(level, P, sd, jitter) {
   let s = sd, side = 0, next = P; const jr = () => ((s = (s * 48271) % 2147483647) / 2147483647);
   const g = Core.create(planck, { level }); g.spawn(0);
-  let f = 0;
+  const obs = g.stage.obstacles.map((o) => o.x - o.w / 2);
+  let f = 0, crouch = 0, done = new Set();
   for (; f < 60 * 90; f++) {
-    if (f >= next) { side = 1 - side; next = f + Math.round(P * (1 - jitter + 2 * jitter * jr())); }
-    g.setInput(side === 0, side === 1); g.step(); if (g.state.status !== 'play') break;
+    const x = g.charX();
+    const J = g.state.jump;
+    if (JUMP && crouch === 0 && J.phase === 'none') {
+      const i = obs.findIndex((ox, k) => !done.has(k) && ox - x > 0.4 && ox - x < 0.4 + 0.5 * jr() + 0.3);
+      if (i >= 0) { done.add(i); crouch = Math.round(14 + 10 * jr()); }
+    }
+    if (crouch > 0) { g.setInput(true, true); crouch--; if (crouch === 0) next = f + 40; }
+    else if (J.phase !== 'none') g.setInput(false, false);
+    else {
+      if (f >= next) { side = 1 - side; next = f + Math.round(P * (1 - jitter + 2 * jitter * jr())); }
+      g.setInput(side === 0, side === 1);
+    }
+    g.step(); if (g.state.status !== 'play') break;
   }
   return { clear: g.state.status === 'clear', x: g.charX(), why: g.state.fallReason };
 }
-for (let L = 1; L <= maxL; L++) {
+const minL = +(process.argv.find((a) => a.startsWith("--from="))?.slice(7) || 1);
+for (let L = minL; L <= maxL; L++) {
   const st = Core.makeLevel(L);
   const res = { tidy: [], loose: [] };
   for (const P of [16, 20, 24, 28]) for (const sd of [3, 17, 29]) {
