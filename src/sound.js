@@ -98,6 +98,15 @@
       if (t - lastDanger < gap) return; lastDanger = t;
       tone(600 + d * 400, t, 0.07, { type: 'sine', vol: 0.12, to: 500 + d * 300 });
     },
+    timeup() { // ブッブー
+      const t = ctx.currentTime;
+      tone(180, t, 0.28, { type: 'square', vol: 0.16 });
+      tone(140, t + 0.32, 0.5, { type: 'square', vol: 0.16 });
+    },
+    tick(n = 5) { // のこり5秒からの ピッ
+      const t = ctx.currentTime;
+      tone(n <= 3 ? 1320 : 990, t, 0.09, { type: 'square', vol: 0.09 });
+    },
     tap() { const t = ctx.currentTime; tone(880, t, 0.06, { type: 'sine', vol: 0.15 }); },
   };
 

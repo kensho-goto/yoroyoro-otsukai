@@ -94,8 +94,11 @@
     const checkpoints = [0];
     for (let c = 10; c < goal - 2; c += 10) checkpoints.push(c);
     const name = LEVEL_NAMES[n - 1] || `${PLACES[Math.floor(rnd() * PLACES.length)]}の${DESTS[Math.floor(rnd() * DESTS.length)]}`;
+    // 時間制限：はじめはゆっくりでも間に合い、レベルが上がると少しずつきびしく（5秒きざみ）
+    const needSpeed = lerp(0.6, 0.85, 1 - Math.exp(-(n - 1) / 10)); // 必要な速さ（m/秒）
+    const timeLimit = Math.ceil(goal / needSpeed / 5) * 5;
     return {
-      level: n, name, points, checkpoints, goal, obstacles,
+      level: n, timeLimit, name, points, checkpoints, goal, obstacles,
       tuning: {
         // むずかしさは途中で頭打ちにして、上のレベルもずっと遊べるようにする（変化は障害物・道で出す）
         balance: lerp(30, 15, 1 - Math.exp(-(n - 1) / 8)), // 体を起こす手助けがだんだん弱く
@@ -225,6 +228,7 @@
       state.jump = { phase: 'none', crouch: 0, air: 0, grace: 0 };
       state.cpReached = cpIndex;
       state.downFrames = 0;
+      state.playFrames = 0; // 遊んでいる時間（コマ数）
     }
 
     function fall(reason) {
@@ -232,7 +236,7 @@
       state.status = 'fallen';
       state.fallReason = reason;
       state.fallFrame = state.frame;
-      emit(reason === 'pudding' ? 'pudding' : 'fall');
+      emit(reason === 'pudding' ? 'pudding' : reason === 'timeup' ? 'timeup' : 'fall');
     }
 
     const isFloor = (u) => u === 'ground' || u === 'obstacle';
@@ -320,6 +324,7 @@
       }
       world.step(DT, 8, 3);
       state.frame++;
+      if (state.status === 'play' && ++state.playFrames >= stage.timeLimit * 60) fall('timeup'); // 時間切れ
       if (state.settle > 0) state.settle--;
       else if (state.status === 'play' && c) { // しりもち・大きく倒れたまま → 転んだ
         const tp = c.torso.getPosition();

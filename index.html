@@ -29,9 +29,11 @@
   }
   .chip {
     background: rgba(255, 247, 230, .92); border: 3px solid var(--ink); border-radius: 14px;
-    padding: 4px 12px; font-weight: 800; font-size: 18px; box-shadow: 0 3px 0 var(--ink); white-space: nowrap;
+    padding: 3px 9px; font-weight: 800; font-size: 16px; box-shadow: 0 3px 0 var(--ink); white-space: nowrap;
   }
-  .chip small { font-size: 12px; font-weight: 700; opacity: .75; margin-left: 4px; }
+  .chip small { font-size: 12px; font-weight: 700; opacity: .75; margin: 0 2px; }
+  .chip.hurry { background: #ff5a4d; color: #fff; animation: pulse .5s infinite; }
+  @keyframes pulse { 50% { transform: scale(1.08); } }
   .pads {
     position: fixed; left: 0; right: 0; bottom: 0; height: 42%;
     display: grid; grid-template-columns: 1fr 1fr; pointer-events: none;
@@ -115,7 +117,7 @@
 
 <div class="hud">
   <div class="chip" id="dist">あと 40m</div>
-  <div class="chip" id="time">0.0<small>秒</small></div>
+  <div class="chip" id="time"><small>のこり</small>20<small>秒</small></div>
   <div class="chip" id="best">ベスト ―</div>
 </div>
 
@@ -143,7 +145,7 @@
 <div class="overlay show" id="title">
   <div class="card">
     <h1>ヨロヨロおつかい</h1>
-    <p>おうちで待っている人に、<br>プリンを落とさず届けよう！<br>ころんだり落としたりすると…がっかりされます。<br>クリアするたびにレベルが上がるよ。</p>
+    <p>おうちで待っている人に、<br>プリンを落とさず届けよう！<br>ころぶ・プリンを落とす・時間切れで<b>ゲームオーバー</b>。<br>待っている人に、がっかりされます…<br>クリアするたびにレベルが上がるよ。</p>
     <div class="how">
       <div class="l">画面の左半分<br>＝ ひだり足</div>
       <div class="r">画面の右半分<br>＝ みぎ足</div>
@@ -156,13 +158,12 @@
 
 <div class="overlay" id="fail">
   <div class="card">
-    <p class="tag" id="failTag">おつかい失敗</p>
+    <p class="tag" id="failTag">ゲームオーバー</p>
     <h2 id="failTitle">しょんぼり…</h2>
     <div class="who"><canvas class="face" id="failFace" width="240" height="240"></canvas><div class="bubble" id="failLine"></div></div>
     <p class="act" id="failAct"></p>
     <p class="tip" id="failDist"></p>
-    <button class="btn" id="retryBtn">旗のところからやり直す</button>
-    <button class="btn sub" id="restartBtn">最初からやり直す</button>
+    <button class="btn" id="retryBtn">もう一回（最初から）</button>
   </div>
 </div>
 

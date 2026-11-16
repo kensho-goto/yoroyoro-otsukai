@@ -86,7 +86,7 @@
     else if (RK.includes(e.code)) keys.right = true;
     else if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
       if (ui.title.classList.contains('show')) start(maxLevel);
-      else if (ui.fail.classList.contains('show')) retry();
+      else if (ui.fail.classList.contains('show')) restart();
       else if (ui.clear.classList.contains('show')) next();
       return;
     } else return;
@@ -111,12 +111,11 @@
   }
   function start(n) { loadLevel(n || maxLevel); restart(); }
   function restart() { faceNow = 'wait'; elapsed = 0; game.spawn(0); showOnly(null); snd.play('start'); snd.bgm(true); }
-  function retry() { faceNow = 'wait'; game.spawn(game.passedCheckpoint()); showOnly(null); snd.play('start'); snd.bgm(true); }
+  const retry = restart; // ゲームオーバーなので、いつもそのレベルの最初から
   function next() { loadLevel(level + 1); restart(); }
   $('startBtn').onclick = () => start(maxLevel);
   ui.startSub.onclick = () => start(1);
-  $('retryBtn').onclick = retry;
-  $('restartBtn').onclick = restart;
+  $('retryBtn').onclick = restart;
   $('againBtn').onclick = restart;
   ui.nextBtn.onclick = next;
   const sndBtn = $('sndBtn');
@@ -134,14 +133,12 @@
     fails++;
     const r = WT.reaction(waiter, { reason: S.fallReason, fails, left });
     faceNow = r.face; faceT0 = performance.now();
-    ui.failTag.textContent = `おつかい失敗（${S.fallReason === 'pudding' ? 'プリンを落とした' : 'ころんだ'}）`;
+    ui.failTag.textContent = `ゲームオーバー（${{ pudding: 'プリンを落とした', timeup: '時間切れ' }[S.fallReason] || 'ころんだ'}）`;
     ui.failTitle.textContent = r.title;
     ui.failLine.textContent = r.say;
     ui.failAct.textContent = r.action;
     ui.failDist.textContent = `ここまで ${Math.max(0, game.charX()).toFixed(1)}m（おうちまで あと ${left.toFixed(1)}m）`;
-    const cp = game.passedCheckpoint();
-    $('retryBtn').textContent = cp > 0 ? `${cp}本目の旗からやり直す` : 'スタートからやり直す';
-    $('restartBtn').style.display = cp > 0 ? 'block' : 'none';
+    $('retryBtn').textContent = 'もう一回（最初から）';
     showOnly(ui.fail);
     if (navigator.vibrate) navigator.vibrate(80);
   }
@@ -407,10 +404,14 @@
     ctx.fillText(k >= 1 ? 'はなせ！' : 'ためて…', x, y - h);
   }
 
+  let lastTick = 0;
   function updateHud() {
     const x = Math.max(0, game.charX());
     ui.dist.textContent = S.status === 'clear' ? 'ゴール！' : `あと ${Math.max(0, stage.goal - x).toFixed(1)}m`;
-    ui.time.innerHTML = `${elapsed.toFixed(1)}<small>秒</small>`;
+    const tl = Math.max(0, stage.timeLimit - elapsed);
+    ui.time.innerHTML = `<small>のこり</small>${tl < 10 ? tl.toFixed(1) : Math.ceil(tl)}<small>秒</small>`;
+    ui.time.classList.toggle('hurry', tl < 10 && S.status === 'play');
+    if (S.status === 'play' && tl <= 5 && Math.ceil(tl) !== lastTick) { lastTick = Math.ceil(tl); snd.play('tick', lastTick); }
     const d = S.danger || 0;
     ui.meterFill.style.width = `${Math.round(d * 100)}%`;
     ui.meterFill.style.background = d > 0.7 ? '#ff4d4d' : d > 0.4 ? '#ffb020' : '#5cc96b';
@@ -436,7 +437,7 @@
       }
       for (const ev of S.events.splice(0)) {
         if (ev.type === 'clear') { snd.bgm(false); snd.play('clear'); }
-        else if (ev.type === 'fall' || ev.type === 'pudding') { snd.bgm(false); snd.play(ev.type); }
+        else if (ev.type === 'fall' || ev.type === 'pudding' || ev.type === 'timeup') { snd.bgm(false); snd.play(ev.type); }
         else snd.play(ev.type, ev.v);
       }
       if (level <= 6 && S.status === 'play') { // 最初のうちは、じゃまな物の手前でジャンプのやり方を出す

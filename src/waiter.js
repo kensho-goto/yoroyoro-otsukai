@@ -17,7 +17,17 @@
   ];
   const TREATS = ['プリン', 'とっておきのプリン', '3時のおやつのプリン', '楽しみにしてたプリン', 'ごほうびのプリン', 'お祝いのプリン',
     '1日10個かぎりのプリン', 'カラメルたっぷりのプリン', '冷蔵庫で冷やすはずだったプリン', 'みんなで分けるはずのプリン'];
-  const REASON = { pudding: ['プリンを落とした', 'プリンを飛ばした', 'プリンを宙に舞わせた'], other: ['ころんだ', 'すってんころりんした', '地面とごあいさつした'] };
+  const REASON = { pudding: ['プリンを落とした', 'プリンを飛ばした', 'プリンを宙に舞わせた'], other: ['ころんだ', 'すってんころりんした', '地面とごあいさつした'],
+    timeup: ['間に合わなかった', 'おそすぎた', '道草をくった'] };
+  // 時間切れのときだけのセリフ（気持ちごと）
+  const LATE = {
+    sad: ['もう、おやつの時間すぎちゃった…', '{treat}、ぬるくなっちゃうね…', '時計ばっかり見てたよ…', '{call}、まだかなって…ずっと…', 'お茶、さめちゃった…'],
+    sigh: ['どこで道草くってたの？', 'あと{left}を、何分かけるつもり？', 'カメのほうが早いよ…', '立ち止まってたら着かないよ？', 'のんびりにも ほどがあるよ'],
+    sulk: ['もう晩ごはんの時間だもん', 'まちくたびれて、ねちゃいそう', 'おそい人とは口きかない', 'もう{treat}いらないもん（いる）', 'ふーん、寄り道してたんだ'],
+    shock: ['えっ、まだそこ！？', 'え、日がくれちゃうよ！？', 'あと{left}もあるの！？', 'もしかして、止まってた！？', '時計、こわれてないよね！？'],
+    angry: ['おそーい！ 何時だと思ってるの！', '寄り道したでしょ！', '{treat}が待ちくたびれてる！', '{call}！ 時間はまもりなさい！', 'おやつの時間はとっくにすぎてます！'],
+    cry: ['うわーん！ おやつの時間おわっちゃったー！', 'まってたのにー！ おそいー！', 'もう来ないかと思ったー！', 'ずっと げんかんにいたのにー！'],
+  };
 
   // 気持ち（失敗の回数が多いほど、強い気持ちになりやすい）
   const MOODS = {
@@ -75,8 +85,9 @@
     const pool = fails <= 1 ? ['sad', 'sad', 'shock', 'sigh'] : fails <= 3 ? ['sigh', 'sulk', 'shock', 'sad', 'angry'] : ['angry', 'cry', 'sulk', 'sigh', 'angry', 'cry'];
     const mood = pick(pool);
     const M = MOODS[mood];
-    const ctx = { treat: pick(TREATS), reason: pick(reason === 'pudding' ? REASON.pudding : REASON.other), call: w.call, n: fails, left: `${left.toFixed(1)}m` };
-    const lines = reason === 'pudding' ? M.say : M.say.filter((l) => !l.includes('飛')); // ころんだときは「飛んだ」話をしない
+    const ctx = { treat: pick(TREATS), reason: pick(REASON[reason] || REASON.other), call: w.call, n: fails, left: `${left.toFixed(1)}m` };
+    const lines = reason === 'timeup' ? LATE[mood] // 時間切れは「おそい」話
+      : reason === 'pudding' ? M.say : M.say.filter((l) => !l.includes('飛')); // ころんだときは「飛んだ」話をしない
     let say = fill(pick(lines), ctx);
     if (w.animal) say = pick(ANIMAL_SAY[w.style]) + (Math.random() < 0.5 ? `\n（たぶん「${say}」と言っている）` : '');
     return { mood, face: M.face, title: pick(M.title), say, action: `${w.name}は ${pick(ACTIONS[mood])}。` };
