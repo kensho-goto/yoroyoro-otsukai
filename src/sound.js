@@ -107,6 +107,15 @@
       const t = ctx.currentTime;
       tone(n <= 3 ? 1320 : 990, t, 0.09, { type: 'square', vol: 0.09 });
     },
+    stumble(v) { // おっとっと
+      const t = ctx.currentTime, b = Math.min(1.5, (v && v.bad) || 0.5);
+      tone(420, t, 0.08, { type: 'triangle', vol: 0.12 + b * 0.08, to: 300 });
+      tone(380, t + 0.09, 0.1, { type: 'triangle', vol: 0.12 + b * 0.08, to: 250 });
+    },
+    stop() { // ふにゃ〜
+      const t = ctx.currentTime;
+      tone(500, t, 0.5, { type: 'sawtooth', vol: 0.06, to: 150 });
+    },
     tap() { const t = ctx.currentTime; tone(880, t, 0.06, { type: 'sine', vol: 0.15 }); },
   };
 

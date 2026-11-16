@@ -10,7 +10,7 @@
     { id: 'brother', name: '弟', call: 'にいちゃん', hair: '#1f1f1f', skin: '#ffd6b5', style: 'spiky' },
     { id: 'aunt', name: 'となりのおばさん', call: 'ぼく', hair: '#8a4b8f', skin: '#ffd9b8', style: 'perm' },
     { id: 'uncle', name: '親せきのおじさん', call: 'きみ', hair: '#4a3020', skin: '#f0c49c', style: 'short', beard: true },
-    { id: 'friend', name: 'となりの家のケンタ', call: 'おまえ', hair: '#2e5aa8', skin: '#ffd6b5', style: 'cap' },
+    { id: 'friend', name: 'となりのケンタ', call: 'おまえ', hair: '#2e5aa8', skin: '#ffd6b5', style: 'cap' },
     { id: 'teacher', name: 'ピアノの先生', call: 'あなた', hair: '#2b2b2b', skin: '#ffe0c8', style: 'long', glasses: true },
     { id: 'cat', name: 'ねこのタマ', call: 'にゃ', hair: '#f0a85a', skin: '#f0a85a', style: 'cat', animal: true },
     { id: 'dog', name: '犬のコロ', call: 'ワン', hair: '#c98a4b', skin: '#e8c08a', style: 'dog', animal: true },
@@ -18,7 +18,9 @@
   const TREATS = ['プリン', 'とっておきのプリン', '3時のおやつのプリン', '楽しみにしてたプリン', 'ごほうびのプリン', 'お祝いのプリン',
     '1日10個かぎりのプリン', 'カラメルたっぷりのプリン', '冷蔵庫で冷やすはずだったプリン', 'みんなで分けるはずのプリン'];
   const REASON = { pudding: ['プリンを落とした', 'プリンを飛ばした', 'プリンを宙に舞わせた'], other: ['ころんだ', 'すってんころりんした', '地面とごあいさつした'],
-    timeup: ['間に合わなかった', 'おそすぎた', '道草をくった'] };
+    timeup: ['間に合わなかった', 'おそすぎた', '道草をくった'],
+    rhythm: ['足がもつれた', 'リズムをくずした', 'あわてて足がからまった'],
+    stop: ['ぼーっと立ち止まった', '止まってころんだ', 'とちゅうで止まった'] };
   // 時間切れのときだけのセリフ（気持ちごと）
   const LATE = {
     sad: ['もう、おやつの時間すぎちゃった…', '{treat}、ぬるくなっちゃうね…', '時計ばっかり見てたよ…', '{call}、まだかなって…ずっと…', 'お茶、さめちゃった…'],

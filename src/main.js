@@ -39,7 +39,7 @@
     waiter = WT.forLevel(n); fails = 0; faceNow = 'wait';
     showBanner(n === 1 ? `レベル1「${stage.name}」<br>${waiter.name}が まってるよ<br>左・右…トン、トン、とリズムよく！`
       : n === 3 ? `レベル3「${stage.name}」<br>${waiter.name}が まってるよ<br>じゃまな物は ジャンプで こえよう！`
-      : `レベル${n}「${stage.name}」<br>${waiter.name}が ${stage.goal}m 先で まってるよ`);
+      : `レベル${n}「${stage.name}」<br>${waiter.name}が ${stage.goal}m先で まってるよ`);
   }
   function showBanner(html) {
     ui.hint.innerHTML = html; ui.hint.style.opacity = 1;
@@ -110,7 +110,7 @@
     for (const o of [ui.title, ui.fail, ui.clear]) o.classList.toggle('show', o === el);
   }
   function start(n) { loadLevel(n || maxLevel); restart(); }
-  function restart() { faceNow = 'wait'; elapsed = 0; game.spawn(0); showOnly(null); snd.play('start'); snd.bgm(true); }
+  function restart() { pops.length = 0; faceNow = 'wait'; elapsed = 0; game.spawn(0); showOnly(null); snd.play('start'); snd.bgm(true); }
   const retry = restart; // ゲームオーバーなので、いつもそのレベルの最初から
   function next() { loadLevel(level + 1); restart(); }
   $('startBtn').onclick = () => start(maxLevel);
@@ -133,7 +133,7 @@
     fails++;
     const r = WT.reaction(waiter, { reason: S.fallReason, fails, left });
     faceNow = r.face; faceT0 = performance.now();
-    ui.failTag.textContent = `ゲームオーバー（${{ pudding: 'プリンを落とした', timeup: '時間切れ' }[S.fallReason] || 'ころんだ'}）`;
+    ui.failTag.textContent = `ゲームオーバー（${{ pudding: 'プリンを落とした', timeup: '時間切れ', rhythm: 'リズムがくずれてころんだ', stop: '止まってころんだ' }[S.fallReason] || 'ころんだ'}）`;
     ui.failTitle.textContent = r.title;
     ui.failLine.textContent = r.say;
     ui.failAct.textContent = r.action;
@@ -392,6 +392,19 @@
     ctx.restore();
   }
 
+  const pops = []; // 頭の上に出る ひとこと
+  function pop(text, color) { pops.push({ text, color, t0: performance.now() }); if (pops.length > 3) pops.shift(); }
+  function drawPops() {
+    if (!S.char) return;
+    const now = performance.now(), p = S.char.head.getPosition();
+    pops.forEach((q, i) => {
+      const a = (now - q.t0) / 900; if (a > 1) return;
+      const [x, y] = W2S(p.x, p.y + 0.55 + a * 0.4 + i * 0.05);
+      ctx.globalAlpha = 1 - a * a; ctx.font = `900 ${Math.round(scale * 0.3)}px sans-serif`; ctx.textAlign = 'center';
+      ctx.lineWidth = 5; ctx.strokeStyle = '#fff'; ctx.strokeText(q.text, x, y); ctx.fillStyle = q.color; ctx.fillText(q.text, x, y);
+      ctx.globalAlpha = 1;
+    });
+  }
   function drawCharge() { // ジャンプをためている量（頭の上のゲージ）
     if (!S.char || !S.jump || S.jump.phase !== 'crouch') return;
     const p = S.char.head.getPosition(); const [x, y] = W2S(p.x, p.y + 0.42);
@@ -438,7 +451,11 @@
       for (const ev of S.events.splice(0)) {
         if (ev.type === 'clear') { snd.bgm(false); snd.play('clear'); }
         else if (ev.type === 'fall' || ev.type === 'pudding' || ev.type === 'timeup') { snd.bgm(false); snd.play(ev.type); }
-        else snd.play(ev.type, ev.v);
+        else {
+          snd.play(ev.type, ev.v);
+          if (ev.type === 'stumble') pop({ same: '同じ足！', fast: 'あせりすぎ！', slow: 'もたもた！' }[ev.v.why] || 'おっと！', ev.v.bad > 0.6 ? '#e8303a' : '#ff8a00');
+          if (ev.type === 'stop') pop('止まっちゃだめ！', '#e8303a');
+        }
       }
       if (level <= 6 && S.status === 'play') { // 最初のうちは、じゃまな物の手前でジャンプのやり方を出す
         const x = game.charX();
@@ -463,6 +480,7 @@
     drawGround();
     drawChar();
     drawCharge();
+    drawPops();
     updateHud();
     const shownFace = ui.fail.classList.contains('show') ? ui.failFace : ui.clear.classList.contains('show') ? ui.clearFace : null;
     if (shownFace) {
