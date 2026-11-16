@@ -27,8 +27,12 @@
     spinSafe: 1.4, // このくらいのぐらつきまでは平気
     spinGain: 0.01,
     calm: 0.008, // 落ち着いているときに下がる速さ
-    stopLimit: 50, // これだけ（コマ）新しく足を出さないと、止まって転ぶ
-    firstStopLimit: 100, // 出てすぐ、最初の1歩までの待ち時間
+    stopLimit: 40, // これだけ（コマ）新しく足を出さないと、止まって転ぶ
+    firstStopLimit: 80, // 出てすぐ、最初の1歩までの待ち時間
+    steadyDecay: 0.008, // 「体を保つ力」が毎コマへる量（足ぶみでためる）
+    steadyIdle: 0.02, // ボタンを何も押していないと、さらにへる
+    steadySlow: 0.012, // 前に進んでいないと、さらにへる
+    steadyStep: 0.24, // よい1歩でたまる量
     rhythmFree: 1.35, // 前の1歩とくらべて、この倍率までの間かくのずれはOK
     rhythmKick: 5.5, // リズムがくずれたときに体をゆらす強さ
     sameFootKick: 1.0, // 同じ足を続けて出したときの重さ（くずれ量）
@@ -136,12 +140,12 @@
       hazards: [...obstacles.map((o) => ({ x: o.x - o.w / 2, kind: 'ob' })), ...pits.filter((p) => !p.bySpring).map((p) => ({ x: p.x0, kind: 'pit' }))].sort((a, b) => a.x - b.x),
       tuning: {
         // むずかしさは途中で頭打ちにして、上のレベルもずっと遊べるようにする（変化は障害物・道で出す）
-        balance: Math.max(12, lerp(26, 15, 1 - Math.exp(-(n - 1) / 8)) - 0.6 * e), // 体を起こす手助けがだんだん弱く
+        balance: Math.max(11, lerp(24, 14.5, 1 - Math.exp(-(n - 1) / 8)) - 0.6 * e), // 体を起こす手助けがだんだん弱く
         accSafe: Math.max(11, 13.5 + 6.5 * Math.exp(-(n - 1) / 3) - 0.5 * e), // プリンが揺れにだんだん敏感に（少しの差で大きく効くので、ゆっくり）
         spinSafe: lerp(2.3, 1.4, d),
         calm: lerp(0.013, 0.007, d),
-        rhythmFree: Math.max(1.08, lerp(1.45, 1.22, d) - 0.03 * e), // リズムのずれの許し：だんだんきびしく
-        rhythmKick: lerp(4.5, 6.5, d) + 0.35 * e, // リズムがずれたときのゆれ：だんだん大きく
+        rhythmFree: Math.max(1.06, lerp(1.36, 1.16, d) - 0.03 * e), // リズムのずれの許し：だんだんきびしく
+        rhythmKick: lerp(5, 7, d) + 0.35 * e, // リズムがずれたときのゆれ：だんだん大きく
       },
     };
   }
@@ -263,7 +267,7 @@
           const p = b.getPosition(), v = b.getLinearVelocity();
           return { x: p.x - gx, y: p.y - gy, a: b.getAngle(), vx: v.x, vy: v.y, w: b.getAngularVelocity() };
         }),
-        jump: Object.assign({}, state.jump), stumble: state.stumble, input: Object.assign({}, state.input),
+        jump: Object.assign({}, state.jump), stumble: state.stumble, steady: state.steady, vxAvg: state.vxAvg, input: Object.assign({}, state.input),
         rhythm: Object.assign({}, state.rhythm, { prev: Object.assign({}, state.rhythm.prev), first: false }),
       };
     }
@@ -274,7 +278,7 @@
         b.setTransform(Vec2(q.x, q.y + gy), q.a); b.setLinearVelocity(Vec2(q.vx, q.vy)); b.setAngularVelocity(q.w);
       });
       state.settle = 0;
-      state.jump = carry.jump; state.stumble = carry.stumble; state.rhythm = carry.rhythm;
+      state.jump = carry.jump; state.stumble = carry.stumble; state.steady = carry.steady ?? 1; state.vxAvg = carry.vxAvg || 0; state.rhythm = carry.rhythm;
       state.input = carry.input;
     }
 
@@ -294,6 +298,9 @@
       state.downFrames = 0;
       state.springHit = false;
       state.stumble = 0; // リズムのくずれ（だんだん戻る）
+      state.steady = 1; // 体を保つ力（0〜1）。リズムよく足ぶみして前に進むとたまり、止まる・押さない・進まないとへる
+      state.vxAvg = 0; // 前へ進む速さ（ならした値）
+      state.wobbly = false;
       state.topple = 0; // 止まって転んでいる途中なら 0より大きい
       state.lastStumble = -999;
       state.rhythm = { prev: { left: false, right: false }, lastSide: null, lastInterval: 0, sinceStep: 0, first: true };
@@ -366,8 +373,10 @@
           bad = Math.max(0, ratio - Math.log(T.rhythmFree)) * 1.6;
           why = interval > R.lastInterval ? 'slow' : 'fast';
         }
+        if (bad <= 0.08) state.steady = Math.min(1, state.steady + T.steadyStep * (R.lastSide ? 1 : 0.5)); // よい1歩：体を保つ力がたまる
         if (bad > 0.08 && state.settle <= 0) { // 出てすぐの落ち着くまでは数えない
           state.stumble += bad;
+          state.steady = Math.max(0, state.steady - 0.35 * Math.min(1.5, bad));
           const dir = why === 'slow' ? -1 : why === 'fast' ? 1 : (side === 'L' ? 1 : -1); // おそすぎ→前へ、早すぎ→うしろへ
           c.torso.applyAngularImpulse(-dir * T.rhythmKick * Math.min(1.5, bad) * c.torso.getInertia());
           state.lastStumble = state.frame;
@@ -449,8 +458,20 @@
         // 腕：おぼんを水平に（世界に対して）
         c.arms.setMaxMotorTorque(alive ? T.armTorque : 0.3);
         c.arms.setMotorSpeed(alive ? -T.armSpeed * c.tray.getAngle() : 0);
+        // 体を保つ力：ボタンを押さない・前に進まない・足を出さないと、どんどんへる
+        const vx = c.torso.getLinearVelocity().x;
+        state.vxAvg += (vx - state.vxAvg) * 0.05;
+        if (state.status === 'play' && state.settle <= 0 && J.phase === 'none' && J.grace <= 0 && !state.rhythm.first) {
+          let dec = T.steadyDecay;
+          if (idle) dec += T.steadyIdle;
+          if (state.vxAvg < 0.25) dec += T.steadySlow;
+          state.steady = Math.max(0, state.steady - dec);
+          if (state.steady < 0.35 && !state.wobbly) { state.wobbly = true; emit('wobble'); }
+          else if (state.steady > 0.55) state.wobbly = false;
+        }
         if (alive && !limp) {
-          const k = 1 / (1 + state.stumble * 2.5); // リズムがくずれているほど、体を立て直す力が弱い
+          // リズムがくずれているほど・体を保つ力がないほど、体を立て直す力が弱い
+          const k = (0.12 + 0.88 * state.steady * state.steady) / (1 + state.stumble * 2.5);
           const tq = -T.balance * k * (c.torso.getAngle() - T.lean) - T.balanceDamp * c.torso.getAngularVelocity();
           c.torso.applyTorque(tq * c.torso.getMass());
         } else if (limp && state.status === 'play') {

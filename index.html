@@ -69,7 +69,7 @@
     width: 100%; margin-top: 10px; padding: 12px; font: inherit; font-size: 20px; text-align: center;
     border: 3px solid var(--ink); border-radius: 14px; background: #fff; color: var(--ink); user-select: text; -webkit-user-select: text;
   }
-  .overlay[hidden] { display: none !important; }
+  .overlay[hidden], .btn[hidden], .tip[hidden] { display: none !important; }
   #gate { z-index: 10; background: #ffe7b3; }
   .btn {
     display: block; width: 100%; margin-top: 12px; padding: 14px; font: inherit; font-size: 20px; font-weight: 900;
@@ -151,7 +151,7 @@
       <div class="l">画面の左半分<br>＝ ひだり足</div>
       <div class="r">画面の右半分<br>＝ みぎ足</div>
     </div>
-    <p class="tip">左右を交互に押すと歩けます。押しているあいだ足が上がり、はなすと地面をけります。<br><b>同じ足を続けて押す・リズムがばらばら・止まる と、ころびます。</b>トン、トン、と同じ間かくで！<br><b>両方いっしょに押して、はなすとジャンプ！</b>長く押すほど高く飛びます。穴もジャンプでこえよう。<br>ジャンプ台に乗ると、ピョーンと飛ばしてくれます。<br>ガクガク歩くと「ぐらぐらメーター」がたまり、満タンでプリンが飛んでいきます。<br>パソコンは「F」と「J」キーでも遊べます。</p>
+    <p class="tip">左右を交互に押すと歩けます。押しているあいだ足が上がり、はなすと地面をけります。<br><b>同じ足を続けて押す・リズムがばらばら・止まる と、ころびます。</b><br>足ぶみしながら前に進んでいないと、体を保てず ふらふらして ころびます（何も押さないと、すぐ転びます）。<br>トン、トン、と同じ間かくで！<br><b>両方いっしょに押して、はなすとジャンプ！</b>長く押すほど高く飛びます。穴もジャンプでこえよう。<br>ジャンプ台に乗ると、ピョーンと飛ばしてくれます。<br>ガクガク歩くと「ぐらぐらメーター」がたまり、満タンでプリンが飛んでいきます。<br>パソコンは「F」と「J」キーでも遊べます。</p>
     <button class="btn" id="startBtn">はじめる</button>
     <button class="btn sub" id="startSub" hidden>レベル1からはじめる</button>
   </div>

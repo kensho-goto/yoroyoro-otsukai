@@ -447,8 +447,9 @@
     const now = performance.now(), p = S.char.head.getPosition();
     pops.forEach((q, i) => {
       const a = (now - q.t0) / 900; if (a > 1) return;
-      const [x, y] = W2S(p.x, p.y + 0.55 + a * 0.4 + i * 0.05);
+      let [x, y] = W2S(p.x, p.y + 0.55 + a * 0.4 + i * 0.35);
       ctx.globalAlpha = 1 - a * a; ctx.font = `900 ${Math.round(scale * 0.3)}px sans-serif`; ctx.textAlign = 'center';
+      const half = ctx.measureText(q.text).width / 2 + 8; x = Math.max(half, Math.min(W - half, x)); // 画面からはみ出さない
       ctx.lineWidth = 5; ctx.strokeStyle = '#fff'; ctx.strokeText(q.text, x, y); ctx.fillStyle = q.color; ctx.fillText(q.text, x, y);
       ctx.globalAlpha = 1;
     });
@@ -502,7 +503,8 @@
         else {
           snd.play(ev.type, ev.v);
           if (ev.type === 'stumble') pop({ same: '同じ足！', fast: 'あせりすぎ！', slow: 'もたもた！' }[ev.v.why] || 'おっと！', ev.v.bad > 0.6 ? '#e8303a' : '#ff8a00');
-          if (ev.type === 'stop') pop('止まっちゃだめ！', '#e8303a');
+          if (ev.type === 'stop') { for (let i = pops.length - 1; i >= 0; i--) if (pops[i].text.startsWith('ふらふら')) pops.splice(i, 1); pop('止まっちゃだめ！', '#e8303a'); }
+          if (ev.type === 'wobble') pop('ふらふら…', '#ff8a00');
         }
       }
       if (level <= 10 && S.status === 'play') { // 最初のうちは、しかけの手前でやり方を出す
