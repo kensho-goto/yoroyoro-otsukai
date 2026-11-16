@@ -275,7 +275,7 @@
           const p = b.getPosition(), v = b.getLinearVelocity();
           return { x: p.x - gx, y: p.y - gy, a: b.getAngle(), vx: v.x, vy: v.y, w: b.getAngularVelocity() };
         }),
-        jump: Object.assign({}, state.jump), stumble: state.stumble, steady: state.steady, vxAvg: state.vxAvg, input: Object.assign({}, state.input),
+        jump: Object.assign({}, state.jump), stumble: state.stumble, steady: state.steady, vxAvg: state.vxAvg, combo: state.combo, input: Object.assign({}, state.input),
         rhythm: Object.assign({}, state.rhythm, { prev: Object.assign({}, state.rhythm.prev), first: false }),
       };
     }
@@ -286,7 +286,7 @@
         b.setTransform(Vec2(q.x, q.y + gy), q.a); b.setLinearVelocity(Vec2(q.vx, q.vy)); b.setAngularVelocity(q.w);
       });
       state.settle = 0;
-      state.jump = carry.jump; state.stumble = carry.stumble; state.steady = carry.steady ?? 1; state.vxAvg = carry.vxAvg || 0; state.rhythm = carry.rhythm;
+      state.jump = carry.jump; state.stumble = carry.stumble; state.steady = carry.steady ?? 1; state.vxAvg = carry.vxAvg || 0; state.combo = carry.combo || 0; state.rhythm = carry.rhythm;
       state.input = carry.input;
     }
 
@@ -309,6 +309,7 @@
       state.steady = 1; // 体を保つ力（0〜1）。リズムよく足ぶみして前に進むとたまり、止まる・押さない・進まないとへる
       state.vxAvg = 0; // 前へ進む速さ（ならした値）
       state.wobbly = false;
+      state.combo = 0; // リズムよく続けて出せた歩数
       state.topple = 0; // 止まって転んでいる途中なら 0より大きい
       state.lastStumble = -999;
       state.rhythm = { prev: { left: false, right: false }, lastSide: null, lastInterval: 0, sinceStep: 0, first: true };
@@ -381,10 +382,14 @@
           bad = Math.max(0, ratio - Math.log(T.rhythmFree)) * 1.6;
           why = interval > R.lastInterval ? 'slow' : 'fast';
         }
-        if (bad <= 0.08) state.steady = Math.min(1, state.steady + T.steadyStep * (R.lastSide ? 1 : 0.5)); // よい1歩：体を保つ力がたまる
+        if (bad <= 0.08) { // よい1歩：体を保つ力がたまり、リズムの連続が1つふえる
+          state.steady = Math.min(1, state.steady + T.steadyStep * (R.lastSide ? 1 : 0.5));
+          if (R.lastSide && state.settle <= 0 && ++state.combo % 10 === 0) emit('combo', state.combo);
+        }
         if (bad > 0.08 && state.settle <= 0) { // 出てすぐの落ち着くまでは数えない
           state.stumble += bad;
           state.steady = Math.max(0, state.steady - 0.35 * Math.min(1.5, bad));
+          state.combo = 0;
           const dir = why === 'slow' ? -1 : why === 'fast' ? 1 : (side === 'L' ? 1 : -1); // おそすぎ→前へ、早すぎ→うしろへ
           c.torso.applyAngularImpulse(-dir * T.rhythmKick * Math.min(1.5, bad) * c.torso.getInertia());
           state.lastStumble = state.frame;

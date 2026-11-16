@@ -70,7 +70,11 @@
     border: 3px solid var(--ink); border-radius: 14px; background: #fff; color: var(--ink); user-select: text; -webkit-user-select: text;
   }
   .overlay[hidden], .btn[hidden], .tip[hidden], .rank[hidden] { display: none !important; }
-  .overlay { overflow-y: auto; }
+  .btn:disabled { opacity: .55; }
+  .rule { text-align: left; font-size: 14px !important; background: #fff; border: 3px solid var(--ink); border-radius: 14px; padding: 8px 10px; }
+  .more { margin: 6px 0; font-size: 14px; }
+  .more summary { cursor: pointer; font-weight: 800; padding: 4px; }
+  .overlay { overflow-y: auto; z-index: 6; }
   .card { max-height: calc(100dvh - 32px); overflow-y: auto; }
   .rank { margin: 8px 0 10px; border: 3px solid var(--ink); border-radius: 14px; background: #fff; padding: 6px 10px; text-align: left; font-size: 14px; }
   .rank h3 { margin: 0 0 4px; font-size: 15px; text-align: center; }
@@ -155,15 +159,26 @@
 <div class="overlay show" id="title">
   <div class="card">
     <h1>ヨロヨロおつかい</h1>
-    <p>おうちで待っている人に、<br>プリンを落とさず届けよう！<br>ころぶ・プリンを落とす・時間切れで<b>ゲームオーバー</b>。<br>待っている人に、がっかりされます…<br>届けたら、そのまま次のおうちへ。<br>道はどこまでも続く！ コースは毎回同じ。<br>何m歩けるかな？</p>
-    <p class="tip" id="bestRun" hidden></p>
-    <div class="rank" id="titleRank" hidden></div>
+    <p>おうちで待っている人に、<br>プリンを落とさず届けよう！<br>道はどこまでも続く。<b>何m歩けるかな？</b></p>
     <div class="how">
       <div class="l">画面の左半分<br>＝ ひだり足</div>
       <div class="r">画面の右半分<br>＝ みぎ足</div>
     </div>
-    <p class="tip">左右を交互に押すと歩けます。押しているあいだ足が上がり、はなすと地面をけります。<br><b>同じ足を続けて押す・リズムがばらばら・止まる と、ころびます。</b><br>足ぶみしながら前に進んでいないと、体を保てず ふらふらして ころびます（何も押さないと、すぐ転びます）。<br>トン、トン、と同じ間かくで！<br><b>両方いっしょに押して、はなすとジャンプ！</b>長く押すほど高く飛びます。穴もジャンプでこえよう。<br>ジャンプ台に乗ると、ピョーンと飛ばしてくれます。<br>ガクガク歩くと「ぐらぐらメーター」がたまり、満タンでプリンが飛んでいきます。<br>パソコンは「F」と「J」キーでも遊べます。</p>
+    <p class="rule">① 左・右を <b>同じリズムで交互に</b> 押す<br>② 両方押して <b>はなすとジャンプ</b><br>③ 転ぶ・プリン落下・時間切れで<b>アウト</b></p>
+    <details class="more"><summary>くわしい遊び方</summary>
+    <p class="tip">左右を交互に押すと歩けます。押しているあいだ足が上がり、はなすと地面をけります。<br><b>同じ足を続けて押す・リズムがばらばら・止まる と、ころびます。</b><br>足ぶみしながら前に進んでいないと、体を保てず ふらふらして ころびます（何も押さないと、すぐ転びます）。<br>トン、トン、と同じ間かくで！<br><b>両方いっしょに押して、はなすとジャンプ！</b>長く押すほど高く飛びます。穴もジャンプでこえよう。<br>ジャンプ台に乗ると、ピョーンと飛ばしてくれます。<br>ガクガク歩くと「ぐらぐらメーター」がたまり、満タンでプリンが飛んでいきます。<br>パソコンは「F」と「J」キーでも遊べます。<br>コースは毎回同じ。おぼえれば上達します。<br>道に立っている金色の旗が、あなたの自己ベストです。</p>
+    </details>
     <button class="btn" id="startBtn">はじめる</button>
+    <p class="tip" id="bestRun" hidden></p>
+    <div class="rank" id="titleRank" hidden></div>
+  </div>
+</div>
+
+<div class="overlay" id="pause">
+  <div class="card">
+    <h2>ひと休み中</h2>
+    <p>指をボタンにおいたら、<br>つづけよう。</p>
+    <button class="btn" id="resumeBtn">つづける</button>
   </div>
 </div>
 
@@ -176,6 +191,7 @@
     <p class="tip" id="failDist" style="white-space:pre-line"></p>
     <div class="rank" id="failRank" hidden></div>
     <button class="btn" id="retryBtn">もう一回</button>
+    <button class="btn sub" id="shareBtn" type="button">記録を送る・コピー</button>
   </div>
 </div>
 

@@ -6,7 +6,7 @@
   const ui = {
     dist: $('dist'), time: $('time'), best: $('best'), hint: $('hint'),
     padL: $('padL'), padR: $('padR'),
-    title: $('title'), fail: $('fail'),
+    title: $('title'), fail: $('fail'), pause: $('pause'), retry: $('retryBtn'),
     failTitle: $('failTitle'), failLine: $('failLine'), failDist: $('failDist'),
     failTag: $('failTag'), failAct: $('failAct'), failFace: $('failFace'),
     meter: $('meter'), meterFill: $('meterFill'), meterLabel: $('meterLabel'),
@@ -69,7 +69,7 @@
     ui.padR.classList.toggle('on', r);
     if ((l || r) && playing()) hideHintSoon();
   }
-  const playing = () => S.status === 'play' && !ui.title.classList.contains('show');
+  const playing = () => S.status === 'play' && !ui.title.classList.contains('show') && !ui.pause.classList.contains('show');
   window.addEventListener('pointerdown', (e) => {
     if (e.target.closest('.overlay.show') || e.target.closest('#sndBtn')) return;
     pointers.set(e.pointerId, e.clientX); updateInput(); e.preventDefault();
@@ -87,7 +87,8 @@
     else if (RK.includes(e.code)) keys.right = true;
     else if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
       if (ui.title.classList.contains('show')) start();
-      else if (ui.fail.classList.contains('show')) restart();
+      else if (ui.fail.classList.contains('show') && !ui.retry.disabled) restart();
+      else if (ui.pause.classList.contains('show')) resume();
       return;
     } else return;
     e.preventDefault(); updateInput();
@@ -107,11 +108,12 @@
     hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 2500);
   }
   function showOnly(el) {
-    for (const o of [ui.title, ui.fail]) o.classList.toggle('show', o === el);
+    for (const o of [ui.title, ui.fail, ui.pause]) o.classList.toggle('show', o === el);
   }
   function start() { restart(); }
   // ゲームオーバーのあとは、いつも最初（おかしや）から
-  function restart() { loadLevel(1); pops.length = 0; elapsed = 0; runDist = 0; game.spawn(0); showOnly(null); snd.play('start'); snd.bgm(true); }
+  let passedBest = false, nextMile = 50, lastShare = ''; // この回で自己ベストをこえたか・次の節目のきょり・送る文
+  function restart() { loadLevel(1); pops.length = 0; elapsed = 0; runDist = 0; passedBest = false; nextMile = 50; game.spawn(0); showOnly(null); snd.play('start'); snd.bgm(true); }
   const retry = restart;
   // おうちに着いた：プリンを届けて、止まらずに次のおうちへ
   function deliver() {
@@ -129,6 +131,29 @@
   function next() { loadLevel(level + 1); restart(); }
   $('startBtn').onclick = () => start();
   $('retryBtn').onclick = restart;
+  // アプリを離れたら、ひと休み（もどったら「つづける」を押してから再開）
+  function pause() {
+    if (S.status !== 'play' || ui.title.classList.contains('show') || ui.fail.classList.contains('show')) return;
+    showOnly(ui.pause); snd.bgm(false);
+  }
+  function resume() {
+    showOnly(null); snd.bgm(true);
+    S.rhythm.sinceStep = 0; S.rhythm.first = true; S.rhythm.lastSide = null; S.rhythm.lastInterval = 0; // 最初の1歩と同じだけ待つ
+  }
+  $('resumeBtn').onclick = resume;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { pause(); snd.sleep(true); } else snd.sleep(false);
+  });
+  // 記録を送る（スマホのシェア。使えなければコピー）
+  $('shareBtn').onclick = async () => {
+    const url = location.origin + location.pathname;
+    try {
+      if (navigator.share) { await navigator.share({ title: 'ヨロヨロおつかい', text: lastShare, url }); return; }
+      await navigator.clipboard.writeText(`${lastShare}\n${url}`);
+      $('shareBtn').textContent = 'コピーしました！';
+      setTimeout(() => { $('shareBtn').textContent = '記録を送る・コピー'; }, 1800);
+    } catch (e) { /* やめた・使えないときは何もしない */ }
+  };
   const sndBtn = $('sndBtn');
   const paintSnd = () => { sndBtn.textContent = snd.on ? '🔊' : '🔇'; sndBtn.setAttribute('aria-label', snd.on ? '音をけす' : '音を出す'); };
   sndBtn.onclick = () => { snd.toggle(); paintSnd(); snd.play('tap'); };
@@ -156,6 +181,8 @@
     ui.failAct.textContent = r.action;
     ui.failDist.textContent = `${level}軒目・${waiter.name}のおうちまで あと ${left.toFixed(1)}m\n歩いたきょり ${total.toFixed(1)}m${newBest ? '　🎉自己ベスト！' : `（自己ベスト ${bestRun.toFixed(1)}m）`}`;
     $('retryBtn').textContent = 'もう一回（最初から）';
+    ui.retry.disabled = true; setTimeout(() => { ui.retry.disabled = false; }, 700); // 歩いていた指でうっかり押さないように
+    lastShare = `ヨロヨロおつかいで ${total.toFixed(1)}m 歩いた！${newBest ? '（自己ベスト！）' : ''} ${level}軒目の${waiter.name}に「${r.say}」と言われた…`;
     // 歩いたきょりを、じぶんの記録ランキングに入れて上位を出す（このスマホの中だけ）
     RANK.render($('failRank'), total >= 0.5 ? RANK.add(total) : { list: RANK.list(), idx: -1 });
     showTitleRank();
@@ -239,6 +266,17 @@
       ctx.beginPath(); ctx.moveTo(x, y - scale * 1.4); ctx.lineTo(x + scale * 0.55, y - scale * 1.22); ctx.lineTo(x, y - scale * 1.04); ctx.closePath();
       ctx.fill(); ctx.stroke();
     });
+    // 自己ベストの金色の旗（この道の中にあるときだけ）
+    const bx = bestRun - runDist;
+    if (bestRun > 0 && bx > 0.3 && bx < stage.goal + 0.5) {
+      const [x, y] = W2S(bx, game.groundHeightAt(bx)); const s = scale;
+      ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - s * 1.8); ctx.stroke();
+      ctx.fillStyle = passedBest ? '#c9c9c9' : '#ffc61a';
+      ctx.beginPath(); ctx.moveTo(x, y - s * 1.8); ctx.lineTo(x + s * 0.8, y - s * 1.58); ctx.lineTo(x, y - s * 1.36); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#3b2a1e'; ctx.font = `900 ${Math.round(s * 0.2)}px sans-serif`; ctx.textAlign = 'center';
+      ctx.fillText('ベスト', x + s * 0.32, y - s * 1.52);
+    }
     // じゃまな物
     for (const o of stage.obstacles) drawObstacle(o);
     // スタート：1軒目はおかしや、それより先は前のおうち（届けた人が手をふっている）
@@ -479,17 +517,19 @@
     ui.meterFill.style.width = `${Math.round(d * 100)}%`;
     ui.meterFill.style.background = d > 0.7 ? '#ff4d4d' : d > 0.4 ? '#ffb020' : '#5cc96b';
     ui.meter.classList.toggle('danger', d > 0.7 && S.status === 'play');
-    ui.best.innerHTML = `<small>ベスト</small>${Math.floor(bestRun)}<small>m</small>`;
+    const now = S.status === 'play' ? runDist + Math.min(stage.goal, x) : 0; // ベストをこえたら、ベストの数字も一緒にふえる
+    ui.best.innerHTML = `<small>ベスト</small>${Math.floor(Math.max(bestRun, now))}<small>m</small>`;
   }
 
   // ---- ループ ----
   let last = performance.now(), acc = 0;
+  if (bestRun > 0 && !RANK.list().some((r) => r.d >= bestRun - 0.05)) RANK.add(bestRun); // 前からの自己ベストも記録ランキングに入れる
   bestRun = Math.max(bestRun, ...RANK.list().map((r) => r.d)); // 記録ランキングの1位と自己ベストをそろえる
   loadLevel(1); refreshTitle();
   game.spawn(0);
   function frame(now) {
     let dt = Math.min(0.1, (now - last) / 1000); last = now;
-    const paused = ui.title.classList.contains('show');
+    const paused = ui.title.classList.contains('show') || ui.pause.classList.contains('show');
     if (!paused) {
       // 転んだ直後はスローモーション
       const slow = S.status === 'fallen' && S.frame - S.fallFrame < 20 ? 0.35 : 1;
@@ -507,6 +547,7 @@
           if (ev.type === 'stumble') pop({ same: '同じ足！', fast: 'あせりすぎ！', slow: 'もたもた！' }[ev.v.why] || 'おっと！', ev.v.bad > 0.6 ? '#e8303a' : '#ff8a00');
           if (ev.type === 'stop') { for (let i = pops.length - 1; i >= 0; i--) if (pops[i].text.startsWith('ふらふら')) pops.splice(i, 1); pop('止まっちゃだめ！', '#e8303a'); }
           if (ev.type === 'wobble') pop('ふらふら…', '#ff8a00');
+          if (ev.type === 'combo') pop(`ナイスリズム ×${ev.v}`, '#2f9e44');
         }
       }
       if (level <= 10 && S.status === 'play') { // 最初のうちは、しかけの手前でやり方を出す
@@ -522,6 +563,11 @@
             hinted.add(i); showBanner('両方の足を いっしょに押して…<br>はなすと ジャンプ！'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 3000);
           }
         });
+      }
+      if (S.status === 'play') { // 歩いたきょりの節目と、自己ベストをこえた瞬間
+        const tot = runDist + Math.max(0, game.charX());
+        if (!passedBest && bestRun > 0 && tot > bestRun) { passedBest = true; pop('自己ベスト こえた！', '#d48a00'); snd.play('best'); }
+        if (tot >= nextMile) { pop(`${nextMile}m とっぱ！`, '#2f6fd6'); snd.play('checkpoint'); nextMile += 50; }
       }
       if (S.status === 'clear') deliver();
       if (S.status === 'fallen' && S.frame - S.fallFrame > 50) {
@@ -550,5 +596,5 @@
   requestAnimationFrame(frame);
 
   // テスト用（自動操作で動作確認するため）
-  window.__yoro = { get game() { return game; }, start, retry, restart, next, loadLevel };
+  window.__yoro = { get game() { return game; }, start, retry, restart, next, loadLevel, pause, resume };
 })();

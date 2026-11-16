@@ -126,6 +126,14 @@
       tone(520, t, 0.25, { type: 'sine', vol: 0.12, to: 380 });
       tone(380, t + 0.22, 0.3, { type: 'sine', vol: 0.12, to: 520 });
     },
+    combo(n) { // キラリン（リズムが続いた）
+      const t = ctx.currentTime, up = Math.min(12, Math.floor((n || 10) / 10) * 2);
+      [[84, 0], [88, 0.07], [91, 0.14]].forEach(([m, d]) => tone(N(m + up), t + d, 0.18, { type: 'triangle', vol: 0.14 }));
+    },
+    best() { // 自己ベストをこえた
+      const t = ctx.currentTime;
+      [[72, 0], [76, 0.08], [79, 0.16], [84, 0.24], [88, 0.36]].forEach(([m, d], i) => tone(N(m), t + d, i === 4 ? 0.5 : 0.12, { type: 'square', vol: 0.09 }));
+    },
     tap() { const t = ctx.currentTime; tone(880, t, 0.06, { type: 'sine', vol: 0.15 }); },
   };
 
@@ -170,6 +178,7 @@
     },
     bgm(play) { if (play) { ensure(); startBgm(); } else stopBgm(); },
     get on() { return on; },
+    sleep(s) { if (ctx) { if (s) ctx.suspend(); else ctx.resume(); } }, // アプリを離れたら音を止める
     toggle() {
       on = !on; store.set('yoro.sound', on ? 'on' : 'off');
       if (ensure()) master.gain.setTargetAtTime(on ? 0.9 : 0, ctx.currentTime, 0.02);
