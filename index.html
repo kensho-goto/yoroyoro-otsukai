@@ -145,7 +145,7 @@
 <div class="overlay show" id="title">
   <div class="card">
     <h1>ヨロヨロおつかい</h1>
-    <p>おうちで待っている人に、<br>プリンを落とさず届けよう！<br>ころぶ・プリンを落とす・時間切れで<b>ゲームオーバー</b>。<br>待っている人に、がっかりされます…<br>クリアするたびにレベルが上がるよ。</p>
+    <p>おうちで待っている人に、<br>プリンを落とさず届けよう！<br>ころぶ・プリンを落とす・時間切れで<b>ゲームオーバー</b>。<br>待っている人に、がっかりされます…<br>届けたら、そのまま次のおうちへ。<br>どこまで行けるかな？</p>
     <div class="how">
       <div class="l">画面の左半分<br>＝ ひだり足</div>
       <div class="r">画面の右半分<br>＝ みぎ足</div>
@@ -163,18 +163,8 @@
     <div class="who"><canvas class="face" id="failFace" width="240" height="240"></canvas><div class="bubble" id="failLine"></div></div>
     <p class="act" id="failAct"></p>
     <p class="tip" id="failDist"></p>
-    <button class="btn" id="retryBtn">もう一回（最初から）</button>
-  </div>
-</div>
-
-<div class="overlay" id="clear">
-  <div class="card">
-    <h2 id="clearTitle">おつかい成功！</h2>
-    <div class="who"><canvas class="face" id="clearFace" width="240" height="240"></canvas><div class="bubble" id="clearLine"></div></div>
-    <p class="big" id="clearTime"></p>
-    <p id="clearBest"></p>
-    <button class="btn" id="nextBtn">つぎのレベルへ</button>
-    <button class="btn sub" id="againBtn">このレベルをもう一回</button>
+    <button class="btn" id="retryBtn">もう一回</button>
+    <button class="btn sub" id="restartBtn" hidden>レベル1から</button>
   </div>
 </div>
 

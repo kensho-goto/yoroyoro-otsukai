@@ -6,15 +6,14 @@
   const ui = {
     dist: $('dist'), time: $('time'), best: $('best'), hint: $('hint'),
     padL: $('padL'), padR: $('padR'),
-    title: $('title'), fail: $('fail'), clear: $('clear'),
+    title: $('title'), fail: $('fail'),
     failTitle: $('failTitle'), failLine: $('failLine'), failDist: $('failDist'),
-    clearTime: $('clearTime'), clearBest: $('clearBest'),
-    failTag: $('failTag'), failAct: $('failAct'), failFace: $('failFace'), clearFace: $('clearFace'), clearLine: $('clearLine'),
+    failTag: $('failTag'), failAct: $('failAct'), failFace: $('failFace'),
     meter: $('meter'), meterFill: $('meterFill'), meterLabel: $('meterLabel'),
-    startSub: $('startSub'), clearTitle: $('clearTitle'), nextBtn: $('nextBtn'),
+    startSub: $('startSub'),
   };
 
-  // レベル：クリアするたびに1つ上がる（上限なし）
+  // レベル：おうちに届けるたびに1つ上がり、止まらずに次のおうちへ（上限なし）
   let game, S, stage, level = 1, hinted = new Set();
   const WT = window.YoroWaiter;
   let waiter = WT.forLevel(1), fails = 0, faceNow = 'wait', faceT0 = 0; // 待っている人・このレベルの失敗回数・今の顔
@@ -25,17 +24,18 @@
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存できなくても遊べる */ } },
   };
-  let maxLevel = Math.max(1, parseInt(store.get('yoro.maxLevel'), 10) || 1); // 遊べる一番上のレベル
-  let bestTime = null, bestDist = 0; // 今のレベルの記録
-  function loadLevel(n) {
+  let maxLevel = Math.max(1, parseInt(store.get('yoro.maxLevel'), 10) || 1); // 行けた一番上のレベル
+  let prevWaiter = null, delivered = null, worldOff = 0; // 前のおうちの人・届けたときのひとこと・背景をつなぐためのずれ
+  function loadLevel(n, carry) {
+    const old = carry ? { goal: stage.goal, gy: game.groundHeightAt(stage.goal) } : null;
     level = n;
     game = YoroCore.create(planck, { level: n });
     S = game.state; stage = game.stage;
-    bestTime = parseFloat(store.get(`yoro.best.${n}`)) || null;
-    bestDist = parseFloat(store.get(`yoro.dist.${n}`)) || 0;
-    cam.x = 0; cam.y = 1;
+    if (old) { cam.x -= old.goal; cam.y -= old.gy; worldOff += old.goal; } // 前の道の続きに見えるように
+    else { cam.x = 0; cam.y = 1; worldOff = 0; delivered = null; }
     ui.meterLabel.textContent = `Lv.${n}`;
     hinted = new Set();
+    prevWaiter = n > 1 ? WT.forLevel(n - 1) : null;
     waiter = WT.forLevel(n); fails = 0; faceNow = 'wait';
     showBanner(n === 1 ? `レベル1「${stage.name}」<br>${waiter.name}が まってるよ<br>左・右…トン、トン、とリズムよく！`
       : n === 3 ? `レベル3「${stage.name}」<br>${waiter.name}が まってるよ<br>じゃまな物は ジャンプで こえよう！`
@@ -87,7 +87,6 @@
     else if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
       if (ui.title.classList.contains('show')) start(maxLevel);
       else if (ui.fail.classList.contains('show')) restart();
-      else if (ui.clear.classList.contains('show')) next();
       return;
     } else return;
     e.preventDefault(); updateInput();
@@ -107,17 +106,29 @@
     hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 2500);
   }
   function showOnly(el) {
-    for (const o of [ui.title, ui.fail, ui.clear]) o.classList.toggle('show', o === el);
+    for (const o of [ui.title, ui.fail]) o.classList.toggle('show', o === el);
   }
   function start(n) { loadLevel(n || maxLevel); restart(); }
-  function restart() { pops.length = 0; faceNow = 'wait'; elapsed = 0; game.spawn(0); showOnly(null); snd.play('start'); snd.bgm(true); }
-  const retry = restart; // ゲームオーバーなので、いつもそのレベルの最初から
+  // ゲームオーバーのあとは、いつもそのレベルの最初（前のおうちの前）から
+  function restart() { loadLevel(level); pops.length = 0; elapsed = 0; game.spawn(0); showOnly(null); snd.play('start'); snd.bgm(true); }
+  const retry = restart;
+  // おうちに着いた：プリンを届けて、止まらずに次のおうちへ
+  function deliver() {
+    const say = WT.happy(waiter).say;
+    snd.play('clear');
+    if (level + 1 > maxLevel) { maxLevel = level + 1; store.set('yoro.maxLevel', String(maxLevel)); refreshTitle(); }
+    const snap = game.snapshot();
+    loadLevel(level + 1, snap);
+    game.spawn(0, snap);
+    elapsed = 0; lastTick = 0;
+    delivered = { say, t0: performance.now() };
+    pop(`レベル${level}へ！`, '#2f9e44');
+  }
   function next() { loadLevel(level + 1); restart(); }
   $('startBtn').onclick = () => start(maxLevel);
   ui.startSub.onclick = () => start(1);
   $('retryBtn').onclick = restart;
-  $('againBtn').onclick = restart;
-  ui.nextBtn.onclick = next;
+  $('restartBtn').onclick = () => start(1);
   const sndBtn = $('sndBtn');
   const paintSnd = () => { sndBtn.textContent = snd.on ? '🔊' : '🔇'; sndBtn.setAttribute('aria-label', snd.on ? '音をけす' : '音を出す'); };
   sndBtn.onclick = () => { snd.toggle(); paintSnd(); snd.play('tap'); };
@@ -137,24 +148,12 @@
     ui.failTitle.textContent = r.title;
     ui.failLine.textContent = r.say;
     ui.failAct.textContent = r.action;
-    ui.failDist.textContent = `ここまで ${Math.max(0, game.charX()).toFixed(1)}m（おうちまで あと ${left.toFixed(1)}m）`;
-    $('retryBtn').textContent = 'もう一回（最初から）';
+    ui.failDist.textContent = `レベル${level}・${waiter.name}のおうちまで あと ${left.toFixed(1)}m（最高 レベル${maxLevel}）`;
+    $('retryBtn').textContent = `もう一回（レベル${level}から）`;
+    $('restartBtn').hidden = level <= 1;
     showOnly(ui.fail);
     if (navigator.vibrate) navigator.vibrate(80);
   }
-  function onClear() {
-    const t = elapsed;
-    const isBest = !bestTime || t < bestTime;
-    if (isBest) { bestTime = t; store.set(`yoro.best.${level}`, String(t)); }
-    if (level + 1 > maxLevel) { maxLevel = level + 1; store.set('yoro.maxLevel', String(maxLevel)); refreshTitle(); }
-    ui.clearTitle.textContent = `レベル${level} クリア！`;
-    const h = WT.happy(waiter); faceNow = 'happy'; faceT0 = performance.now(); ui.clearLine.textContent = h.say;
-    ui.clearTime.textContent = `${t.toFixed(1)} 秒でおうちに到着！`;
-    ui.clearBest.textContent = isBest ? '★ じこベスト更新！' : `じこベスト ${bestTime.toFixed(1)} 秒`;
-    ui.nextBtn.textContent = `つぎのレベル${level + 1}へ`;
-    showOnly(ui.clear);
-  }
-
   // ---- 描画 ----
   const cam = { x: 0, y: 1 };
   const W2S = (x, y) => [W * 0.45 + (x - cam.x) * scale, H * 0.6 - (y - cam.y) * scale];
@@ -166,7 +165,7 @@
     // 雲
     ctx.fillStyle = 'rgba(255,255,255,.9)';
     for (let i = 0; i < 6; i++) {
-      const wx = i * 9 - (cam.x * 0.15) % 54;
+      const wx = i * 9 - ((cam.x + worldOff) * 0.15) % 54;
       const sx = ((wx * scale) % (W + 300) + W + 300) % (W + 300) - 150;
       const sy = H * (0.1 + (i % 3) * 0.07);
       cloud(sx, sy, scale * (0.6 + (i % 2) * 0.3));
@@ -183,7 +182,7 @@
   function hills(par, color, baseY, amp) {
     ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(0, H);
     for (let sx = 0; sx <= W + 20; sx += 20) {
-      const wx = (sx - W / 2) / scale + cam.x * par;
+      const wx = (sx - W / 2) / scale + (cam.x + worldOff) * par;
       ctx.lineTo(sx, baseY - (Math.sin(wx * 0.5) * 0.5 + Math.sin(wx * 0.23 + 1) * 0.8 + 1) * scale * 0.5 * amp);
     }
     ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
@@ -223,8 +222,8 @@
     });
     // じゃまな物
     for (const o of stage.obstacles) drawObstacle(o);
-    // スタートのお店
-    {
+    // スタート：レベル1はおかしや、それより上は前のおうち（届けた人が手をふっている）
+    if (level === 1) {
       const [sx0, sy0] = W2S(-3.2, 0); const s = scale;
       ctx.lineWidth = 3; ctx.strokeStyle = '#3b2a1e';
       ctx.fillStyle = '#e9f4ff'; ctx.fillRect(sx0 - s * 1.0, sy0 - s * 2.2, s * 2.0, s * 2.2); ctx.strokeRect(sx0 - s * 1.0, sy0 - s * 2.2, s * 2.0, s * 2.2);
@@ -233,26 +232,43 @@
       ctx.fillStyle = '#3b2a1e'; ctx.font = `900 ${Math.round(s * 0.28)}px sans-serif`; ctx.textAlign = 'center';
       ctx.fillText('おかしや', sx0, sy0 - s * 1.65);
       ctx.fillStyle = '#8fd3ff'; ctx.fillRect(sx0 - s * 0.7, sy0 - s * 1.4, s * 1.4, s * 0.8); ctx.strokeRect(sx0 - s * 0.7, sy0 - s * 1.4, s * 1.4, s * 0.8);
+    } else {
+      drawHouse(1.6, prevWaiter, 'happy', level - 1);
+      if (delivered && performance.now() - delivered.t0 < 3500) bubble(-0.15, 1.45, delivered.say);
     }
+    // ゴールの線
+    const [lx, ly] = W2S(stage.goal, game.groundHeightAt(stage.goal)); const s = scale;
+    for (let i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? '#3b2a1e' : '#fff'; ctx.fillRect(lx - 4, ly - (i + 1) * s * 0.25, 8, s * 0.25); }
     // ゴールのおうち
-    const [gx, gy] = W2S(stage.goal + 1.6, game.groundHeightAt(stage.goal + 1.6));
-    const s = scale;
+    drawHouse(stage.goal + 1.6, waiter, faceNow, level);
+  }
+
+  // おうちと、げんかんの前で待っている人（x はおうちのまん中）
+  const ROOFS = ['#e8574f', '#4f8be8', '#4fb36b', '#b05fd1', '#e8a24f', '#5fc7c7'];
+  function drawHouse(hx, who, face, n) {
+    const [gx, gy] = W2S(hx, game.groundHeightAt(hx)); const s = scale;
     ctx.lineWidth = 3; ctx.strokeStyle = '#3b2a1e';
     ctx.fillStyle = '#fff1d0'; ctx.fillRect(gx - s * 1.2, gy - s * 1.9, s * 2.4, s * 1.9); ctx.strokeRect(gx - s * 1.2, gy - s * 1.9, s * 2.4, s * 1.9);
-    ctx.fillStyle = '#e8574f'; ctx.beginPath(); ctx.moveTo(gx - s * 1.5, gy - s * 1.9); ctx.lineTo(gx, gy - s * 3); ctx.lineTo(gx + s * 1.5, gy - s * 1.9); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = ROOFS[n % ROOFS.length]; ctx.beginPath(); ctx.moveTo(gx - s * 1.5, gy - s * 1.9); ctx.lineTo(gx, gy - s * 3); ctx.lineTo(gx + s * 1.5, gy - s * 1.9); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#9b6a43'; ctx.fillRect(gx - s * 1.0, gy - s * 1.2, s * 0.6, s * 1.2); ctx.strokeRect(gx - s * 1.0, gy - s * 1.2, s * 0.6, s * 1.2);
     ctx.fillStyle = '#8fd3ff'; ctx.fillRect(gx + s * 0.2, gy - s * 1.4, s * 0.7, s * 0.55); ctx.strokeRect(gx + s * 0.2, gy - s * 1.4, s * 0.7, s * 0.55);
-    // ゴールの線
-    const [lx, ly] = W2S(stage.goal, game.groundHeightAt(stage.goal));
-    for (let i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? '#3b2a1e' : '#fff'; ctx.fillRect(lx - 4, ly - (i + 1) * s * 0.25, 8, s * 0.25); }
-    ctx.fillStyle = '#3b2a1e'; ctx.font = `900 ${Math.round(s * 0.3)}px sans-serif`;
-    ctx.fillText('おうち', gx, gy - s * 2.05);
-    // 待っている人（げんかんの前）
+    ctx.fillStyle = '#3b2a1e'; ctx.font = `900 ${Math.round(s * 0.24)}px sans-serif`; ctx.textAlign = 'center';
+    ctx.fillText(`${who.name}の家`, gx, gy - s * 2.1);
     const wx = gx - s * 1.75, wy = gy;
-    ctx.fillStyle = waiter.animal ? waiter.hair : '#7bb7e8'; ctx.lineWidth = 3;
-    if (!waiter.animal) { roundRect(wx - s * 0.2, wy - s * 0.75, s * 0.4, s * 0.75, s * 0.1); ctx.fill(); ctx.stroke(); }
+    ctx.fillStyle = who.animal ? who.hair : '#7bb7e8'; ctx.lineWidth = 3;
+    if (!who.animal) { roundRect(wx - s * 0.2, wy - s * 0.75, s * 0.4, s * 0.75, s * 0.1); ctx.fill(); ctx.stroke(); }
     else { ctx.beginPath(); ctx.ellipse(wx, wy - s * 0.2, s * 0.3, s * 0.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
-    WT.drawFace(ctx, waiter, faceNow, wx, wy - s * (waiter.animal ? 0.55 : 0.98), s * 0.26, performance.now() / 1000);
+    WT.drawFace(ctx, who, face, wx, wy - s * (who.animal ? 0.55 : 0.98), s * 0.26, performance.now() / 1000);
+  }
+  // ふきだし（世界の座標 x,y の上に）
+  function bubble(x, y, text) {
+    const [bx, by] = W2S(x, game.groundHeightAt(x) + y); const s = scale;
+    ctx.font = `800 ${Math.round(s * 0.2)}px sans-serif`; ctx.textAlign = 'center';
+    const lines = text.split('\n'); const w = Math.min(W * 0.8, Math.max(...lines.map((l) => ctx.measureText(l).width)) + 20), h = lines.length * s * 0.26 + 14;
+    const left = Math.max(8, Math.min(W - w - 8, bx - w / 2));
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 3;
+    roundRect(left, by - h, w, h, 10); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#3b2a1e'; lines.forEach((l, i) => ctx.fillText(l, left + w / 2, by - h + 8 + (i + 0.8) * s * 0.26));
   }
 
   function drawObstacle(o) {
@@ -420,7 +436,7 @@
   let lastTick = 0;
   function updateHud() {
     const x = Math.max(0, game.charX());
-    ui.dist.textContent = S.status === 'clear' ? 'ゴール！' : `あと ${Math.max(0, stage.goal - x).toFixed(1)}m`;
+    ui.dist.textContent = `あと ${Math.max(0, stage.goal - x).toFixed(1)}m`;
     const tl = Math.max(0, stage.timeLimit - elapsed);
     ui.time.innerHTML = `<small>のこり</small>${tl < 10 ? tl.toFixed(1) : Math.ceil(tl)}<small>秒</small>`;
     ui.time.classList.toggle('hurry', tl < 10 && S.status === 'play');
@@ -429,7 +445,7 @@
     ui.meterFill.style.width = `${Math.round(d * 100)}%`;
     ui.meterFill.style.background = d > 0.7 ? '#ff4d4d' : d > 0.4 ? '#ffb020' : '#5cc96b';
     ui.meter.classList.toggle('danger', d > 0.7 && S.status === 'play');
-    ui.best.textContent = bestTime ? `ベスト ${bestTime.toFixed(1)}秒` : `ベスト ${bestDist.toFixed(1)}m`;
+    ui.best.textContent = `最高 Lv.${maxLevel}`;
   }
 
   // ---- ループ ----
@@ -449,7 +465,7 @@
         game.step();
       }
       for (const ev of S.events.splice(0)) {
-        if (ev.type === 'clear') { snd.bgm(false); snd.play('clear'); }
+        if (ev.type === 'clear') continue; // 届けたときの音は deliver() で鳴らす
         else if (ev.type === 'fall' || ev.type === 'pudding' || ev.type === 'timeup') { snd.bgm(false); snd.play(ev.type); }
         else {
           snd.play(ev.type, ev.v);
@@ -465,9 +481,9 @@
           }
         });
       }
-      if (S.bestX > bestDist) { bestDist = S.bestX; store.set(`yoro.dist.${level}`, String(bestDist)); }
-      if ((S.status === 'fallen' && S.frame - S.fallFrame > 50) || S.status === 'clear') {
-        if (!shownEnd) { shownEnd = true; S.status === 'clear' ? onClear() : onFall(); }
+      if (S.status === 'clear') deliver();
+      if (S.status === 'fallen' && S.frame - S.fallFrame > 50) {
+        if (!shownEnd) { shownEnd = true; onFall(); }
       } else if (S.status === 'play') shownEnd = false;
     }
     if (S.char) {
@@ -482,7 +498,7 @@
     drawCharge();
     drawPops();
     updateHud();
-    const shownFace = ui.fail.classList.contains('show') ? ui.failFace : ui.clear.classList.contains('show') ? ui.clearFace : null;
+    const shownFace = ui.fail.classList.contains('show') ? ui.failFace : null;
     if (shownFace) {
       const fc = shownFace.getContext('2d'); fc.clearRect(0, 0, 240, 240);
       WT.drawFace(fc, waiter, faceNow, 120, 132, 82, (performance.now() - faceT0) / 1000);

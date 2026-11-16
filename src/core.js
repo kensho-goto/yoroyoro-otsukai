@@ -59,13 +59,14 @@
   function makeLevel(n) {
     n = Math.max(1, Math.floor(n));
     const d = 1 - Math.exp(-(n - 1) / 4.5); // 0（レベル1）から 1 に近づいていく
+    const e = Math.log1p(Math.max(0, n - 20) / 20); // レベル20より先：ゆっくり、でも終わりなく増える（40で0.7、100で1.6、400で3）
     let seed = n * 9301 + 49297;
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     const goal = Math.min(60, 12 + (n - 1) * 4);
-    const maxSlope = Math.min(0.13, 0.05 + n * 0.006); // 坂の急さ（高さ÷長さ）
-    const bumpH = Math.min(0.14, 0.05 + n * 0.006); // 段差の高さ
-    const obChance = n < 3 ? 0 : Math.min(0.32, 0.12 + (n - 3) * 0.025); // 障害物の出やすさ
-    const obH = Math.min(0.46, 0.3 + n * 0.01); // 障害物の高さ
+    const maxSlope = Math.min(0.18, Math.min(0.13, 0.05 + n * 0.006) + 0.007 * e); // 坂の急さ（高さ÷長さ）
+    const bumpH = Math.min(0.2, Math.min(0.14, 0.05 + n * 0.006) + 0.008 * e); // 段差の高さ
+    const obChance = n < 3 ? 0 : Math.min(0.55, Math.min(0.32, 0.12 + (n - 3) * 0.025) + 0.035 * e); // 障害物の出やすさ
+    const obH = Math.min(0.55, Math.min(0.46, 0.3 + n * 0.01) + 0.03 * e); // 障害物の高さ
     const points = [[-8, 0], [3, 0]];
     const obstacles = [];
     let x = 3, h = 0;
@@ -100,18 +101,18 @@
     for (let c = 10; c < goal - 2; c += 10) checkpoints.push(c);
     const name = LEVEL_NAMES[n - 1] || `${PLACES[Math.floor(rnd() * PLACES.length)]}の${DESTS[Math.floor(rnd() * DESTS.length)]}`;
     // 時間制限：はじめはゆっくりでも間に合い、レベルが上がると少しずつきびしく（5秒きざみ）
-    const needSpeed = lerp(0.6, 0.85, 1 - Math.exp(-(n - 1) / 10)); // 必要な速さ（m/秒）
+    const needSpeed = Math.min(1.15, lerp(0.6, 0.85, 1 - Math.exp(-(n - 1) / 10)) + 0.05 * e); // 必要な速さ（m/秒）
     const timeLimit = Math.ceil(goal / needSpeed / 5) * 5;
     return {
       level: n, timeLimit, name, points, checkpoints, goal, obstacles,
       tuning: {
         // むずかしさは途中で頭打ちにして、上のレベルもずっと遊べるようにする（変化は障害物・道で出す）
-        balance: lerp(26, 15, 1 - Math.exp(-(n - 1) / 8)), // 体を起こす手助けがだんだん弱く
-        accSafe: 13.5 + 6.5 * Math.exp(-(n - 1) / 3), // プリンが揺れにだんだん敏感に（少しの差で大きく効くので、ゆっくり）
+        balance: Math.max(12, lerp(26, 15, 1 - Math.exp(-(n - 1) / 8)) - 0.6 * e), // 体を起こす手助けがだんだん弱く
+        accSafe: Math.max(11, 13.5 + 6.5 * Math.exp(-(n - 1) / 3) - 0.5 * e), // プリンが揺れにだんだん敏感に（少しの差で大きく効くので、ゆっくり）
         spinSafe: lerp(2.3, 1.4, d),
         calm: lerp(0.013, 0.007, d),
-        rhythmFree: lerp(1.45, 1.22, d), // リズムのずれの許し：だんだんきびしく
-        rhythmKick: lerp(4.5, 6.5, d), // リズムがずれたときのゆれ：だんだん大きく
+        rhythmFree: Math.max(1.08, lerp(1.45, 1.22, d) - 0.03 * e), // リズムのずれの許し：だんだんきびしく
+        rhythmKick: lerp(4.5, 6.5, d) + 0.35 * e, // リズムがずれたときのゆれ：だんだん大きく
       },
     };
   }
@@ -221,7 +222,30 @@
       state.char = null;
     }
 
-    function spawn(cpIndex) {
+    // つぎのおうちへ続けるとき：前のレベルの体の形と動きを、そのまま新しい道の最初にうつす
+    function snapshot() {
+      const c = state.char, gx = stage.goal, gy = groundHeightAt(stage, gx);
+      return {
+        bodies: [c.torso, c.tray, c.head, c.L.thigh, c.L.shin, c.R.thigh, c.R.shin].map((b) => {
+          const p = b.getPosition(), v = b.getLinearVelocity();
+          return { x: p.x - gx, y: p.y - gy, a: b.getAngle(), vx: v.x, vy: v.y, w: b.getAngularVelocity() };
+        }),
+        jump: Object.assign({}, state.jump), stumble: state.stumble, input: Object.assign({}, state.input),
+        rhythm: Object.assign({}, state.rhythm, { prev: Object.assign({}, state.rhythm.prev), first: false }),
+      };
+    }
+    function applyCarry(carry) {
+      const c = state.char, gy = groundHeightAt(stage, 0);
+      [c.torso, c.tray, c.head, c.L.thigh, c.L.shin, c.R.thigh, c.R.shin].forEach((b, i) => {
+        const q = carry.bodies[i];
+        b.setTransform(Vec2(q.x, q.y + gy), q.a); b.setLinearVelocity(Vec2(q.vx, q.vy)); b.setAngularVelocity(q.w);
+      });
+      state.settle = 0;
+      state.jump = carry.jump; state.stumble = carry.stumble; state.rhythm = carry.rhythm;
+      state.input = carry.input;
+    }
+
+    function spawn(cpIndex, carry) {
       removeChar();
       state.checkpointIndex = cpIndex;
       state.char = buildChar(stage.checkpoints[cpIndex]);
@@ -240,6 +264,7 @@
       state.lastStumble = -999;
       state.rhythm = { prev: { left: false, right: false }, lastSide: null, lastInterval: 0, sinceStep: 0, first: true };
       state.playFrames = 0; // 遊んでいる時間（コマ数）
+      if (carry) applyCarry(carry);
     }
 
     function fall(reason) {
@@ -426,6 +451,7 @@
 
     return {
       state, stage, spawn, step, charX, passedCheckpoint,
+      snapshot,
       setInput(left, right) { state.input.left = !!left; state.input.right = !!right; },
       groundHeightAt: (x) => groundHeightAt(stage, x),
     };
