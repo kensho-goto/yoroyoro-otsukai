@@ -16,7 +16,7 @@
   let game, S, stage, level = 1, hinted = new Set();
   const WT = window.YoroWaiter;
   let waiter = WT.forLevel(1), fails = 0, faceNow = 'wait', faceT0 = 0; // 待っている人・続けて失敗した回数・今の顔
-  const RANK = window.YoroRank || { ready: false, render() {}, loading() {}, submit: () => Promise.reject(), top: () => Promise.reject() };
+  const RANK = window.YoroRank || { list: () => [], add: () => null, render() {} };
   const snd = window.YoroSound || { play() {}, bgm() {}, on: false, toggle() { return false; } };
 
   // ---- 記録 ----
@@ -25,7 +25,7 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存できなくても遊べる */ } },
   };
   let runDist = 0; // 届けたおうちまでのきょりの合計（今の道の分は入れない）
-  let bestRun = Math.max(0, parseFloat(store.get('yoro.bestRun')) || 0); // 通しきょりの自己ベスト
+  let bestRun = Math.max(0, parseFloat(store.get('yoro.bestRun')) || 0); // 歩いたきょりの自己ベスト
   let prevWaiter = null, delivered = null, worldOff = 0; // 前のおうちの人・届けたときのひとこと・背景をつなぐためのずれ
   function loadLevel(n, carry) {
     const old = carry ? { goal: stage.goal, gy: game.groundHeightAt(stage.goal) } : null;
@@ -138,13 +138,8 @@
     $('bestRun').textContent = `自己ベスト：${bestRun.toFixed(1)}m`;
     showTitleRank();
   }
-  // タイトルのランキング（つながらないときは出さない）
-  function showTitleRank() {
-    if (!RANK.ready) return;
-    const el = $('titleRank');
-    if (el.hidden) RANK.loading(el);
-    RANK.top().then((d) => RANK.render(el, d, { onRename: showTitleRank })).catch(() => { el.hidden = true; });
-  }
+  // タイトルに、じぶんの記録の上位を出す
+  function showTitleRank() { RANK.render($('titleRank'), { list: RANK.list(), idx: -1 }); }
 
   let shownEnd = false;
   function onFall() {
@@ -161,14 +156,9 @@
     ui.failAct.textContent = r.action;
     ui.failDist.textContent = `${level}軒目・${waiter.name}のおうちまで あと ${left.toFixed(1)}m\n歩いたきょり ${total.toFixed(1)}m${newBest ? '　🎉自己ベスト！' : `（自己ベスト ${bestRun.toFixed(1)}m）`}`;
     $('retryBtn').textContent = 'もう一回（最初から）';
-    // 歩いたきょりをランキングに送り、上位を出す（自動。送れなくても遊べる）
-    const fr = $('failRank');
-    if (RANK.ready && total >= 1) {
-      RANK.loading(fr);
-      RANK.submit(total).then((d) => RANK.render(fr, d)).catch(() => { fr.hidden = true; });
-    } else if (RANK.ready) {
-      RANK.top().then((d) => RANK.render(fr, d)).catch(() => { fr.hidden = true; });
-    } else fr.hidden = true;
+    // 歩いたきょりを、じぶんの記録ランキングに入れて上位を出す（このスマホの中だけ）
+    RANK.render($('failRank'), total >= 0.5 ? RANK.add(total) : { list: RANK.list(), idx: -1 });
+    showTitleRank();
     showOnly(ui.fail);
     if (navigator.vibrate) navigator.vibrate(80);
   }
@@ -494,6 +484,7 @@
 
   // ---- ループ ----
   let last = performance.now(), acc = 0;
+  bestRun = Math.max(bestRun, ...RANK.list().map((r) => r.d)); // 記録ランキングの1位と自己ベストをそろえる
   loadLevel(1); refreshTitle();
   game.spawn(0);
   function frame(now) {
