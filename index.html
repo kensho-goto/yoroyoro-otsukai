@@ -145,12 +145,13 @@
 <div class="overlay show" id="title">
   <div class="card">
     <h1>ヨロヨロおつかい</h1>
-    <p>おうちで待っている人に、<br>プリンを落とさず届けよう！<br>ころぶ・プリンを落とす・時間切れで<b>ゲームオーバー</b>。<br>待っている人に、がっかりされます…<br>届けたら、そのまま次のおうちへ。<br>どこまで行けるかな？</p>
+    <p>おうちで待っている人に、<br>プリンを落とさず届けよう！<br>ころぶ・プリンを落とす・時間切れで<b>ゲームオーバー</b>。<br>待っている人に、がっかりされます…<br>届けたら、そのまま次のおうちへ。<br>コースは毎回同じ。おぼえれば上達する！<br>どこまで行けるかな？</p>
+    <p class="tip" id="bestRun" hidden></p>
     <div class="how">
       <div class="l">画面の左半分<br>＝ ひだり足</div>
       <div class="r">画面の右半分<br>＝ みぎ足</div>
     </div>
-    <p class="tip">左右を交互に押すと歩けます。押しているあいだ足が上がり、はなすと地面をけります。<br><b>同じ足を続けて押す・リズムがばらばら・止まる と、ころびます。</b>トン、トン、と同じ間かくで！<br><b>両方いっしょに押して、はなすとジャンプ！</b>長く押すほど高く飛びます。<br>ガクガク歩くと「ぐらぐらメーター」がたまり、満タンでプリンが飛んでいきます。<br>パソコンは「F」と「J」キーでも遊べます。</p>
+    <p class="tip">左右を交互に押すと歩けます。押しているあいだ足が上がり、はなすと地面をけります。<br><b>同じ足を続けて押す・リズムがばらばら・止まる と、ころびます。</b>トン、トン、と同じ間かくで！<br><b>両方いっしょに押して、はなすとジャンプ！</b>長く押すほど高く飛びます。穴もジャンプでこえよう。<br>ジャンプ台に乗ると、ピョーンと飛ばしてくれます。<br>ガクガク歩くと「ぐらぐらメーター」がたまり、満タンでプリンが飛んでいきます。<br>パソコンは「F」と「J」キーでも遊べます。</p>
     <button class="btn" id="startBtn">はじめる</button>
     <button class="btn sub" id="startSub" hidden>レベル1からはじめる</button>
   </div>
@@ -162,7 +163,7 @@
     <h2 id="failTitle">しょんぼり…</h2>
     <div class="who"><canvas class="face" id="failFace" width="240" height="240"></canvas><div class="bubble" id="failLine"></div></div>
     <p class="act" id="failAct"></p>
-    <p class="tip" id="failDist"></p>
+    <p class="tip" id="failDist" style="white-space:pre-line"></p>
     <button class="btn" id="retryBtn">もう一回</button>
     <button class="btn sub" id="restartBtn" hidden>レベル1から</button>
   </div>

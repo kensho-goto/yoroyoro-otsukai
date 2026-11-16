@@ -43,7 +43,7 @@
 
   // レベルごとのコースと難しさ（x: メートル, h: 高さメートル）。レベルに上限はない
   const LEVEL_NAMES = ['はじめてのおつかい', 'ちょっと遠くへ', 'はじめての障害物', 'でこぼこ道', '上って下って',
-    '商店街', 'となり町', '峠のおばあちゃん家', '山の上の神社', '雲の上のおうち'];
+    '最初の難関・商店街', 'ジャンプ台のある道', 'となり町', 'はじめての穴', '穴だらけの空き地'];
   const PLACES = ['川むこう', '駅前', '港', '森のおく', '丘の上', '線路ぞい', '公園の先', '団地', '田んぼ道', '坂の上',
     '海ぞい', '橋のむこう', '温泉街', '山のふもと', '空き地のおく', '学校のうら', '星のよく見える丘'];
   const DESTS = ['おばあちゃん家', '友だちの家', 'パン屋さん', '先生の家', 'おじさんの家', 'ねこの集会所', 'おうち', '親せきの家'];
@@ -65,31 +65,58 @@
     const goal = Math.min(60, 12 + (n - 1) * 4);
     const maxSlope = Math.min(0.18, Math.min(0.13, 0.05 + n * 0.006) + 0.007 * e); // 坂の急さ（高さ÷長さ）
     const bumpH = Math.min(0.2, Math.min(0.14, 0.05 + n * 0.006) + 0.008 * e); // 段差の高さ
-    const obChance = n < 3 ? 0 : Math.min(0.55, Math.min(0.32, 0.12 + (n - 3) * 0.025) + 0.035 * e); // 障害物の出やすさ
-    const obH = Math.min(0.55, Math.min(0.46, 0.3 + n * 0.01) + 0.03 * e); // 障害物の高さ
+    // 新しいしかけは決まったレベルで1つずつ登場：3 じゃまな物 / 4 段差 / 5 下り坂 / 7 ジャンプ台 / 9 穴
+    // 6・16・26…は「難関」：しかけの出方だけ4レベル先の強さにする
+    const hard = n % 10 === 6;
+    const m = hard ? n + 4 : n % 10 === 7 && n > 7 ? n - 3 : n; // 難関のすぐあとは、ひと休み
+    const obChance = n < 3 ? 0 : Math.min(0.45, Math.min(0.3, 0.12 + (m - 3) * 0.02) + 0.035 * e); // じゃまな物の出やすさ
+    const pitChance = n < 9 ? 0 : Math.min(0.32, 0.1 + (m - 9) * 0.015 + 0.03 * e); // 穴の出やすさ
+    const springChance = n < 7 ? 0 : Math.min(0.14, 0.06 + (m - 7) * 0.006); // ジャンプ台の出やすさ
+    const obH = Math.min(0.55, Math.min(0.46, 0.3 + m * 0.01) + 0.03 * e); // じゃまな物の高さ
+    const pitW = Math.min(1.3, 0.75 + (m - 9) * 0.03 + 0.05 * e); // 穴の幅（ジャンプで越える）
     const points = [[-8, 0], [3, 0]];
-    const obstacles = [];
+    const obstacles = [], pits = [], springs = [];
     let x = 3, h = 0;
     const add = (dx, dh) => { x += dx; h += dh; points.push([+x.toFixed(2), +h.toFixed(3)]); };
+    const flat = (len) => add(len, 0);
+    const pit = (w, bySpring) => { // 地面に深い穴をあける
+      const x0 = x; points.push([+(x + 0.01).toFixed(2), +(h - 4).toFixed(3)]); x += w; points.push([+(x - 0.01).toFixed(2), +(h - 4).toFixed(3)]); points.push([+x.toFixed(2), +h.toFixed(3)]);
+      pits.push({ x0: +x0.toFixed(2), x1: +x.toFixed(2), h: +h.toFixed(3), bySpring: !!bySpring });
+    };
+    const spring = () => { springs.push({ x: +(x + 0.35).toFixed(2), y: h, w: 0.7 }); flat(0.7); };
     const nearCheckpoint = (ox) => Math.abs(ox - Math.round(ox / 10) * 10) < 1.6;
+    const firsts = { 3: 'ob', 7: 'spring', 9: 'pit' }; // そのレベルで初めて出るしかけは、かならず1つ出す
+    let first = firsts[n];
     while (x < goal - 3) {
       const r = rnd();
       const room = goal - 2 - x;
-      const wantOb = (n === 3 && obstacles.length === 0) || r < obChance;
-      if (wantOb && room > 5) { // 障害物（平らな場所に置く。ジャンプで越える）
+      let kind;
+      if (first && room > 7) { kind = first; first = null; }
+      else if (r < pitChance) kind = 'pit';
+      else if (r < pitChance + springChance) kind = 'spring';
+      else if (r < pitChance + springChance + obChance) kind = 'ob';
+      else kind = 'road';
+      if (kind === 'pit' && room > 6) { // 穴：手前に助走、むこうに着地の平ら。ジャンプ台つきの広い穴もある
+        const withSpring = n >= 11 && rnd() < 0.35;
+        flat(2.2);
+        if (withSpring) { spring(); flat(0.3); pit(Math.min(1.9, 1.4 + 0.03 * (m - 11)) * (0.9 + rnd() * 0.12), true); }
+        else pit(pitW * (0.85 + rnd() * 0.3));
+        flat(2.6);
+      } else if (kind === 'spring' && room > 5) { // ジャンプ台だけ（乗るとピョーン）
+        flat(1.5); spring(); flat(3.2);
+      } else if (kind === 'ob' && room > 5) { // じゃまな物（平らな場所に置く。ジャンプで越える）
         const t = OBSTACLES[Math.floor(rnd() * OBSTACLES.length)];
-        let ox = x + 2.2;
-        if (nearCheckpoint(ox)) ox = x + 3.4;
-        if (!nearCheckpoint(ox)) obstacles.push({ x: +ox.toFixed(2), y: h, w: t.w, h: +(obH * t.h).toFixed(3), kind: t.kind });
-        add(5, 0);
-      } else if (n === 1 || r < obChance + 0.3) add(Math.min(room, 2 + rnd() * 3), 0); // 平ら
-      else if (n >= 4 && r < obChance + 0.5 && room > 2) { // 段差（ブロック）
+        const ox = [2.2, 3.4, 1.2].map((d) => x + d).find((v) => !nearCheckpoint(v));
+        if (ox !== undefined) obstacles.push({ x: +ox.toFixed(2), y: h, w: t.w, h: +(obH * t.h).toFixed(3), kind: t.kind });
+        flat(5);
+      } else if (n <= 2 || rnd() < 0.45) flat(Math.min(room, 2 + rnd() * 3)); // 平ら（レベル2は少しだけ上り）
+      else if (n >= 4 && rnd() < 0.45 && room > 2) { // 段差（ブロック）
         const bh = bumpH * (0.7 + rnd() * 0.3), w = 0.8 + rnd() * 0.8;
-        add(0.25, bh); add(w, 0); add(0.25, -bh); add(Math.min(room, 1.5), 0);
+        add(0.25, bh); add(w, 0); add(0.25, -bh); flat(Math.min(room, 1.5));
       } else { // 坂
         const len = Math.min(room, 3 + rnd() * 3);
         let dir = rnd() < 0.6 ? 1 : -1;
-        if (n < 5) dir = h > 0.3 ? -1 : 1; // はじめのうちは上り中心
+        if (n < 5) dir = h > 0.3 ? -1 : 1; // 下り坂はレベル5から
         if (h + dir * len * maxSlope < -0.3 || h + dir * len * maxSlope > 2) dir = -dir;
         add(len, dir * len * maxSlope * (0.6 + rnd() * 0.4));
       }
@@ -99,12 +126,14 @@
     add(14, 0);
     const checkpoints = [0];
     for (let c = 10; c < goal - 2; c += 10) checkpoints.push(c);
-    const name = LEVEL_NAMES[n - 1] || `${PLACES[Math.floor(rnd() * PLACES.length)]}の${DESTS[Math.floor(rnd() * DESTS.length)]}`;
+    const name = LEVEL_NAMES[n - 1] || `${hard ? '難関・' : ''}${PLACES[Math.floor(rnd() * PLACES.length)]}の${DESTS[Math.floor(rnd() * DESTS.length)]}`;
     // 時間制限：はじめはゆっくりでも間に合い、レベルが上がると少しずつきびしく（5秒きざみ）
     const needSpeed = Math.min(1.15, lerp(0.6, 0.85, 1 - Math.exp(-(n - 1) / 10)) + 0.05 * e); // 必要な速さ（m/秒）
     const timeLimit = Math.ceil(goal / needSpeed / 5) * 5;
     return {
-      level: n, timeLimit, name, points, checkpoints, goal, obstacles,
+      level: n, timeLimit, name, points, checkpoints, goal, obstacles, pits, springs, hard,
+      // 自動テスト用：ジャンプが必要な場所（左はし）
+      hazards: [...obstacles.map((o) => ({ x: o.x - o.w / 2, kind: 'ob' })), ...pits.filter((p) => !p.bySpring).map((p) => ({ x: p.x0, kind: 'pit' }))].sort((a, b) => a.x - b.x),
       tuning: {
         // むずかしさは途中で頭打ちにして、上のレベルもずっと遊べるようにする（変化は障害物・道で出す）
         balance: Math.max(12, lerp(26, 15, 1 - Math.exp(-(n - 1) / 8)) - 0.6 * e), // 体を起こす手助けがだんだん弱く
@@ -118,6 +147,7 @@
   }
 
   function groundHeightAt(stage, x) {
+    for (const q of stage.pits || []) if (x > q.x0 && x < q.x1) return q.h; // 穴の上は、ふちの高さ
     const p = stage.points;
     for (let i = 0; i < p.length - 1; i++) {
       if (x >= p[i][0] && x <= p[i + 1][0]) {
@@ -138,6 +168,9 @@
     const ground = world.createBody();
     ground.createFixture(Chain(stage.points.map(([x, h]) => Vec2(x, h))), { friction: 1.0, userData: 'ground' });
     ground.createFixture(Box(0.3, 3, Vec2(-2.2, 3), 0), { friction: 0.3, userData: 'wall' }); // スタートのお店（うしろの壁）
+    for (const q of stage.springs) { // ジャンプ台（乗るとピョーン）
+      ground.createFixture(Box(q.w / 2, 0.06, Vec2(q.x, q.y + 0.06), 0), { friction: 0.9, userData: 'spring' });
+    }
     for (const o of stage.obstacles) { // 障害物（ジャンプで越える）
       ground.createFixture(Box(o.w / 2, o.h / 2, Vec2(o.x, o.y + o.h / 2), 0), { friction: 0.8, userData: 'obstacle' });
     }
@@ -259,6 +292,7 @@
       state.jump = { phase: 'none', crouch: 0, air: 0, grace: 0 };
       state.cpReached = cpIndex;
       state.downFrames = 0;
+      state.springHit = false;
       state.stumble = 0; // リズムのくずれ（だんだん戻る）
       state.topple = 0; // 止まって転んでいる途中なら 0より大きい
       state.lastStumble = -999;
@@ -270,8 +304,14 @@
     function fall(reason) {
       if (state.status !== 'play') return;
       state.status = 'fallen';
-      if (reason !== 'timeup' && state.topple > 0) reason = 'stop'; // 止まったせい
-      else if (reason !== 'pudding' && reason !== 'timeup') {
+      const c = state.char;
+      if (c && reason !== 'timeup' && reason !== 'pudding') { // 穴のところで転んだ・足が穴にはまった → 穴に落ちた
+        const tx = c.torso.getPosition().x;
+        const fx = [c.L.shin, c.R.shin].map((b) => b.getPosition());
+        if (stage.pits.some((q) => (tx > q.x0 - 0.3 && tx < q.x1 + 0.3) || fx.some((p) => p.x > q.x0 - 0.1 && p.x < q.x1 + 0.1 && p.y < q.h + 0.25))) reason = 'hole';
+      }
+      if (reason !== 'timeup' && reason !== 'hole' && state.topple > 0) reason = 'stop'; // 止まったせい
+      else if (reason !== 'pudding' && reason !== 'timeup' && reason !== 'hole') {
         if (state.frame - state.lastStumble < 90) reason = 'rhythm'; // リズムのせい
       }
       state.fallReason = reason;
@@ -279,12 +319,13 @@
       emit(reason === 'pudding' ? 'pudding' : reason === 'timeup' ? 'timeup' : 'fall');
     }
 
-    const isFloor = (u) => u === 'ground' || u === 'obstacle';
+    const isFloor = (u) => u === 'ground' || u === 'obstacle' || u === 'spring';
     function footContact(contact, delta) {
       const a = contact.getFixtureA().getUserData();
       const b = contact.getFixtureB().getUserData();
       const other = isFloor(a) ? b : isFloor(b) ? a : null;
       if (other === 'thigh' && delta > 0 && (a === 'ground' || b === 'ground') && state.settle <= 0) fall('knee'); // ひざをついた
+      if ((other === 'footL' || other === 'footR') && delta > 0 && (a === 'spring' || b === 'spring') && state.status === 'play' && state.jump.phase !== 'air') state.springHit = true;
       if (other === 'footL' || other === 'footR') {
         const side = other.slice(-1);
         state.feet[side] = Math.max(0, state.feet[side] + delta);
@@ -340,6 +381,18 @@
       if (J.phase === 'none' && R.sinceStep > limit && state.topple === 0) { state.topple = 0.01; emit('stop'); }
     }
 
+    // ジャンプ台：体ぜんぶを前と上へ飛ばす（ジャンプと同じあつかい）
+    function bounce() {
+      const c = state.char, J = state.jump;
+      for (const b of [c.torso, c.tray, c.head, c.L.thigh, c.L.shin, c.R.thigh, c.R.shin]) {
+        const v = b.getLinearVelocity();
+        b.setLinearVelocity(Vec2(v.x * 0.5 + 3.3, 4.9));
+      }
+      J.phase = 'air'; J.air = 0; J.crouch = 0;
+      state.rhythm.lastSide = null; state.rhythm.lastInterval = 0;
+      emit('boing');
+    }
+
     // ジャンプ：ためた分だけ高く遠くへ（体ぜんぶに同じ速さを足す）
     function launch() {
       const c = state.char, J = state.jump;
@@ -377,6 +430,8 @@
           }
           if (J.grace > 0) J.grace--;
         }
+        if (state.springHit && state.status === 'play') bounce();
+        state.springHit = false;
         if (state.status === 'play') rhythm(c, J);
         const limp = state.topple > 0; // 止まって転びはじめた：足の力がぬける
         const idle = !state.input.left && !state.input.right;
@@ -410,6 +465,7 @@
       if (state.settle > 0) state.settle--;
       else if (state.status === 'play' && c) { // しりもち・大きく倒れたまま → 転んだ
         const tp = c.torso.getPosition();
+        for (const q of stage.pits) if (tp.x > q.x0 - 0.15 && tp.x < q.x1 + 0.15 && tp.y < q.h + 0.5) fall('hole'); // 穴に落ちた
         const low = tp.y - groundHeightAt(stage, tp.x) < 0.82 || Math.abs(c.torso.getAngle()) > 1.25;
         state.downFrames = low && state.jump.phase !== 'air' ? state.downFrames + 1 : 0;
         if (state.downFrames > 12) fall('down');

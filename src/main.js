@@ -25,6 +25,8 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存できなくても遊べる */ } },
   };
   let maxLevel = Math.max(1, parseInt(store.get('yoro.maxLevel'), 10) || 1); // 行けた一番上のレベル
+  let runDist = 0; // 通しきょり：ゲームオーバーまでに歩けたきょり
+  let bestRun = Math.max(0, parseFloat(store.get('yoro.bestRun')) || 0); // 通しきょりの自己ベスト
   let prevWaiter = null, delivered = null, worldOff = 0; // 前のおうちの人・届けたときのひとこと・背景をつなぐためのずれ
   function loadLevel(n, carry) {
     const old = carry ? { goal: stage.goal, gy: game.groundHeightAt(stage.goal) } : null;
@@ -110,13 +112,14 @@
   }
   function start(n) { loadLevel(n || maxLevel); restart(); }
   // ゲームオーバーのあとは、いつもそのレベルの最初（前のおうちの前）から
-  function restart() { loadLevel(level); pops.length = 0; elapsed = 0; game.spawn(0); showOnly(null); snd.play('start'); snd.bgm(true); }
+  function restart() { loadLevel(level); pops.length = 0; elapsed = 0; runDist = 0; game.spawn(0); showOnly(null); snd.play('start'); snd.bgm(true); }
   const retry = restart;
   // おうちに着いた：プリンを届けて、止まらずに次のおうちへ
   function deliver() {
     const say = WT.happy(waiter).say;
     snd.play('clear');
     if (level + 1 > maxLevel) { maxLevel = level + 1; store.set('yoro.maxLevel', String(maxLevel)); refreshTitle(); }
+    runDist += stage.goal;
     const snap = game.snapshot();
     loadLevel(level + 1, snap);
     game.spawn(0, snap);
@@ -136,6 +139,8 @@
   function refreshTitle() {
     $('startBtn').textContent = maxLevel > 1 ? `つづきから（レベル${maxLevel}）` : 'はじめる';
     ui.startSub.hidden = maxLevel <= 1;
+    $('bestRun').hidden = bestRun <= 0;
+    $('bestRun').textContent = `通しきょりの自己ベスト：${bestRun.toFixed(1)}m`;
   }
 
   let shownEnd = false;
@@ -144,11 +149,14 @@
     fails++;
     const r = WT.reaction(waiter, { reason: S.fallReason, fails, left });
     faceNow = r.face; faceT0 = performance.now();
-    ui.failTag.textContent = `ゲームオーバー（${{ pudding: 'プリンを落とした', timeup: '時間切れ', rhythm: 'リズムがくずれてころんだ', stop: '止まってころんだ' }[S.fallReason] || 'ころんだ'}）`;
+    runDist += Math.min(stage.goal, Math.max(0, S.bestX));
+    const newBest = runDist > bestRun + 0.05;
+    if (newBest) { bestRun = runDist; store.set('yoro.bestRun', bestRun.toFixed(1)); refreshTitle(); }
+    ui.failTag.textContent = `ゲームオーバー（${{ pudding: 'プリンを落とした', timeup: '時間切れ', rhythm: 'リズムがくずれてころんだ', stop: '止まってころんだ', hole: '穴に落ちた' }[S.fallReason] || 'ころんだ'}）`;
     ui.failTitle.textContent = r.title;
     ui.failLine.textContent = r.say;
     ui.failAct.textContent = r.action;
-    ui.failDist.textContent = `レベル${level}・${waiter.name}のおうちまで あと ${left.toFixed(1)}m（最高 レベル${maxLevel}）`;
+    ui.failDist.textContent = `レベル${level}・${waiter.name}のおうちまで あと ${left.toFixed(1)}m\n通しきょり ${runDist.toFixed(1)}m${newBest ? '　🎉自己ベスト！' : `（自己ベスト ${bestRun.toFixed(1)}m）`}`;
     $('retryBtn').textContent = `もう一回（レベル${level}から）`;
     $('restartBtn').hidden = level <= 1;
     showOnly(ui.fail);
@@ -199,10 +207,21 @@
     ctx.beginPath(); [sx, sy] = W2S(p[0][0], p[0][1]); ctx.moveTo(sx, sy);
     for (const [x, h] of p) { [sx, sy] = W2S(x, h); ctx.lineTo(sx, sy); }
     ctx.stroke();
+    // 穴（暗い穴）とジャンプ台
+    for (const q of stage.pits) {
+      const [ax, ay] = W2S(q.x0, q.h), [bx] = W2S(q.x1, q.h);
+      const g = ctx.createLinearGradient(0, ay, 0, ay + scale * 2.5);
+      g.addColorStop(0, '#3b2a1e'); g.addColorStop(1, '#120c08');
+      ctx.fillStyle = g; ctx.fillRect(ax + 2, ay, bx - ax - 4, H - ay + 10);
+      ctx.strokeStyle = '#6cc04a'; ctx.lineWidth = Math.max(6, scale * 0.14);
+      ctx.beginPath(); ctx.moveTo(ax - scale * 0.2, ay); ctx.lineTo(ax + 1, ay); ctx.moveTo(bx - 1, ay); ctx.lineTo(bx + scale * 0.2, ay); ctx.stroke();
+    }
+    for (const q of stage.springs) drawSpring(q);
     // 距離のかんばん
     ctx.font = `800 ${Math.round(scale * 0.22)}px sans-serif`; ctx.textAlign = 'center';
     for (let m = 5; m < stage.goal; m += 5) {
-      if (stage.checkpoints.includes(m) || stage.obstacles.some((o) => Math.abs(o.x - m) < 0.9)) continue;
+      if (stage.checkpoints.includes(m) || stage.obstacles.some((o) => Math.abs(o.x - m) < 0.9)
+        || stage.pits.some((q) => m > q.x0 - 0.6 && m < q.x1 + 0.6) || stage.springs.some((q) => Math.abs(q.x - m) < 0.8)) continue;
       const [x, y] = W2S(m, game.groundHeightAt(m));
       ctx.fillStyle = '#8a5a35'; ctx.fillRect(x - 2, y - scale * 0.5, 4, scale * 0.5);
       ctx.fillStyle = '#fff7e6'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 2;
@@ -269,6 +288,19 @@
     ctx.fillStyle = '#fff'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 3;
     roundRect(left, by - h, w, h, 10); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#3b2a1e'; lines.forEach((l, i) => ctx.fillText(l, left + w / 2, by - h + 8 + (i + 0.8) * s * 0.26));
+  }
+
+  function drawSpring(q) { // ジャンプ台：赤い板と、ばね
+    const [cx, by] = W2S(q.x, q.y); const s = scale, w = q.w * s;
+    const squash = S.char && Math.abs(game.charX() - q.x) < 0.6 ? 0.6 : 1;
+    ctx.save(); ctx.lineWidth = 3; ctx.strokeStyle = '#3b2a1e';
+    ctx.beginPath(); ctx.moveTo(cx - w * 0.3, by);
+    for (let i = 1; i <= 6; i++) ctx.lineTo(cx + (i % 2 ? 0.3 : -0.3) * w, by - i * s * 0.02 * squash);
+    ctx.stroke();
+    ctx.fillStyle = '#e8303a'; roundRect(cx - w * 0.6, by - s * 0.22 * squash, w * 1.2, s * 0.1, 5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ffcf3d'; ctx.font = `900 ${Math.round(s * 0.32)}px sans-serif`; ctx.textAlign = 'center';
+    ctx.fillText('▲', cx, by - s * 0.3); ctx.strokeText('▲', cx, by - s * 0.3);
+    ctx.restore();
   }
 
   function drawObstacle(o) {
@@ -473,9 +505,15 @@
           if (ev.type === 'stop') pop('止まっちゃだめ！', '#e8303a');
         }
       }
-      if (level <= 6 && S.status === 'play') { // 最初のうちは、じゃまな物の手前でジャンプのやり方を出す
+      if (level <= 10 && S.status === 'play') { // 最初のうちは、しかけの手前でやり方を出す
         const x = game.charX();
-        stage.obstacles.forEach((o, i) => {
+        stage.springs.forEach((q, i) => {
+          if (!hinted.has('s' + i) && q.x - x < 2.6 && q.x - x > 0) { hinted.add('s' + i); showBanner('赤い台に乗ると<br>ピョーンと飛ぶよ！'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 2500); }
+        });
+        stage.pits.forEach((q, i) => {
+          if (!hinted.has('p' + i) && q.x0 - x < 2.8 && q.x0 - x > 0) { hinted.add('p' + i); showBanner('穴だ！ 両方押して…<br>はなしてジャンプ！'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 2500); }
+        });
+        if (level <= 6) stage.obstacles.forEach((o, i) => {
           if (!hinted.has(i) && o.x - x < 2.6 && o.x - x > 0) {
             hinted.add(i); showBanner('両方の足を いっしょに押して…<br>はなすと ジャンプ！'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 3000);
           }

@@ -116,6 +116,11 @@
       const t = ctx.currentTime;
       tone(500, t, 0.5, { type: 'sawtooth', vol: 0.06, to: 150 });
     },
+    boing() { // ビヨーン（ジャンプ台）
+      const t = ctx.currentTime;
+      tone(180, t, 0.45, { type: 'square', vol: 0.1, to: 900 });
+      for (let i = 0; i < 5; i++) tone(700 - i * 60, t + 0.05 + i * 0.07, 0.07, { type: 'sine', vol: 0.12, to: 900 - i * 60 });
+    },
     tap() { const t = ctx.currentTime; tone(880, t, 0.06, { type: 'sine', vol: 0.15 }); },
   };
 

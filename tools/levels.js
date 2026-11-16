@@ -6,7 +6,7 @@ const JUMP = !process.argv.includes('--nojump');
 function run(level, P, sd, jitter) {
   let s = sd, side = 0, next = P; const jr = () => ((s = (s * 48271) % 2147483647) / 2147483647);
   const g = Core.create(planck, { level }); g.spawn(0);
-  const obs = g.stage.obstacles.map((o) => o.x - o.w / 2);
+  const obs = g.stage.hazards.map((h) => h.x); // 障害物の左はし・穴のふち（ジャンプ台の穴は台にまかせる）
   let f = 0, crouch = 0, done = new Set();
   for (; f < 60 * 90; f++) {
     const x = g.charX();
