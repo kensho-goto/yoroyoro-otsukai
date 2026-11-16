@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#ffe7b3">
+<meta name="robots" content="noindex, nofollow">
 <title>ヨロヨロおつかい</title>
 <style>
   :root {
@@ -62,6 +63,12 @@
   .how div { flex: 1; border: 3px solid var(--ink); border-radius: 14px; padding: 8px 6px; font-size: 14px; font-weight: 700; color: #fff; }
   .how .l { background: var(--left); } .how .r { background: var(--right); }
   .tip { font-size: 13px !important; opacity: .8; }
+  .field {
+    width: 100%; margin-top: 10px; padding: 12px; font: inherit; font-size: 20px; text-align: center;
+    border: 3px solid var(--ink); border-radius: 14px; background: #fff; color: var(--ink); user-select: text; -webkit-user-select: text;
+  }
+  .overlay[hidden] { display: none !important; }
+  #gate { z-index: 10; background: #ffe7b3; }
   .btn {
     display: block; width: 100%; margin-top: 12px; padding: 14px; font: inherit; font-size: 20px; font-weight: 900;
     color: #fff; background: var(--accent); border: 4px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink);
@@ -105,6 +112,16 @@
   <div class="pad r" id="padR">みぎ足<small>右半分をタッチ</small></div>
 </div>
 
+<div class="overlay show" id="gate" hidden>
+  <div class="card">
+    <h1>ヨロヨロおつかい</h1>
+    <p>メンバー用の試作版です。<br>合言葉を入れてください。</p>
+    <input id="gateInput" class="field" type="text" inputmode="text" autocomplete="off" autocapitalize="off" placeholder="合言葉">
+    <p class="tip" id="gateMsg">&nbsp;</p>
+    <button class="btn" id="gateBtn">はいる</button>
+  </div>
+</div>
+
 <div class="overlay show" id="title">
   <div class="card">
     <h1>ヨロヨロおつかい</h1>
@@ -139,6 +156,7 @@
 
 <script src="vendor/planck.min.js"></script>
 <script src="src/core.js"></script>
+<script src="src/gate.js"></script>
 <script src="src/main.js"></script>
 </body>
 </html>
