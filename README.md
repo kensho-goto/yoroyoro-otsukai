@@ -15,7 +15,7 @@
 
 ## 見る場所
 - スマホ：https://kensho-goto.github.io/yoroyoro-otsukai/ （`docs/qr-phone.png` を読み取る）
-  - メンバー用の試作版なので、最初に合言葉「ぷりん」を入れる（カタカナ・ローマ字でも可。一度入れたらそのスマホでは次から聞かれない）
+  - メンバー用の試作版なので、最初に合言葉「いいんじゃ」を入れる（カタカナ「イインジャ」・ローマ字「einja」でも可。一度入れたらそのスマホでは次から聞かれない）
   - 検索には出ない設定。main に push すると自動で新しくなる（`.github/workflows/pages.yml`）
 - パソコン：このフォルダーで `npm start` → http://localhost:8123/
 

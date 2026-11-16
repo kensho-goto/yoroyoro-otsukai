@@ -1,6 +1,6 @@
 // 合言葉の画面（メンバー用の試作版なので、URLが外にもれてもすぐ遊べないようにする目印）
 (function () {
-  const HASH = 'b55d3a637fdb0049a78a39710a973f722debd1cb7c23e9c2820d0f7ad9f406e0'; // 合言葉（ぷりん）を変換した値
+  const HASH = 'c6ba94d4d25addaa53479c5f0b3044386e5ac9da7214fea34476dcbb27d9f3f5'; // 合言葉（いいんじゃ）を変換した値
   const KEY = 'yoro.member';
   const gate = document.getElementById('gate');
   const input = document.getElementById('gateInput');
@@ -13,7 +13,8 @@
   // ローマ字・カタカナでも通るように、ひらがなにそろえる
   function normalize(t) {
     t = t.trim().toLowerCase().replace(/[\u30a1-\u30f6]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
-    if (t === 'purin' || t === 'pudding') t = 'ぷりん';
+    t = t.replace(/\s+/g, '');
+    if (t === 'einja' || t === 'iinja' || t === 'iinjya' || t === 'einjya') t = 'いいんじゃ';
     return t;
   }
   async function sha256(t) {
