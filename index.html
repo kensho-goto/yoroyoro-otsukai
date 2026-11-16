@@ -83,6 +83,7 @@
     background: rgba(255, 247, 230, .92); border: 3px solid var(--ink); border-radius: 14px; padding: 4px 10px;
     font-weight: 800; font-size: 13px; box-shadow: 0 3px 0 var(--ink); white-space: nowrap;
   }
+  .meter .lv { background: var(--accent); color: #fff; border-radius: 8px; padding: 0 6px; }
   .meter .bar { flex: 1; height: 12px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; overflow: hidden; }
   .meter .fill { height: 100%; width: 0; background: #5cc96b; transition: width .08s; }
   .meter.danger { animation: shake .12s infinite; }
@@ -103,7 +104,7 @@
   <div class="chip" id="best">ベスト ―</div>
 </div>
 
-<div class="meter" id="meter"><span>プリンのぐらぐら</span><div class="bar"><div class="fill" id="meterFill"></div></div></div>
+<div class="meter" id="meter"><b class="lv" id="meterLabel">Lv.1</b><span>ぐらぐら</span><div class="bar"><div class="fill" id="meterFill"></div></div></div>
 
 <div class="hint" id="hint">左・右・左・右…<br>トン、トン、とリズムよく！</div>
 
@@ -125,13 +126,14 @@
 <div class="overlay show" id="title">
   <div class="card">
     <h1>ヨロヨロおつかい</h1>
-    <p>おぼんのプリンを落とさずに<br>おうちまで届けよう！</p>
+    <p>おぼんのプリンを落とさずに<br>おうちまで届けよう！<br>クリアするたびにレベルが上がるよ。</p>
     <div class="how">
       <div class="l">画面の左半分<br>＝ ひだり足</div>
       <div class="r">画面の右半分<br>＝ みぎ足</div>
     </div>
     <p class="tip">左右を交互に押すと歩けます。押しているあいだ足が上がり、はなすと地面をけります。<br>ガクガク歩くと「ぐらぐらメーター」がたまり、満タンでプリンが飛んでいきます。<br>パソコンは「F」と「J」キーでも遊べます。</p>
     <button class="btn" id="startBtn">はじめる</button>
+    <button class="btn sub" id="startSub" hidden>レベル1からはじめる</button>
   </div>
 </div>
 
@@ -147,10 +149,11 @@
 
 <div class="overlay" id="clear">
   <div class="card">
-    <h2>おつかい成功！</h2>
+    <h2 id="clearTitle">おつかい成功！</h2>
     <p class="big" id="clearTime"></p>
     <p id="clearBest"></p>
-    <button class="btn" id="againBtn">もう一回</button>
+    <button class="btn" id="nextBtn">つぎのレベルへ</button>
+    <button class="btn sub" id="againBtn">このレベルをもう一回</button>
   </div>
 </div>
 

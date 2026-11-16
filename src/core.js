@@ -29,15 +29,54 @@
     calm: 0.008, // 落ち着いているときに下がる速さ
   };
 
-  // コース（x: メートル, h: 高さメートル）
-  const STAGES = [
-    {
-      name: 'ご近所の坂道',
-      points: [[-8, 0], [8, 0], [14, 0.6], [19, 0.6], [19.4, 0.72], [21, 0.72], [21.4, 0.6], [26, 0.6], [32, 0], [50, 0]],
-      checkpoints: [0, 10, 20, 30],
-      goal: 40,
-    },
-  ];
+  // レベルごとのコースと難しさ（x: メートル, h: 高さメートル）。レベルに上限はない
+  const LEVEL_NAMES = ['はじめてのおつかい', 'ちょっと遠くへ', 'ゆるやかな坂', 'でこぼこ道', '上って下って',
+    '商店街', 'となり町', '峠のおばあちゃん家', '山の上の神社', '雲の上のおうち'];
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  function makeLevel(n) {
+    n = Math.max(1, Math.floor(n));
+    const d = 1 - Math.exp(-(n - 1) / 4.5); // 0（レベル1）から 1 に近づいていく
+    let seed = n * 9301 + 49297;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const goal = Math.min(60, 12 + (n - 1) * 4);
+    const maxSlope = Math.min(0.13, 0.05 + n * 0.006); // 坂の急さ（高さ÷長さ）
+    const bumpH = Math.min(0.14, 0.05 + n * 0.006); // 段差の高さ
+    const points = [[-8, 0], [3, 0]];
+    let x = 3, h = 0;
+    const add = (dx, dh) => { x += dx; h += dh; points.push([+x.toFixed(2), +h.toFixed(3)]); };
+    while (x < goal - 3) {
+      const r = rnd();
+      const room = goal - 2 - x;
+      if (n === 1 || r < 0.3) add(Math.min(room, 2 + rnd() * 3), 0); // 平ら
+      else if (n >= 4 && r < 0.5 && room > 2) { // 段差（ブロック）
+        const bh = bumpH * (0.7 + rnd() * 0.3), w = 0.8 + rnd() * 0.8;
+        add(0.25, bh); add(w, 0); add(0.25, -bh); add(Math.min(room, 1.5), 0);
+      } else { // 坂
+        const len = Math.min(room, 3 + rnd() * 3);
+        let dir = rnd() < 0.6 ? 1 : -1;
+        if (n < 5) dir = h > 0.3 ? -1 : 1; // はじめのうちは上り中心
+        if (h + dir * len * maxSlope < -0.3 || h + dir * len * maxSlope > 2) dir = -dir;
+        add(len, dir * len * maxSlope * (0.6 + rnd() * 0.4));
+      }
+    }
+    // ゴールの前後は平らに（おうちを置く）
+    add(goal - x + 0.01 > 0 ? goal - x + 0.01 : 0.01, 0);
+    add(14, 0);
+    const checkpoints = [0];
+    for (let c = 10; c < goal - 2; c += 10) checkpoints.push(c);
+    return {
+      level: n,
+      name: LEVEL_NAMES[n - 1] || `どこまでもおつかい`,
+      points, checkpoints, goal,
+      tuning: {
+        balance: lerp(30, 12, 1 - Math.exp(-(n - 1) / 8)), // 体を起こす手助けがだんだん弱く
+        accSafe: 13.0 + 7 * Math.exp(-(n - 1) / 3), // プリンが揺れにだんだん敏感に（ここは少しの差で大きく効くので、ゆっくり）
+        spinSafe: lerp(2.3, 1.3, d),
+        calm: lerp(0.013, 0.006, d),
+      },
+    };
+  }
 
   function groundHeightAt(stage, x) {
     const p = stage.points;
@@ -53,8 +92,8 @@
   function create(planck, opts) {
     opts = opts || {};
     const { World, Vec2, Box, Circle, Polygon, Chain, RevoluteJoint } = planck;
-    const T = Object.assign({}, TUNING, opts.tuning || {});
-    const stage = STAGES[opts.stage || 0];
+    const stage = makeLevel(opts.level || 1);
+    const T = Object.assign({}, TUNING, stage.tuning, opts.tuning || {});
     const world = new World({ gravity: Vec2(0, -10) });
 
     const ground = world.createBody();
@@ -232,7 +271,7 @@
     };
   }
 
-  const api = { create, STAGES, TUNING };
+  const api = { create, makeLevel, TUNING };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.YoroCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);

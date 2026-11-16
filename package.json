@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node tools/serve.js",
     "tune": "node tools/tune.js",
-    "meter": "node tools/meter.js"
+    "meter": "node tools/meter.js",
+    "levels": "node tools/levels.js"
   },
   "keywords": [],
   "author": "",

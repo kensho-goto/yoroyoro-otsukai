@@ -9,20 +9,34 @@
     title: $('title'), fail: $('fail'), clear: $('clear'),
     failTitle: $('failTitle'), failLine: $('failLine'), failDist: $('failDist'),
     clearTime: $('clearTime'), clearBest: $('clearBest'),
-    meter: $('meter'), meterFill: $('meterFill'),
+    meter: $('meter'), meterFill: $('meterFill'), meterLabel: $('meterLabel'),
+    startSub: $('startSub'), clearTitle: $('clearTitle'), nextBtn: $('nextBtn'),
   };
 
-  const game = YoroCore.create(planck);
-  const S = game.state;
-  const stage = game.stage;
+  // レベル：クリアするたびに1つ上がる（上限なし）
+  let game, S, stage, level = 1;
 
   // ---- 記録 ----
   const store = {
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存できなくても遊べる */ } },
   };
-  let bestTime = parseFloat(store.get('yoro.bestTime')) || null;
-  let bestDist = parseFloat(store.get('yoro.bestDist')) || 0;
+  let maxLevel = Math.max(1, parseInt(store.get('yoro.maxLevel'), 10) || 1); // 遊べる一番上のレベル
+  let bestTime = null, bestDist = 0; // 今のレベルの記録
+  function loadLevel(n) {
+    level = n;
+    game = YoroCore.create(planck, { level: n });
+    S = game.state; stage = game.stage;
+    bestTime = parseFloat(store.get(`yoro.best.${n}`)) || null;
+    bestDist = parseFloat(store.get(`yoro.dist.${n}`)) || 0;
+    cam.x = 0; cam.y = 1;
+    ui.meterLabel.textContent = `Lv.${n}`;
+    showBanner(n === 1 ? `レベル1「${stage.name}」<br>左・右・左・右…トン、トン、とリズムよく！` : `レベル${n}「${stage.name}」<br>${stage.goal}m 先のおうちへ！`);
+  }
+  function showBanner(html) {
+    ui.hint.innerHTML = html; ui.hint.style.opacity = 1;
+    clearTimeout(hintTimer); hintTimer = null;
+  }
 
   // ---- 画面サイズ ----
   let W = 0, H = 0, DPR = 1, scale = 60;
@@ -63,9 +77,9 @@
     if (LK.includes(e.code)) keys.left = true;
     else if (RK.includes(e.code)) keys.right = true;
     else if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
-      if (ui.title.classList.contains('show')) start();
+      if (ui.title.classList.contains('show')) start(maxLevel);
       else if (ui.fail.classList.contains('show')) retry();
-      else if (ui.clear.classList.contains('show')) restart();
+      else if (ui.clear.classList.contains('show')) next();
       return;
     } else return;
     e.preventDefault(); updateInput();
@@ -87,13 +101,20 @@
   function showOnly(el) {
     for (const o of [ui.title, ui.fail, ui.clear]) o.classList.toggle('show', o === el);
   }
-  function start() { showOnly(null); restart(); }
+  function start(n) { loadLevel(n || maxLevel); restart(); }
   function restart() { elapsed = 0; game.spawn(0); showOnly(null); }
   function retry() { game.spawn(game.passedCheckpoint()); showOnly(null); }
-  $('startBtn').onclick = start;
+  function next() { loadLevel(level + 1); restart(); }
+  $('startBtn').onclick = () => start(maxLevel);
+  ui.startSub.onclick = () => start(1);
   $('retryBtn').onclick = retry;
   $('restartBtn').onclick = restart;
   $('againBtn').onclick = restart;
+  ui.nextBtn.onclick = next;
+  function refreshTitle() {
+    $('startBtn').textContent = maxLevel > 1 ? `つづきから（レベル${maxLevel}）` : 'はじめる';
+    ui.startSub.hidden = maxLevel <= 1;
+  }
 
   const LINES = {
     head: ['ドテッ！', '地面とごあいさつ', 'ひざが言うことをきかない…', '足がもつれた！', 'いまのは練習です'],
@@ -116,9 +137,12 @@
   function onClear() {
     const t = elapsed;
     const isBest = !bestTime || t < bestTime;
-    if (isBest) { bestTime = t; store.set('yoro.bestTime', String(t)); }
+    if (isBest) { bestTime = t; store.set(`yoro.best.${level}`, String(t)); }
+    if (level + 1 > maxLevel) { maxLevel = level + 1; store.set('yoro.maxLevel', String(maxLevel)); refreshTitle(); }
+    ui.clearTitle.textContent = `レベル${level} クリア！`;
     ui.clearTime.textContent = `${t.toFixed(1)} 秒でおうちに到着！`;
     ui.clearBest.textContent = isBest ? '★ じこベスト更新！' : `じこベスト ${bestTime.toFixed(1)} 秒`;
+    ui.nextBtn.textContent = `つぎのレベル${level + 1}へ`;
     showOnly(ui.clear);
   }
 
@@ -331,6 +355,7 @@
 
   // ---- ループ ----
   let last = performance.now(), acc = 0;
+  loadLevel(maxLevel); refreshTitle();
   game.spawn(0);
   function frame(now) {
     let dt = Math.min(0.1, (now - last) / 1000); last = now;
@@ -344,7 +369,7 @@
         if (S.status === 'play') elapsed += 1 / 60;
         game.step();
       }
-      if (S.bestX > bestDist) { bestDist = S.bestX; store.set('yoro.bestDist', String(bestDist)); }
+      if (S.bestX > bestDist) { bestDist = S.bestX; store.set(`yoro.dist.${level}`, String(bestDist)); }
       if ((S.status === 'fallen' && S.frame - S.fallFrame > 50) || S.status === 'clear') {
         if (!shownEnd) { shownEnd = true; S.status === 'clear' ? onClear() : onFall(); }
       } else if (S.status === 'play') shownEnd = false;
@@ -364,5 +389,5 @@
   requestAnimationFrame(frame);
 
   // テスト用（自動操作で動作確認するため）
-  window.__yoro = { game, start, retry, restart };
+  window.__yoro = { get game() { return game; }, start, retry, restart, next, loadLevel };
 })();
