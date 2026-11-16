@@ -23,6 +23,12 @@
   // この回で起きたこと（ずかんに新しく入ったもの・拾ったおたから・金のプリンの日・テスト用の強制）
   let runNew = [], runTreasure = 0, goldDay = false, boxes = [];
   const force = {}; // テスト用：{ rare, wind, gold }
+  const CL = window.YoroCloset, DY = window.YoroDays;
+  const CLIP = window.YoroClip || { capture() {}, reset() {}, stopAfter() {}, ready: () => false, make: async () => null };
+  let mode = 'free', look = null, curBest = 0, unlockAtStart = []; // free＝いつものコース／daily＝今日のコース・見た目・この回のベスト・はじめに使えたもの
+  const ctxNow = () => { const st = CL.stats(); return { total: st.total, runs: st.runs, best: bestRun, zukan: ZK.count().got, streak: DY.streak().n, has: ZK.has }; };
+  const itemName = () => (look ? look.carry.name : 'プリン');
+  const tr = (t) => (itemName().includes('プリン') ? t : t.replace(/プリン/g, itemName())); // 文の「プリン」を運んでいるものの名前に
   function noteNew(isNew, text) { if (isNew) runNew.push(text); return isNew; }
 
   // ---- 記録 ----
@@ -36,47 +42,50 @@
   function loadLevel(n, carry) {
     const old = carry ? { goal: stage.goal, gy: game.groundHeightAt(stage.goal) } : null;
     level = n;
-    game = YoroCore.create(planck, { level: n });
+    game = YoroCore.create(planck, { level: n, seed: mode === 'daily' ? DY.seed() : 0 });
+    const R = mode === 'daily' ? DY.rng(n) : Math.random; // 今日のコースは、風・お客さん・箱の場所もみんな同じ
     S = game.state; stage = game.stage;
     if (old) { cam.x -= old.goal; cam.y -= old.gy; worldOff += old.goal; } // 前の道の続きに見えるように
     else { cam.x = 0; cam.y = 1; worldOff = 0; delivered = null; }
     ui.meterLabel.textContent = `${n}軒目`;
     hinted = new Set();
     prevWaiter = n > 1 ? (carry ? waiter : WT.forLevel(n - 1)) : null;
-    const rare = n >= 2 && (force.rare != null ? force.rare : Math.random() < 0.05); // ごくたまに、めずらしいお客さん
-    waiter = rare ? pickOne(WT.RARE) : WT.forLevel(n); faceNow = 'wait';
+    const rare = n >= 2 && (force.rare != null ? force.rare : R() < 0.05); // ごくたまに、めずらしいお客さん
+    waiter = rare ? WT.RARE[Math.floor(R() * WT.RARE.length)] : WT.forLevel(n); faceNow = 'wait';
     // たまに風がふく（3軒目から）
-    const windy = n >= 3 && (force.wind != null ? force.wind !== 0 : Math.random() < 0.15);
-    S.wind = windy ? (force.wind || (Math.random() < 0.5 ? -4 : 4)) : 0;
-    makeBoxes();
+    const windy = n >= 3 && (force.wind != null ? force.wind !== 0 : R() < 0.15);
+    S.wind = windy ? (force.wind || (R() < 0.5 ? -4 : 4)) : 0;
+    makeBoxes(R);
     let msg = n === 1 ? `${waiter.name}に プリンを とどけよう！<br>左・右…トン、トン、とリズムよく！`
       : n === 3 ? `つぎは ${waiter.name}の家<br>じゃまな物は ジャンプで こえよう！`
       : `つぎは ${waiter.name}の家<br>${stage.goal}m先で まってるよ`;
     if (rare) { msg = `えっ！？ つぎは <b>${waiter.name}</b>の家！？<br>めずらしいお客さんだ！`; noteNew(ZK.mark('event', 'rare'), 'できごと「めずらしい お客さん」'); }
     if (S.wind) { const head = S.wind < 0; msg = `${head ? '🌬️ 向かい風だ！ おされるぞ' : '🍃 追い風だ！ 前につんのめるぞ'}<br>${msg.split('<br>')[0]}`; noteNew(ZK.mark('event', head ? 'headwind' : 'tailwind'), `できごと「${head ? '向かい風' : '追い風'}」`); }
     if (n === 1 && goldDay) msg = '✨ きょうは 金のプリンの日！ ✨<br>おたからが いつもの2ばい！';
-    showBanner(msg);
+    if (n === 1 && mode === 'daily') msg = `📅 今日のコース（${DY.label()}）<br>${msg.split('<br>')[0]}`;
+    showBanner(tr(msg));
     if (n > 1 && (rare || S.wind)) { snd.play(S.wind ? 'gust' : 'event'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 3000); }
   }
   // 道のおたから（？の箱）。ふつうの箱は歩くと取れる高さ、高い箱はジャンプしないと取れない
-  function makeBoxes() {
+  function makeBoxes(R) {
+    R = R || Math.random;
     boxes = [];
     const g = stage.goal;
     const busy = (x) => stage.pits.some((q) => x > q.x0 - 1 && x < q.x1 + 1) || stage.springs.some((q) => Math.abs(q.x - x) < 1.2)
       || stage.obstacles.some((o) => Math.abs(o.x - x) < 1) || boxes.some((b) => Math.abs(b.x - x) < 1.5);
-    const k = (1 + Math.floor(g / 18) + (Math.random() < 0.4 ? 1 : 0)) * (goldDay ? 2 : 1);
+    const k = (1 + Math.floor(g / 18) + (R() < 0.4 ? 1 : 0)) * (goldDay ? 2 : 1);
     for (let i = 0; i < k; i++) {
       for (let t = 0; t < 12; t++) {
-        const x = 3 + Math.random() * (g - 5.5);
+        const x = 3 + R() * (g - 5.5);
         if (busy(x)) continue;
-        const high = level >= 2 && Math.random() < 0.3;
+        const high = level >= 2 && R() < 0.3;
         boxes.push({ x, y: game.groundHeightAt(x) + (high ? 2.45 : 1.65), high, taken: 0, item: null });
         break;
       }
     }
     // じゃまな物や穴の上にも、ときどき（飛びこえるついでに取れる）
-    for (const o of stage.obstacles) if (Math.random() < 0.4) boxes.push({ x: o.x, y: game.groundHeightAt(o.x - 0.5) + 2.45, high: true, taken: 0, item: null });
-    for (const q of stage.pits) if (!q.bySpring && Math.random() < 0.4) boxes.push({ x: (q.x0 + q.x1) / 2, y: q.h + 2.35, high: true, taken: 0, item: null });
+    for (const o of stage.obstacles) if (R() < 0.4) boxes.push({ x: o.x, y: game.groundHeightAt(o.x - 0.5) + 2.45, high: true, taken: 0, item: null });
+    for (const q of stage.pits) if (!q.bySpring && R() < 0.4) boxes.push({ x: (q.x0 + q.x1) / 2, y: q.h + 2.35, high: true, taken: 0, item: null });
   }
   function pickupBoxes() {
     const c = S.char; if (!c) return;
@@ -137,6 +146,7 @@
     else if (RK.includes(e.code)) keys.right = true;
     else if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
       if (zukanEl.classList.contains('show')) closeZukan();
+      else if (closetEl.classList.contains('show')) closeCloset();
       else if (ui.title.classList.contains('show')) start();
       else if (ui.fail.classList.contains('show') && !ui.retry.disabled) restart();
       else if (ui.pause.classList.contains('show')) resume();
@@ -161,19 +171,23 @@
   function showOnly(el) {
     for (const o of [ui.title, ui.fail, ui.pause]) o.classList.toggle('show', o === el);
   }
-  function start() { restart(); }
+  function start() { restart('free'); }
   // ゲームオーバーのあとは、いつも最初（おかしや）から
   let passedBest = false, nextMile = 50, lastShare = ''; // この回で自己ベストをこえたか・次の節目のきょり・送る文
-  function restart() {
+  function restart(m) {
+    if (m === 'free' || m === 'daily') mode = m;
     runNew = []; runTreasure = 0;
-    goldDay = force.gold != null ? !!force.gold : Math.random() < 0.03; // ごくたまに「金のプリンの日」
+    const cx = ctxNow(); look = CL.current(cx); unlockAtStart = CL.unlockedIds(cx);
+    curBest = mode === 'daily' ? DY.daily().best : bestRun;
+    CLIP.reset();
+    goldDay = force.gold != null ? !!force.gold : (mode === 'daily' ? DY.rng(0)() : Math.random()) < 0.03; // ごくたまに「金のプリンの日」
     if (goldDay) noteNew(ZK.mark('event', 'goldday'), 'できごと「金のプリンの日」');
     loadLevel(1); pops.length = 0; elapsed = 0; runDist = 0; passedBest = false; nextMile = 50; game.spawn(0); showOnly(null); snd.play(goldDay ? 'event' : 'start'); snd.bgm(true);
   }
-  const retry = restart;
+  const retry = () => restart();
   // おうちに着いた：プリンを届けて、止まらずに次のおうちへ
   function deliver() {
-    const say = WT.happy(waiter).say;
+    const say = WT.happy(waiter, itemName()).say;
     noteNew(ZK.mark('face', `${waiter.id}.happy`), `${waiter.name}の「にっこり」顔`);
     snd.play('clear');
     fails = 0;
@@ -187,9 +201,36 @@
   }
   function next() { loadLevel(level + 1); restart(); }
   $('startBtn').onclick = () => start();
-  $('retryBtn').onclick = restart;
-  // ゲームオーバーの画面は、ボタン以外のどこをタップしても すぐもう一回
-  ui.fail.addEventListener('click', (e) => { if (!e.target.closest('button, a, summary') && !ui.retry.disabled) restart(); });
+  $('dailyBtn').onclick = () => restart('daily');
+  $('retryBtn').onclick = () => restart();
+  // ゲームオーバーの画面は、ボタン以外のどこをタップしても すぐもう一回（動画を作っているあいだは待つ）
+  ui.fail.addEventListener('click', (e) => { if (!e.target.closest('button, a, summary') && !ui.retry.disabled && !vidBusy) restart(); });
+  // 転んだ動画：1回目のタップで作る → できたら、もう1回のタップで送る（スマホは送るときにタップが要る）
+  let vidFile = null, vidBusy = false, clipInfo = null;
+  const vidBtn = $('vidBtn');
+  function resetVid() { vidFile = null; vidBusy = false; vidBtn.disabled = false; vidBtn.textContent = '🎬 転んだところを動画にする'; }
+  async function shareFile(f) {
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], text: lastShare }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 10000);
+  }
+  vidBtn.onclick = async () => {
+    if (vidFile) { shareFile(vidFile); return; }
+    if (vidBusy || !clipInfo) return;
+    vidBusy = true; vidBtn.disabled = true; vidBtn.textContent = '🎬 動画をつくっています…';
+    try { vidFile = await CLIP.make(clipInfo, (p) => { vidBtn.textContent = `🎬 動画をつくっています… ${Math.round(p * 100)}%`; }); } catch (e) { vidFile = null; }
+    vidBusy = false; vidBtn.disabled = false;
+    vidBtn.textContent = !vidFile ? 'このスマホでは動画を作れませんでした' : vidFile.type.startsWith('video') ? '🎬 できた！ 動画を送る・保存' : '🖼 画像を送る・保存';
+  };
+  // きせかえ
+  const closetEl = $('closet');
+  function openCloset() { CL.render($('closetBody'), ctxNow(), () => { look = CL.current(ctxNow()); snd.play('tap'); }); closetEl.classList.add('show'); closetEl.querySelector('.card').scrollTop = 0; snd.play('tap'); }
+  function closeCloset() { closetEl.classList.remove('show'); look = CL.current(ctxNow()); }
+  $('closetBtn').onclick = openCloset;
+  $('closetClose').onclick = closeCloset;
+  closetEl.addEventListener('click', (e) => { if (e.target === closetEl) closeCloset(); });
   // ずかん
   const zukanEl = $('zukan');
   function openZukan() { ZK.render($('zukanBody')); zukanEl.classList.add('show'); zukanEl.querySelector('.card').scrollTop = 0; snd.play('tap'); }
@@ -228,6 +269,9 @@
   function refreshTitle() {
     $('bestRun').hidden = bestRun <= 0;
     $('bestRun').textContent = `自己ベスト：${bestRun.toFixed(1)}m`;
+    const sk = DY.streak(), dd = DY.daily();
+    $('streak').innerHTML = sk.n > 0 ? `🔥 <b>${sk.n}日</b> れんぞくで遊んでいます${sk.playedToday ? '' : '（きょうも遊ぶと ' + (sk.n + 1) + '日！）'}` : '🔥 毎日遊ぶと「れんぞく日数」がふえるよ';
+    $('dailyBtn').innerHTML = `📅 今日のコース（${DY.label()}）<small>${dd.tries ? `今日のベスト ${dd.best.toFixed(1)}m・${dd.tries}回` : 'きょうだけのコース。みんな同じ'}</small>`;
     showTitleRank();
   }
   // タイトルに、じぶんの記録の上位を出す
@@ -237,29 +281,43 @@
   function onFall() {
     const left = Math.max(0, stage.goal - S.bestX);
     fails++;
-    const r = WT.reaction(waiter, { reason: S.fallReason, fails, left });
+    const r = WT.reaction(waiter, { reason: S.fallReason, fails, left, item: itemName() });
     faceNow = r.face; faceT0 = performance.now();
     const fr = ZK.FALLS.find((f) => f.id === S.fallReason);
     if (fr) noteNew(ZK.mark('fall', fr.id), `ころび方「${fr.name}」`);
     noteNew(ZK.mark('face', `${waiter.id}.${r.mood}`), `${waiter.name}の「${ZK.MOOD_NAMES[r.mood] || r.mood}」顔`);
     const total = runDist + Math.min(stage.goal, Math.max(0, S.bestX)); // ゲームオーバーまでに歩けたきょり
-    const newBest = total > bestRun + 0.05;
-    if (newBest) { bestRun = total; store.set('yoro.bestRun', bestRun.toFixed(1)); refreshTitle(); }
-    ui.failTag.textContent = `ゲームオーバー（${{ pudding: 'プリンを落とした', timeup: '時間切れ', rhythm: 'リズムがくずれてころんだ', stop: '止まってころんだ', hole: '穴に落ちた' }[S.fallReason] || 'ころんだ'}）`;
+    const daily = mode === 'daily';
+    const prevBest = curBest;
+    let newBest;
+    if (daily) { newBest = DY.addDaily(total).isBest; }
+    else { newBest = total > bestRun + 0.05; if (newBest) { bestRun = total; store.set('yoro.bestRun', bestRun.toFixed(1)); } }
+    // 合計きょり・回数・れんぞく日数 → 新しく使えるようになったもの
+    CL.addRun(total);
+    const sk = DY.touch();
+    const extra = [];
+    if (sk.up && sk.n >= 2) extra.push(`🔥 ${sk.n}日 れんぞく！`);
+    for (const x of CL.newly(unlockAtStart, ctxNow())) extra.push(`🎁${x.name}が使える！`);
+    runNew = extra.concat(runNew);
+    refreshTitle();
+    ui.failTag.textContent = tr(`${daily ? '📅 ' : ''}ゲームオーバー（${{ pudding: 'プリンを落とした', timeup: '時間切れ', rhythm: 'リズムがくずれてころんだ', stop: '止まってころんだ', hole: '穴に落ちた' }[S.fallReason] || 'ころんだ'}）`);
     ui.failTitle.textContent = r.title;
     ui.failLine.textContent = r.say;
     ui.failAct.textContent = r.action;
-    const prevBest = newBest ? Math.max(0, ...RANK.list().map((x) => x.d).filter((d) => d < total - 0.05), 0) : bestRun;
-    ui.failDist.textContent = `${level}軒目・${waiter.name}のおうちまで あと ${left.toFixed(1)}m\n歩いたきょり ${total.toFixed(1)}m${newBest ? '' : `（ベスト ${bestRun.toFixed(1)}m）`}${runTreasure ? `\nこの回のおたから ${runTreasure}こ` : ''}`;
+    ui.failDist.textContent = `${daily ? `📅 今日のコース ${DY.daily().tries}回目\n` : ''}${level}軒目・${waiter.name}のおうちまで あと ${left.toFixed(1)}m\n歩いたきょり ${total.toFixed(1)}m${newBest ? '' : `（${daily ? '今日の' : ''}ベスト ${curBest.toFixed(1)}m）`}${runTreasure ? `\nこの回のおたから ${runTreasure}こ` : ''}`;
     $('retryBtn').textContent = 'タップで もう一回';
     ui.retry.disabled = true; setTimeout(() => { ui.retry.disabled = false; }, 700); // 歩いていた指でうっかり押さないように
-    lastShare = `ヨロヨロおつかいで ${total.toFixed(1)}m 歩いた！${newBest ? '（自己ベスト！）' : ''} ${level}軒目の${waiter.name}に「${r.say}」と言われた…`;
-    // 歩いたきょりを、じぶんの記録ランキングに入れて上位を出す（このスマホの中だけ）
-    const rk = total >= 0.5 ? RANK.add(total) : { list: RANK.list(), idx: -1 };
+    lastShare = `ヨロヨロおつかい${daily ? `の今日のコース（${DY.label()}）` : ''}で ${total.toFixed(1)}m 歩いた！${newBest ? (daily ? '（今日のベスト！）' : '（自己ベスト！）') : ''} ${level}軒目の${waiter.name}に「${r.say}」と言われた…`;
+    clipInfo = { dist: `${total.toFixed(1)}m`, title: r.title, say: r.say, tag: ui.failTag.textContent };
+    resetVid();
+    // 歩いたきょりを、じぶんの記録ランキングに入れて上位を出す（このスマホの中だけ。今日のコースは入れない）
+    const rk = daily ? { list: [], idx: -1 } : total >= 0.5 ? RANK.add(total) : { list: RANK.list(), idx: -1 };
     RANK.render($('failRank'), rk);
     // あとちょっと：すぐ上の記録まで何mだったか
     const near = $('failNear'); near.classList.toggle('best', newBest);
-    if (newBest) near.textContent = prevBest > 0 ? `🎉 自己ベスト更新！ +${(total - prevBest).toFixed(1)}m` : '🎉 はじめての記録！';
+    const bestWord = daily ? '今日のベスト' : '自己ベスト';
+    if (newBest) near.textContent = prevBest > 0 ? `🎉 ${bestWord}更新！ +${(total - prevBest).toFixed(1)}m` : (daily ? '🎉 今日の はじめての記録！' : '🎉 はじめての記録！');
+    else if (daily) { const gap = curBest - total; near.textContent = `今日のベストまで あと ${gap.toFixed(1)}m${gap < 5 ? '！ おしい！' : '！'}`; }
     else {
       const above = rk.list.filter((x) => x.d > total + 0.05).pop(); // すぐ上の記録
       const pos = above ? rk.list.indexOf(above) + 1 : 0;
@@ -269,7 +327,7 @@
     }
     // ずかん：この回で新しく入ったもの（なければ、まだ見ていないころび方のヒント）
     const zc = ZK.count(), nb = $('failNew');
-    if (runNew.length) nb.innerHTML = `<b>📖 NEW！ ずかんに のった</b>（${zc.got}/${zc.total}）<br>${runNew.slice(0, 4).join('・')}${runNew.length > 4 ? ` ほか${runNew.length - 4}こ` : ''}`;
+    if (runNew.length) nb.innerHTML = `<b>NEW！</b>（📖 ずかん ${zc.got}/${zc.total}）<br>${runNew.slice(0, 4).join('・')}${runNew.length > 4 ? ` ほか${runNew.length - 4}こ` : ''}`;
     else {
       const rest = ZK.FALLS.filter((f) => !ZK.has('fall', f.id));
       nb.innerHTML = `📖 ずかん ${zc.got}/${zc.total}${rest.length ? `<br>まだ見ていない ころび方：「${pickOne(rest).hint}」` : ''}`;
@@ -357,8 +415,8 @@
       ctx.fill(); ctx.stroke();
     });
     // 自己ベストの金色の旗（この道の中にあるときだけ）
-    const bx = bestRun - runDist;
-    if (bestRun > 0 && bx > 0.3 && bx < stage.goal + 0.5) {
+    const bx = curBest - runDist;
+    if (curBest > 0 && bx > 0.3 && bx < stage.goal + 0.5) {
       const [x, y] = W2S(bx, game.groundHeightAt(bx)); const s = scale;
       ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - s * 1.8); ctx.stroke();
@@ -516,8 +574,11 @@
     ctx.arcTo(X, Y + Hd, X, Y, r); ctx.arcTo(X, Y, X + Wd, Y, r); ctx.closePath();
   }
 
+  const shade = (hex, k) => { const n = parseInt(hex.slice(1), 16); const f = (v) => Math.max(0, Math.min(255, Math.round(v * k))); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; };
+  const OUT = () => (look ? look.outfit : CL.OUTFITS[0]);
   function drawLeg(lg, back) {
-    const pants = back ? '#33507a' : '#3f639a', shoe = back ? '#a83a2a' : '#d4493a';
+    const o = OUT(), k = back ? 0.8 : 1;
+    const pants = shade(o.pants, k), shoe = shade(o.shoe, k);
     withBody(lg.shin, () => {
       ctx.fillStyle = pants; rr(0, 0.02, 0.065, 0.2, 0.05); ctx.fill(); ctx.stroke();
       ctx.fillStyle = shoe; rr(0.07, -0.245, 0.16, 0.05, 0.04); ctx.fill(); ctx.stroke();
@@ -543,9 +604,13 @@
     };
     const sh = c.torso.getWorldPoint(planck.Vec2(0.0, 0.2));
     arm(sh.x, sh.y, hand.x, hand.y); // 奥の腕
+    const o = OUT();
     withBody(c.torso, () => {
-      ctx.fillStyle = '#ff9f43'; rr(0, 0, 0.16, 0.32, 0.12); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#fff'; rr(0.03, -0.08, 0.1, 0.18, 0.06); ctx.fill(); ctx.stroke(); // エプロン
+      ctx.fillStyle = o.shirt; rr(0, 0, 0.16, 0.32, 0.12); ctx.fill(); ctx.stroke();
+      if (o.apron) { ctx.fillStyle = o.apron; rr(0.03, -0.08, 0.1, 0.18, 0.06); ctx.fill(); ctx.stroke(); } // エプロン
+      if (o.stripe) { ctx.fillStyle = o.stripe; ctx.fillRect(0.06, -0.3, 0.035, 0.6); } // ジャージの線
+      if (o.dots) { ctx.fillStyle = '#fff'; for (const [dx, dy] of [[-0.06, -0.15], [0.06, 0], [-0.05, 0.15], [0.08, -0.22], [0.07, 0.2]]) { ctx.beginPath(); ctx.arc(dx, dy, 0.025, 0, Math.PI * 2); ctx.fill(); } }
+      if (o.id === 'prince') { ctx.fillStyle = '#ffd23a'; ctx.fillRect(-0.16, 0.05, 0.32, 0.05); } // 金のベルト
     });
     // おぼん
     withBody(c.tray, () => {
@@ -579,25 +644,77 @@
       if (down || panic > 0.5) { ctx.ellipse(0.1, 0.1, 0.03, 0.04, 0, 0, Math.PI * 2); ctx.stroke(); }
       else { ctx.arc(0.1, 0.07, 0.04, 0.2, Math.PI - 0.2); ctx.stroke(); }
       ctx.fillStyle = 'rgba(255,120,120,.45)'; ctx.beginPath(); ctx.arc(0.0, 0.07, 0.035, 0, Math.PI * 2); ctx.fill();
+      drawHat(o.hat);
     });
     if (c.pudding) withBody(c.pudding, () => drawPudding(0, 0, false));
   }
 
+  // ぼうし（頭の座標。上がマイナス・前が＋x）
+  function drawHat(hat) {
+    if (!hat) return;
+    ctx.lineWidth = 0.02; ctx.strokeStyle = '#3b2a1e';
+    if (hat === 'crown') {
+      ctx.fillStyle = '#ffd23a'; ctx.beginPath(); ctx.moveTo(-0.13, -0.17); ctx.lineTo(-0.15, -0.33); ctx.lineTo(-0.07, -0.24); ctx.lineTo(0, -0.36); ctx.lineTo(0.07, -0.24); ctx.lineTo(0.15, -0.33); ctx.lineTo(0.13, -0.17); ctx.closePath(); ctx.fill(); ctx.stroke();
+    } else if (hat === 'hood') {
+      ctx.fillStyle = '#ffd23a'; ctx.beginPath(); ctx.arc(-0.02, -0.03, 0.245, Math.PI * 0.95, Math.PI * 2.02); ctx.lineTo(0.12, -0.1); ctx.quadraticCurveTo(-0.02, -0.2, -0.18, -0.02); ctx.closePath(); ctx.fill(); ctx.stroke();
+    } else if (hat === 'nightcap') {
+      ctx.fillStyle = '#8ec5ff'; ctx.beginPath(); ctx.moveTo(-0.21, -0.07); ctx.quadraticCurveTo(0, -0.27, 0.19, -0.1); ctx.quadraticCurveTo(-0.05, -0.3, -0.36, -0.36); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-0.37, -0.36, 0.05, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    } else if (hat === 'band') {
+      ctx.fillStyle = '#39405a'; ctx.fillRect(-0.21, -0.12, 0.42, 0.06); ctx.strokeRect(-0.21, -0.12, 0.42, 0.06);
+      ctx.beginPath(); ctx.moveTo(-0.2, -0.1); ctx.lineTo(-0.36, -0.02 + Math.sin(performance.now() / 120) * 0.03); ctx.lineTo(-0.2, -0.07); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#c9ced8'; ctx.fillRect(0.03, -0.115, 0.08, 0.05);
+    } else if (hat === 'chef') {
+      ctx.fillStyle = '#fff'; ctx.fillRect(-0.14, -0.27, 0.27, 0.12); ctx.strokeRect(-0.14, -0.27, 0.27, 0.12);
+      for (const [dx, r] of [[-0.1, 0.08], [0, 0.1], [0.1, 0.08]]) { ctx.beginPath(); ctx.arc(dx, -0.32, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+      ctx.fillRect(-0.13, -0.3, 0.25, 0.1);
+    }
+  }
+  // 運ぶもの（おぼんの上）。プリン以外は、きせかえで選んだもの
+  function drawPudding(x, y, onTray) {
+    const id = look ? look.carry.id : 'pudding';
+    if (id === 'pudding' || id === 'goldpudding') return drawPurin(x, y, onTray, goldDay || id === 'goldpudding');
+    if (onTray) { const target = (S.danger || 0) * 0.25 + (S.wobble || 0) * 0.15; jigV += (Math.sin(performance.now() / 45) * target - jig) * 0.3; jigV *= 0.7; jig += jigV; }
+    const j = onTray ? jig : 0;
+    ctx.save(); ctx.translate(x, -y + 0.1); ctx.transform(1, 0, -j * 1.2, 1, 0, 0); if (onTray) { ctx.scale(1.5, 1.5); ctx.lineWidth /= 1.5; } ctx.translate(0, -0.1);
+    const C = (col) => { ctx.fillStyle = col; ctx.fill(); ctx.stroke(); };
+    if (id === 'dango') {
+      ctx.beginPath(); ctx.moveTo(-0.02, 0.1); ctx.lineTo(0.02, -0.24); ctx.lineWidth *= 0.8; ctx.strokeStyle = '#b07a4a'; ctx.stroke(); ctx.strokeStyle = '#3b2a1e';
+      [['#ff9ec7', 0.04], ['#fff', -0.05], ['#8fd36b', -0.14]].forEach(([col, yy]) => { ctx.beginPath(); ctx.arc(0, yy, 0.055, 0, Math.PI * 2); C(col); });
+    } else if (id === 'cake') {
+      ctx.beginPath(); ctx.moveTo(-0.12, 0.1); ctx.lineTo(0.12, 0.1); ctx.lineTo(0.12, -0.06); ctx.lineTo(-0.12, -0.02); ctx.closePath(); C('#fff6e8');
+      ctx.fillStyle = '#ffb3c7'; ctx.fillRect(-0.12, 0.02, 0.24, 0.025);
+      ctx.beginPath(); ctx.arc(0.02, -0.08, 0.04, 0, Math.PI * 2); C('#e8303a');
+    } else if (id === 'egg') {
+      ctx.beginPath(); ctx.ellipse(0, 0.07, 0.16, 0.035, 0, 0, Math.PI * 2); C('#ffffff');
+      ctx.beginPath(); ctx.ellipse(0.02, 0.04, 0.05, 0.035, 0, 0, Math.PI * 2); C('#ffb020');
+    } else if (id === 'suika') {
+      ctx.beginPath(); ctx.arc(0, 0.1, 0.17, Math.PI, 0); ctx.closePath(); C('#3f9a3a');
+      ctx.beginPath(); ctx.arc(0, 0.1, 0.14, Math.PI, 0); ctx.closePath(); ctx.fillStyle = '#ff5a5a'; ctx.fill();
+      ctx.fillStyle = '#3b2a1e'; for (const [dx, dy] of [[-0.07, 0.03], [0, -0.01], [0.07, 0.04], [-0.03, 0.07], [0.04, 0.07]]) { ctx.beginPath(); ctx.ellipse(dx, dy, 0.008, 0.014, 0, 0, Math.PI * 2); ctx.fill(); }
+    } else if (id === 'goldfish') {
+      ctx.beginPath(); ctx.arc(0, -0.02, 0.13, Math.PI * 1.75, Math.PI * 1.25); ctx.closePath(); C('rgba(160,215,255,.85)');
+      const t = performance.now() / 300, fx = Math.sin(t) * 0.04;
+      ctx.beginPath(); ctx.ellipse(fx, 0.01, 0.04, 0.025, 0, 0, Math.PI * 2); C('#ff7a2f');
+      ctx.beginPath(); ctx.moveTo(fx - 0.035, 0.01); ctx.lineTo(fx - 0.075, -0.02); ctx.lineTo(fx - 0.075, 0.04); ctx.closePath(); C('#ff7a2f');
+    }
+    ctx.restore();
+  }
   // プリン（ぷるぷる）。onTray のときはおぼんの上の位置（上向き座標）
   let jig = 0, jigV = 0;
-  function drawPudding(x, y, onTray) {
+  function drawPurin(x, y, onTray, gold) {
     if (onTray) {
       const target = (S.danger || 0) * 0.25 + (S.wobble || 0) * 0.15;
       jigV += (Math.sin(performance.now() / 45) * target - jig) * 0.3; jigV *= 0.7; jig += jigV;
     }
     const j = onTray ? jig : 0;
     ctx.save(); ctx.translate(x, -y + 0.1); ctx.transform(1, 0, -j * 1.2, 1, 0, 0); if (onTray) { ctx.translate(0, 0.0); ctx.scale(1.5, 1.5); ctx.lineWidth /= 1.5; } ctx.scale(1 + Math.abs(j) * 0.3, 1 - Math.abs(j) * 0.3); ctx.translate(0, -0.1);
-    ctx.fillStyle = goldDay ? '#ffe85c' : '#ffd84d';
+    ctx.fillStyle = gold ? '#ffe85c' : '#ffd84d';
     ctx.beginPath(); ctx.moveTo(-0.13, 0.1); ctx.lineTo(0.13, 0.1); ctx.lineTo(0.09, -0.1); ctx.lineTo(-0.09, -0.1); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = goldDay ? '#e0a800' : '#8a4b1f';
+    ctx.fillStyle = gold ? '#e0a800' : '#8a4b1f';
     ctx.beginPath(); ctx.moveTo(-0.095, -0.06); ctx.lineTo(0.095, -0.06); ctx.lineTo(0.09, -0.1); ctx.lineTo(-0.09, -0.1); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(-0.07, -0.02, 0.025, 0.08);
-    if (goldDay) { // キラッ
+    if (gold) { // キラッ
       const k = (Math.sin(performance.now() / 200) + 1) / 2; ctx.fillStyle = `rgba(255,255,255,${0.4 + k * 0.6})`;
       ctx.beginPath(); for (let i = 0; i < 8; i++) { const r = i % 2 ? 0.015 : 0.05, a = i * Math.PI / 4; ctx.lineTo(0.12 + Math.cos(a) * r, -0.12 + Math.sin(a) * r); } ctx.closePath(); ctx.fill();
     }
@@ -644,13 +761,14 @@
     ui.meterFill.style.background = d > 0.7 ? '#ff4d4d' : d > 0.4 ? '#ffb020' : '#5cc96b';
     ui.meter.classList.toggle('danger', d > 0.7 && S.status === 'play');
     const now = S.status === 'play' ? runDist + Math.min(stage.goal, x) : 0; // ベストをこえたら、ベストの数字も一緒にふえる
-    ui.best.innerHTML = `<small>ベスト</small>${Math.floor(Math.max(bestRun, now))}<small>m</small>`;
+    ui.best.innerHTML = `<small>${mode === 'daily' ? '今日の' : ''}ベスト</small>${Math.floor(Math.max(curBest, now))}<small>m</small>`;
   }
 
   // ---- ループ ----
   let last = performance.now(), acc = 0;
   if (bestRun > 0 && !RANK.list().some((r) => r.d >= bestRun - 0.05)) RANK.add(bestRun); // 前からの自己ベストも記録ランキングに入れる
   bestRun = Math.max(bestRun, ...RANK.list().map((r) => r.d)); // 記録ランキングの1位と自己ベストをそろえる
+  curBest = bestRun; look = CL.current(ctxNow());
   loadLevel(1); refreshTitle();
   game.spawn(0);
   function frame(now) {
@@ -692,7 +810,7 @@
       }
       if (S.status === 'play') { // 歩いたきょりの節目と、自己ベストをこえた瞬間
         const tot = runDist + Math.max(0, game.charX());
-        if (!passedBest && bestRun > 0 && tot > bestRun) { passedBest = true; pop('自己ベスト こえた！', '#d48a00'); snd.play('best'); }
+        if (!passedBest && curBest > 0 && tot > curBest) { passedBest = true; pop(mode === 'daily' ? '今日のベスト こえた！' : '自己ベスト こえた！', '#d48a00'); snd.play('best'); }
         if (tot >= nextMile) { pop(`${nextMile}m とっぱ！`, '#2f6fd6'); snd.play('checkpoint'); nextMile += 50; }
       }
       if (S.status === 'clear') deliver();
@@ -715,6 +833,11 @@
     drawCharge();
     drawPops();
     updateHud();
+    if (S.char && !ui.title.classList.contains('show')) {
+      if (S.status === 'fallen') CLIP.stopAfter(1400, now); // 転んだあと少しだけ取って止める
+      const tp = S.char.torso.getPosition(); const [px, py] = W2S(tp.x, tp.y);
+      CLIP.capture(canvas, px, py, W, H, DPR, now);
+    }
     const shownFace = ui.fail.classList.contains('show') ? ui.failFace : null;
     if (shownFace) {
       const fc = shownFace.getContext('2d'); fc.clearRect(0, 0, 240, 240);
@@ -725,5 +848,5 @@
   requestAnimationFrame(frame);
 
   // テスト用（自動操作で動作確認するため）
-  window.__yoro = { get game() { return game; }, get boxes() { return boxes; }, force, start, retry, restart, next, loadLevel, pause, resume, openZukan, closeZukan };
+  window.__yoro = { get game() { return game; }, get boxes() { return boxes; }, get mode() { return mode; }, force, openCloset, closeCloset, start, retry, restart, next, loadLevel, pause, resume, openZukan, closeZukan };
 })();

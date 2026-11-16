@@ -90,7 +90,9 @@
     return t.replace(/\{(\w+)\}/g, (_, k) => (ctx[k] != null ? ctx[k] : ''));
   }
   // 失敗したときの反応をつくる（fails = 続けて何回目の失敗か）
-  function reaction(w, { reason, fails, left }) {
+  // 運んでいるものがプリンでなければ、セリフの「プリン」をそのものの名前にかえる
+  const swap = (t, item) => (item && item !== 'プリン' ? t.replace(/プリン/g, item) : t);
+  function reaction(w, { reason, fails, left, item }) {
     const pool = fails <= 1 ? ['sad', 'sad', 'shock', 'sigh'] : fails <= 3 ? ['sigh', 'sulk', 'shock', 'sad', 'angry'] : ['angry', 'cry', 'sulk', 'sigh', 'angry', 'cry'];
     const mood = pick(pool);
     const M = MOODS[mood];
@@ -99,12 +101,12 @@
       : reason === 'pudding' ? M.say : M.say.filter((l) => !l.includes('飛')); // ころんだときは「飛んだ」話をしない
     let say = fill(pick(lines), ctx);
     if (w.animal) say = pick(ANIMAL_SAY[w.style]) + (Math.random() < 0.5 ? `\n（たぶん「${say}」と言っている）` : '');
-    return { mood, face: M.face, title: pick(M.title), say, action: `${w.name}は ${pick(ACTIONS[mood])}。` };
+    return { mood, face: M.face, title: pick(M.title), say: swap(say, item), action: `${w.name}は ${pick(ACTIONS[mood])}。` };
   }
-  function happy(w) {
+  function happy(w, item) {
     let say = fill(pick(HAPPY), { treat: pick(TREATS), call: w.call });
     if (w.animal) say = (w.style === 'cat' ? 'にゃーん♪' : 'ワンワン♪') + `\n（たぶん「${say}」と言っている）`;
-    return { face: 'happy', say };
+    return { face: 'happy', say: swap(say, item) };
   }
 
   // 顔をかく（c = canvas 2D、中心 x,y・大きさ r）

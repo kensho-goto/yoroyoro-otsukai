@@ -127,7 +127,21 @@
   .newbox b { color: #d9531a; }
   .row2 { display: flex; gap: 8px; }
   .row2 .btn { flex: 1; }
-  #zukan { z-index: 8; }
+  #zukan, #closet { z-index: 8; }
+  #closet .card { text-align: left; }
+  #closet h2 { text-align: center; }
+  #closet h3 { margin: 12px 0 6px; font-size: 16px; border-bottom: 3px solid var(--ink); }
+  .clg { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .cl { font: inherit; color: var(--ink); border: 3px solid var(--ink); border-radius: 12px; background: #fff; padding: 6px; text-align: center; font-weight: 800; font-size: 14px; cursor: pointer; }
+  .cl b { display: block; font-size: 28px; line-height: 1.2; }
+  .cl i { display: block; font-style: normal; font-size: 11px; opacity: .8; font-weight: 700; }
+  .cl.on { background: #fff3c4; box-shadow: 0 0 0 3px var(--accent) inset; }
+  .cl.no { background: #efe6d6; color: #8a7a62; border-style: dashed; cursor: default; }
+  .sw { display: inline-block; width: 26px; height: 30px; border: 2px solid var(--ink); border-radius: 8px; }
+  .btn small { display: block; font-size: 12px; font-weight: 700; opacity: .9; }
+  .btn.daily { background: #2f9e8f; font-size: 18px; padding: 10px; }
+  .streak { margin: 8px 0 0 !important; font-size: 14px !important; font-weight: 800; }
+  .btn.vid { background: #7a4ad6; font-size: 16px; padding: 10px; }
   #zukan .card { text-align: left; }
   #zukan h2 { text-align: center; }
   #zukan h3 { margin: 12px 0 6px; font-size: 16px; border-bottom: 3px solid var(--ink); }
@@ -193,7 +207,9 @@
     <p class="tip">左右を交互に押すと歩けます。押しているあいだ足が上がり、はなすと地面をけります。<br><b>同じ足を続けて押す・リズムがばらばら・止まる と、ころびます。</b><br>足ぶみしながら前に進んでいないと、体を保てず ふらふらして ころびます（何も押さないと、すぐ転びます）。<br>トン、トン、と同じ間かくで！<br><b>両方いっしょに押して、はなすとジャンプ！</b>長く押すほど高く飛びます。穴もジャンプでこえよう。<br>ジャンプ台に乗ると、ピョーンと飛ばしてくれます。<br>ガクガク歩くと「ぐらぐらメーター」がたまり、満タンでプリンが飛んでいきます。<br>パソコンは「F」と「J」キーでも遊べます。<br>コースは毎回同じ。おぼえれば上達します。<br>道に立っている金色の旗が、あなたの自己ベストです。</p>
     </details>
     <button class="btn" id="startBtn">はじめる</button>
-    <button class="btn sub" id="titleZukanBtn" type="button">📖 ずかん</button>
+    <button class="btn daily" id="dailyBtn" type="button">📅 今日のコース</button>
+    <p class="streak" id="streak"></p>
+    <div class="row2"><button class="btn sub" id="titleZukanBtn" type="button">📖 ずかん</button><button class="btn sub" id="closetBtn" type="button">👕 きせかえ</button></div>
     <p class="tip" id="bestRun" hidden></p>
     <div class="rank" id="titleRank" hidden></div>
   </div>
@@ -217,6 +233,7 @@
     <p class="tip" id="failDist" style="white-space:pre-line"></p>
     <div class="newbox" id="failNew" hidden></div>
     <button class="btn" id="retryBtn">もう一回</button>
+    <button class="btn vid" id="vidBtn" type="button">🎬 転んだところを動画にする</button>
     <div class="rank" id="failRank" hidden></div>
     <div class="row2"><button class="btn sub" id="failZukanBtn" type="button">📖 ずかん</button><button class="btn sub" id="shareBtn" type="button">記録を送る</button></div>
   </div>
@@ -230,6 +247,15 @@
   </div>
 </div>
 
+<div class="overlay" id="closet">
+  <div class="card">
+    <h2>👕 きせかえ</h2>
+    <p class="tip">遊ぶほど、運ぶものと服がふえます。</p>
+    <div id="closetBody"></div>
+    <button class="btn" id="closetClose" type="button">とじる</button>
+  </div>
+</div>
+
 <script src="vendor/planck.min.js"></script>
 <script src="src/core.js"></script>
 <script src="src/sound.js"></script>
@@ -237,6 +263,9 @@
 <script src="src/gate.js"></script>
 <script src="src/rank.js"></script>
 <script src="src/zukan.js"></script>
+<script src="src/closet.js"></script>
+<script src="src/days.js"></script>
+<script src="src/clip.js"></script>
 <script src="src/main.js"></script>
 </body>
 </html>

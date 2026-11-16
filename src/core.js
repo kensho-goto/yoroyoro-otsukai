@@ -61,11 +61,12 @@
     { kind: 'cat', w: 0.55, h: 0.75 }, // ねむっているねこ
   ];
 
-  function makeLevel(n) {
+  // daySeed（日付の数字など）を入れると、同じ難しさで並びだけちがうコースになる（今日のコース）
+  function makeLevel(n, daySeed) {
     n = Math.max(1, Math.floor(n));
     const d = 1 - Math.exp(-(n - 1) / 4.5); // 0（レベル1）から 1 に近づいていく
     const e = Math.log1p(Math.max(0, n - 20) / 20); // レベル20より先：ゆっくり、でも終わりなく増える（40で0.7、100で1.6、400で3）
-    let seed = n * 9301 + 49297;
+    let seed = daySeed ? (n * 9301 + 49297 + (daySeed % 100000) * 7919) % 2147483646 + 1 : n * 9301 + 49297; // いつものコースは前と同じ並び
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     const goal = Math.min(60, 12 + (n - 1) * 4);
     const maxSlope = Math.min(0.18, Math.min(0.13, 0.05 + n * 0.006) + 0.007 * e); // 坂の急さ（高さ÷長さ）
@@ -173,7 +174,7 @@
   function create(planck, opts) {
     opts = opts || {};
     const { World, Vec2, Box, Circle, Polygon, Chain, RevoluteJoint } = planck;
-    const stage = makeLevel(opts.level || 1);
+    const stage = makeLevel(opts.level || 1, opts.seed || 0);
     const T = Object.assign({}, TUNING, stage.tuning, opts.tuning || {});
     const world = new World({ gravity: Vec2(0, -10) });
 
