@@ -1276,6 +1276,17 @@
   }
   requestAnimationFrame(frame);
 
+  // 新しい版が出ていたら、タイトルにいるときに読み込み直す（スマホに古い画面が残らないように）
+  async function checkVersion() {
+    if (!window.BUILD || window.BUILD === 'dev') return;
+    try {
+      const r = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' }); if (!r.ok) return;
+      const v = (await r.json()).v;
+      if (v && v !== window.BUILD && ui.title.classList.contains('show')) location.reload();
+    } catch (e) { /* 電波がないときはそのまま遊べる */ }
+  }
+  checkVersion();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVersion(); });
   // テスト用（自動操作で動作確認するため）
   window.__yoro = { get game() { return game; }, get boxes() { return boxes; }, get mode() { return mode; }, force, openCloset, closeCloset, openGacha, closeGacha, GA, start, retry, restart, nextStage, loadLevel, pause, resume, openZukan, closeZukan };
 })();
