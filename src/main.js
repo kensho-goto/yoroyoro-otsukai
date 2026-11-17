@@ -10,6 +10,8 @@
     failTitle: $('failTitle'), failLine: $('failLine'), failDist: $('failDist'),
     failTag: $('failTag'), failAct: $('failAct'), failFace: $('failFace'),
     meter: $('meter'), meterFill: $('meterFill'), meterLabel: $('meterLabel'),
+    meter2: $('meter2'), balFill: $('balFill'), spd: $('spd'),
+    guide: $('guide'), guideLabel: $('guideLabel'), gZone: $('gZone'), gDot: $('gDot'),
   };
 
   // 道はレベルで区切らず、どこまでも続く。おうちに届けるたびに次のおうちへ（level＝何軒目か。先へ行くほど難しい）
@@ -56,7 +58,7 @@
     const windy = n >= 3 && (force.wind != null ? force.wind !== 0 : R() < 0.15);
     S.wind = windy ? (force.wind || (R() < 0.5 ? -4 : 4)) : 0;
     makeBoxes(R);
-    let msg = n === 1 ? `${waiter.name}に プリンを とどけよう！<br>左・右…トン、トン、とリズムよく！`
+    let msg = n === 1 ? `${waiter.name}に プリンを とどけよう！<br>光った足を、バーが緑のときに押そう！<br>速く押すほど 速く走れるよ`
       : n === 3 ? `つぎは ${waiter.name}の家<br>じゃまな物は ジャンプで こえよう！`
       : `つぎは ${waiter.name}の家<br>${stage.goal}m先で まってるよ`;
     if (rare) { msg = `えっ！？ つぎは <b>${waiter.name}</b>の家！？<br>めずらしいお客さんだ！`; noteNew(ZK.mark('event', 'rare'), 'できごと「めずらしい お客さん」'); }
@@ -480,6 +482,18 @@
     }
   }
 
+  // 速いときの線（体のうしろに流れる）
+  function drawSpeedLines() {
+    if (!S.char || spdShown < 2.1) return;
+    const p = S.char.torso.getPosition(); const [cx, cy] = W2S(p.x, p.y); const k = Math.min(1, (spdShown - 2.1) / 1);
+    const t = performance.now() / 70;
+    ctx.strokeStyle = `rgba(255,255,255,${0.5 + k * 0.4})`; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    for (let i = 0; i < 6; i++) {
+      const y = cy + (i - 2.5) * scale * 0.28, off = ((t * 40 + i * 37) % (scale * 1.2));
+      const x0 = cx - scale * 0.45 - off;
+      ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 - scale * (0.4 + k * 0.6), y); ctx.stroke();
+    }
+  }
   // おうちと、げんかんの前で待っている人（x はおうちのまん中）
   const ROOFS = ['#e8574f', '#4f8be8', '#4fb36b', '#b05fd1', '#e8a24f', '#5fc7c7'];
   function drawHouse(hx, who, face, n) {
@@ -747,8 +761,45 @@
     ctx.fillText(k >= 1 ? 'はなせ！' : 'ためて…', x, y - h);
   }
 
-  let lastTick = 0;
+  // リズムガイド：次に押す足を光らせ、「いま押す」ところ（緑）を見せる
+  let guideFlashT = 0, guideFlash = '';
+  function flashGuide(k) { guideFlash = k; guideFlashT = performance.now(); }
+  function updateGuide() {
+    const R = S.rhythm, T = S.tuning, on = S.status === 'play' && R && S.char;
+    ui.guide.hidden = !on;
+    if (!on) { ui.padL.classList.remove('next'); ui.padR.classList.remove('next'); return; }
+    const air = S.jump && S.jump.phase !== 'none';
+    const next = air ? null : R.lastSide === 'L' ? 'R' : R.lastSide === 'R' ? 'L' : null;
+    ui.padL.classList.toggle('next', !air && next !== 'R');
+    ui.padR.classList.toggle('next', !air && next !== 'L');
+    const limit = R.first ? T.firstStopLimit : T.stopLimit;
+    const target = R.lastInterval || 0, rf = T.rhythmFree;
+    const max = target ? Math.min(limit, target * 2.2) : limit;
+    const x = Math.min(1, R.sinceStep / max);
+    const inZone = target && R.sinceStep >= target / rf && R.sinceStep <= target * rf;
+    ui.gZone.style.left = target ? `${(target / rf / max) * 100}%` : '0';
+    ui.gZone.style.width = target ? `${Math.max(0, Math.min(1, target * rf / max) - target / rf / max) * 100}%` : '0';
+    ui.gDot.style.left = `${x * 100}%`;
+    ui.gDot.style.background = !target ? '#3b2a1e' : inZone ? '#1f7a12' : R.sinceStep > target * rf ? '#e8303a' : '#3b2a1e';
+    const late = R.sinceStep > Math.max(limit * 0.6, target * rf);
+    ui.guideLabel.textContent = air ? 'ジャンプ中…着地したら また交互に' : late ? '止まっちゃう！ 早く押して！'
+      : !next ? '左・右、どちらからでも' : !target ? `つぎは ${next === 'L' ? '← ひだり足' : 'みぎ足 →'}（同じ間かくで）`
+      : `${next === 'L' ? '← ひだり足' : 'みぎ足 →'}を 緑のところで！`;
+    const fl = performance.now() - guideFlashT < 220 ? guideFlash : '';
+    ui.guide.classList.toggle('ok', fl === 'ok'); ui.guide.classList.toggle('ng', fl === 'ng');
+  }
+
+  let lastTick = 0, spdShown = 0;
   function updateHud() {
+    updateGuide();
+    const st = S.steady == null ? 1 : S.steady;
+    ui.balFill.style.width = `${Math.round(st * 100)}%`;
+    ui.balFill.style.background = st < 0.35 ? '#ff4d4d' : st < 0.6 ? '#ffb020' : '#5cc96b';
+    ui.meter2.classList.toggle('low', st < 0.35 && S.status === 'play');
+    const v = S.char && S.status === 'play' ? Math.max(0, S.char.torso.getLinearVelocity().x) : 0;
+    spdShown += (v - spdShown) * 0.1;
+    ui.spd.textContent = `⚡${spdShown.toFixed(1)}m/秒`;
+    ui.spd.classList.toggle('fast', spdShown > 2.3);
     const x = Math.max(0, game.charX());
     ui.dist.innerHTML = `${(runDist + Math.min(stage.goal, S.status === 'play' ? x : S.bestX)).toFixed(1)}<small>m</small>`; // ここまで歩いたきょり
     ui.meterLabel.textContent = `🏠あと${Math.ceil(Math.max(0, stage.goal - x))}m`;
@@ -791,7 +842,9 @@
           if (ev.type === 'stumble') pop({ same: '同じ足！', fast: 'あせりすぎ！', slow: 'もたもた！' }[ev.v.why] || 'おっと！', ev.v.bad > 0.6 ? '#e8303a' : '#ff8a00');
           if (ev.type === 'stop') { for (let i = pops.length - 1; i >= 0; i--) if (pops[i].text.startsWith('ふらふら')) pops.splice(i, 1); pop('止まっちゃだめ！', '#e8303a'); }
           if (ev.type === 'wobble') pop('ふらふら…', '#ff8a00');
-          if (ev.type === 'combo') pop(`ナイスリズム ×${ev.v}`, '#2f9e44');
+          if (ev.type === 'combo') pop(`ナイスリズム ×${ev.v} スピードUP！`, '#2f9e44');
+          if (ev.type === 'good') flashGuide('ok');
+          if (ev.type === 'stumble') flashGuide('ng');
         }
       }
       if (level <= 10 && S.status === 'play') { // 最初のうちは、しかけの手前でやり方を出す
@@ -829,6 +882,7 @@
     drawGround();
     drawBoxes();
     drawWind();
+    drawSpeedLines();
     drawChar();
     drawCharge();
     drawPops();

@@ -44,6 +44,13 @@
     jumpVx: [1.0, 2.6], // ジャンプの前向きの速さ（ためなし〜ためきり）
     jumpVy: [2.6, 4.3], // ジャンプの上向きの速さ
     jumpAccScale: 0.15, // ジャンプ中と着地直後は揺れの影響を小さく
+    // 速さ：よい1歩ごとに前へ押す。速く押すほど・リズムが続くほど速い
+    drivePerStep: 0.45, // 1秒に1歩ふえるごとの目標の速さ（m/秒）
+    driveMin: 1.0, // 目標の速さのいちばん下とうえ
+    driveMax: 3.2,
+    driveCombo: 0.04, // リズムが1歩続くごとに足す速さ
+    driveComboMax: 0.8,
+    driveGain: 5, // 目標の速さへ近づける強さ
   };
 
   // レベルごとのコースと難しさ（x: メートル, h: 高さメートル）。レベルに上限はない
@@ -277,7 +284,7 @@
           const p = b.getPosition(), v = b.getLinearVelocity();
           return { x: p.x - gx, y: p.y - gy, a: b.getAngle(), vx: v.x, vy: v.y, w: b.getAngularVelocity() };
         }),
-        jump: Object.assign({}, state.jump), stumble: state.stumble, steady: state.steady, vxAvg: state.vxAvg, combo: state.combo, input: Object.assign({}, state.input),
+        jump: Object.assign({}, state.jump), stumble: state.stumble, steady: state.steady, vxAvg: state.vxAvg, combo: state.combo, drive: state.drive, vTarget: state.vTarget, driveLen: state.driveLen, input: Object.assign({}, state.input),
         rhythm: Object.assign({}, state.rhythm, { prev: Object.assign({}, state.rhythm.prev), first: false }),
       };
     }
@@ -289,6 +296,7 @@
       });
       state.settle = 0;
       state.jump = carry.jump; state.stumble = carry.stumble; state.steady = carry.steady ?? 1; state.vxAvg = carry.vxAvg || 0; state.combo = carry.combo || 0; state.rhythm = carry.rhythm;
+      state.drive = carry.drive || 0; state.vTarget = carry.vTarget || 0; state.driveLen = carry.driveLen || 30;
       state.input = carry.input;
     }
 
@@ -312,6 +320,7 @@
       state.vxAvg = 0; // 前へ進む速さ（ならした値）
       state.wobbly = false;
       state.combo = 0; // リズムよく続けて出せた歩数
+      state.drive = 0; state.vTarget = 0; state.driveLen = 30; // よい1歩の勢い
       state.topple = 0; // 止まって転んでいる途中なら 0より大きい
       state.lastStumble = -999;
       state.rhythm = { prev: { left: false, right: false }, lastSide: null, lastInterval: 0, sinceStep: 0, first: true };
@@ -387,7 +396,13 @@
         if (bad <= 0.08) { // よい1歩：体を保つ力がたまり、リズムの連続が1つふえる
           state.steady = Math.min(1, state.steady + T.steadyStep * (R.lastSide ? 1 : 0.5));
           if (R.lastSide && state.settle <= 0 && ++state.combo % 10 === 0) emit('combo', state.combo);
-        }
+          if (R.lastSide) { // 前へ押す（速く押すほど・リズムが続くほど速い）
+            const sps = 60 / Math.max(7, interval);
+            state.vTarget = Math.min(T.driveMax, Math.max(T.driveMin, T.drivePerStep * sps)) + Math.min(T.driveComboMax, state.combo * T.driveCombo);
+            state.drive = 1; state.driveLen = Math.max(12, interval * 1.6);
+          }
+          emit('good', side);
+        } else state.drive = 0;
         if (bad > 0.08 && state.settle <= 0) { // 出てすぐの落ち着くまでは数えない
           state.stumble += bad;
           state.steady = Math.max(0, state.steady - 0.35 * Math.min(1.5, bad));
@@ -484,6 +499,11 @@
           state.steady = Math.max(0, state.steady - dec);
           if (state.steady < 0.35 && !state.wobbly) { state.wobbly = true; emit('wobble'); }
           else if (state.steady > 0.55) state.wobbly = false;
+        }
+        if (state.status === 'play' && state.drive > 0 && J.phase === 'none' && !limp) { // よい1歩の勢い（体ぜんぶを同じように押すので、体はかたむかない）
+          const dv = state.vTarget - vx;
+          if (dv > 0) for (const b of c.bodies) b.applyForceToCenter(Vec2(b.getMass() * T.driveGain * dv * state.drive, 0), true);
+          state.drive = Math.max(0, state.drive - 1 / state.driveLen);
         }
         if (alive && !limp) {
           // リズムがくずれているほど・体を保つ力がないほど、体を立て直す力が弱い
