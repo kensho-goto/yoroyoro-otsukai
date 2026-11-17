@@ -6,13 +6,13 @@
   };
   // 使えるようになる条件：total=合計で歩いたきょり・best=自己ベスト・runs=遊んだ回数・zukan=ずかんの数・streak=れんぞく日数・treasure=おたから
   const CARRY = [
-    { id: 'pudding', name: 'プリン', icon: '🍮' },
-    { id: 'dango', name: 'おだんご', icon: '🍡', need: { total: 100 } },
-    { id: 'cake', name: 'ショートケーキ', icon: '🍰', need: { best: 40 } },
-    { id: 'egg', name: '目玉焼き', icon: '🍳', need: { zukan: 25 } },
-    { id: 'suika', name: 'スイカ', icon: '🍉', need: { total: 500 } },
-    { id: 'goldfish', name: '金魚ばち', icon: '🐟', need: { best: 120 } },
-    { id: 'goldpudding', name: '金のプリン', icon: '🏆', need: { treasure: 'goldpudding' } },
+    { id: 'pudding', name: 'プリン', icon: 'c.pudding' },
+    { id: 'dango', name: 'おだんご', icon: 'c.dango', need: { total: 100 } },
+    { id: 'cake', name: 'ショートケーキ', icon: 'c.cake', need: { best: 40 } },
+    { id: 'egg', name: '目玉焼き', icon: 'c.egg', need: { zukan: 25 } },
+    { id: 'suika', name: 'スイカ', icon: 'c.suika', need: { total: 500 } },
+    { id: 'goldfish', name: '金魚ばち', icon: 'c.goldfish', need: { best: 120 } },
+    { id: 'goldpudding', name: '金のプリン', icon: 'c.goldpudding', need: { treasure: 'goldpudding' } },
   ];
   const OUTFITS = [
     { id: 'normal', name: 'いつもの', shirt: '#ff9f43', apron: '#fff', pants: '#3f639a', shoe: '#d4493a' },
@@ -77,10 +77,10 @@
     const card = (kind, x, icon) => {
       const can = ok(x, ctx), on = (kind === 'carry' ? cur.carry : cur.outfit).id === x.id;
       return `<button type="button" class="cl${on ? ' on' : ''}${can ? '' : ' no'}" data-k="${kind}" data-id="${x.id}" ${can ? '' : 'disabled'}>`
-        + `<b>${can ? icon : '🔒'}</b><span>${x.name}</span>${can ? (on ? '<i>つかっている</i>' : '') : `<i>${needText(x.need, ctx)}</i>`}</button>`;
+        + `<b>${can ? icon : window.YoroIcon.html('x.lock', 'dim')}</b><span>${x.name}</span>${can ? (on ? '<i>つかっている</i>' : '') : `<i>${needText(x.need, ctx)}</i>`}</button>`;
     };
     const sw = (o) => `<span class="sw" style="background:linear-gradient(${o.shirt} 0 55%, ${o.pants} 55% 100%)"></span>`;
-    el.innerHTML = `<h3>運ぶもの</h3><div class="clg">${CARRY.map((x) => card('carry', x, x.icon)).join('')}</div>`
+    el.innerHTML = `<h3>運ぶもの</h3><div class="clg">${CARRY.map((x) => card('carry', x, window.YoroIcon.html(x.icon))).join('')}</div>`
       + `<h3>服</h3><div class="clg">${OUTFITS.map((x) => card('outfit', x, sw(x))).join('')}</div>`;
     el.querySelectorAll('button.cl').forEach((b) => { b.onclick = () => { choose(b.dataset.k, b.dataset.id); render(el, ctx, onPick); if (onPick) onPick(); }; });
   }

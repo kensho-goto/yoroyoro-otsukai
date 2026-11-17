@@ -18,6 +18,7 @@
   const WT = window.YoroWaiter;
   let waiter = WT.forLevel(1), fails = 0, faceNow = 'wait', faceT0 = 0; // 待っている人・続けて失敗した回数・今の顔
   const RANK = window.YoroRank || { list: () => [], add: () => null, render() {} };
+  const IC = window.YoroIcon;
   const snd = window.YoroSound || { play() {}, bgm() {}, on: false, toggle() { return false; } };
   const ZK = window.YoroZukan || { mark: () => false, has: () => false, count: () => ({ got: 0, total: 0 }), pickTreasure: () => null, rareOf: () => false, render() {}, FALLS: [], MOOD_NAMES: {} };
   const pickOne = (a) => a[Math.floor(Math.random() * a.length)];
@@ -62,6 +63,7 @@
     if (old) { cam.x -= old.goal; cam.y -= old.gy; worldOff += old.goal; for (const q of prints) q.x -= old.goal; }
     else { cam.x = 0; cam.y = 1; worldOff = 0; delivered = null; prints.length = 0; } // 前の道の続きに見えるように
     ui.meterLabel.textContent = `${n}軒目`;
+    parts.length = 0; shakeA = 0;
     hinted = new Set();
     prevWaiter = n > 1 ? (carry ? waiter : WT.forLevel(n - 1)) : null;
     const rare = n >= 2 && (force.rare != null ? force.rare : R() < 0.05); // ごくたまに、めずらしいお客さん
@@ -109,10 +111,10 @@
       const d = Math.min(Math.hypot(hp.x - b.x, hp.y - b.y), Math.hypot(tp.x - b.x, tp.y - b.y));
       if (d > 0.5) continue;
       const t = ZK.pickTreasure(); if (!t) continue;
-      b.taken = performance.now(); b.item = t; runTreasure++;
+      b.taken = performance.now(); b.item = t; runTreasure++; sparkle(b.x, b.y, 12);
       const isNew = noteNew(ZK.mark('treasure', t.id), `おたから「${t.name}」`);
       const m = medalOf(t), could = GA.canPull(); GA.addMedals(m); runMedals += m;
-      pop(`${t.icon} ${t.name} +${m}${isNew ? ' NEW！' : ''}`, isNew ? '#d48a00' : '#7a4ad6');
+      pop(`${t.name} +${m}${isNew ? ' NEW！' : ''}`, isNew ? '#d48a00' : '#7a4ad6');
       if (!could && GA.canPull()) setTimeout(() => pop('ガチャが回せる！', '#e8a600'), 450);
       paintMedal(true);
       snd.play('treasure', ZK.rareOf(t));
@@ -211,7 +213,7 @@
     goalSay = WT.happy(waiter, itemName()).say;
     noteNew(ZK.mark('face', `${waiter.id}.happy`), `${waiter.name}の「にっこり」顔`);
     faceNow = 'happy'; faceT0 = performance.now();
-    snd.play('clear'); snd.bgm(false);
+    snd.play('clear'); snd.bgm(false); confetti();
     fails = 0;
     runDist += stage.goal;
     CL.addRun(stage.goal);
@@ -284,7 +286,7 @@
     gPull.disabled = gBusy || !GA.canPull();
     gPull.textContent = GA.canPull() || gBusy ? '回す' : 'メダルが たりない';
     $('gCount').textContent = `${c.got} / ${c.total}`;
-    $('gAll').innerHTML = GA.ITEMS.map((i) => (GA.has(i.id) ? `<span title="${i.name}">${i.icon}</span>` : '<span class="no">？</span>')).join('');
+    $('gAll').innerHTML = GA.ITEMS.map((i) => (GA.has(i.id) ? `<span title="${i.name}">${IC.html(i.icon)}</span>` : '<span class="no">？</span>')).join('');
     paintMedal();
   }
   function openGacha() { $('gResult').innerHTML = ''; gMachine.className = 'gm'; paintGacha(); gachaEl.classList.add('show'); gachaEl.querySelector('.card').scrollTop = 0; snd.play('tap'); }
@@ -299,7 +301,7 @@
     setTimeout(() => { gMachine.className = 'gm spin drop'; snd.play('tap'); }, 900);
     setTimeout(() => {
       gBusy = false; gMachine.className = 'gm';
-      $('gResult').innerHTML = `<div class="gres${it.r === 'SSR' ? ' ssr' : ''}"><span class="rr" style="color:${rr.color}">★ ${rr.name} ★</span><b>${it.icon}</b>`
+      $('gResult').innerHTML = `<div class="gres${it.r === 'SSR' ? ' ssr' : ''}"><span class="rr" style="color:${rr.color}">★ ${rr.name} ★</span><b>${IC.html(it.icon)}</b>`
         + `<span class="nm">${it.name}</span>（${GA.SLOTS[it.slot]}）<br>${it.say ? `<span class="fx">${it.say}</span><br>` : ''}`
         + (res.isNew ? '<span class="nw">NEW！ 身につけたよ</span>' : `ダブり… メダル${res.back}枚 もどった`) + '</div>';
       if (res.isNew) noteNew(true, `ガチャ「${it.name}」`);
@@ -442,21 +444,78 @@
   const cam = { x: 0, y: 1 };
   const W2S = (x, y) => [W * 0.45 + (x - cam.x) * scale, H * 0.6 - (y - cam.y) * scale];
 
+  // 3ステージごとに 朝→昼→夕方→夜 と変わる（進んでいる感じを出す）
+  const THEMES = [
+    { sky: ['#8fd3ff', '#d9f1ff', '#fff3d6'], hill: ['#b9e3a1', '#9ad282'], town: ['#bcd9e6', '#a6c8d8'], pole: '#7d93a3', cloud: 'rgba(255,255,255,.92)', sun: '#fff2b0', night: 0 },
+    { sky: ['#4fb8ff', '#b4e4ff', '#f2fbff'], hill: ['#a8dc8c', '#86c96b'], town: ['#a9cde0', '#8fb9d0'], pole: '#6d8495', cloud: 'rgba(255,255,255,.96)', sun: '#fff7c9', night: 0 },
+    { sky: ['#ff8f6b', '#ffbf8a', '#ffe7b8'], hill: ['#e0b57d', '#c99a63'], town: ['#d99a7a', '#c4826a'], pole: '#8a5a4a', cloud: 'rgba(255,230,205,.9)', sun: '#ff6a3d', night: 0.35 },
+    { sky: ['#17214d', '#2f3d7a', '#5d5c9c'], hill: ['#3b5560', '#2d4650'], town: ['#2b3768', '#222c58'], pole: '#151b3a', cloud: 'rgba(190,200,255,.28)', sun: '#fff6d0', night: 1 },
+  ];
+  const themeOf = (n) => THEMES[Math.floor((n - 1) / 3) % THEMES.length];
+  const hash = (i) => { const v = Math.sin(i * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
   function drawBackground() {
+    const T = themeOf(level), t = performance.now() / 1000;
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#8fd3ff'); g.addColorStop(0.6, '#d9f1ff'); g.addColorStop(1, '#fff3d6');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    g.addColorStop(0, T.sky[0]); g.addColorStop(0.6, T.sky[1]); g.addColorStop(1, T.sky[2]);
+    ctx.fillStyle = g; ctx.fillRect(-20, -20, W + 40, H + 40);
+    if (T.night >= 1) { // 星
+      for (let i = 0; i < 40; i++) {
+        const x = hash(i) * W, y = hash(i + 99) * H * 0.55, tw = 0.5 + 0.5 * Math.sin(t * 2 + i);
+        ctx.fillStyle = `rgba(255,255,230,${0.35 + tw * 0.6})`; ctx.fillRect(x, y, 2 + (i % 3 === 0), 2 + (i % 3 === 0));
+      }
+    }
+    // お日さま・お月さま（右上の少し下）
+    const sx = W * 0.78, sy = H * 0.3, sr = scale * 0.55;
+    ctx.fillStyle = T.sun; ctx.globalAlpha = 0.25; ctx.beginPath(); ctx.arc(sx, sy, sr * 1.6, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.fill();
+    if (T.night >= 1) { ctx.fillStyle = T.sky[0]; ctx.beginPath(); ctx.arc(sx + sr * 0.45, sy - sr * 0.25, sr * 0.85, 0, Math.PI * 2); ctx.fill(); }
     // 雲
-    ctx.fillStyle = 'rgba(255,255,255,.9)';
+    ctx.fillStyle = T.cloud;
     for (let i = 0; i < 6; i++) {
       const wx = i * 9 - ((cam.x + worldOff) * 0.15) % 54;
-      const sx = ((wx * scale) % (W + 300) + W + 300) % (W + 300) - 150;
-      const sy = H * (0.1 + (i % 3) * 0.07);
-      cloud(sx, sy, scale * (0.6 + (i % 2) * 0.3));
+      const cx = ((wx * scale) % (W + 300) + W + 300) % (W + 300) - 150;
+      cloud(cx, H * (0.1 + (i % 3) * 0.07), scale * (0.6 + (i % 2) * 0.3));
     }
-    // 遠くの丘
-    hills(0.25, '#b9e3a1', H * 0.62, 1.2);
-    hills(0.45, '#9ad282', H * 0.7, 0.8);
+    hills(0.2, T.hill[0], H * 0.6, 1.2);
+    drawTown(T);
+    hills(0.45, T.hill[1], H * 0.7, 0.8);
+    drawPoles(T);
+  }
+  // 遠くの町並み（家の屋根がならぶ。夕方と夜は窓に明かり）
+  function drawTown(T) {
+    const par = 0.3, cw = 1.5, base = H * 0.665, off = (cam.x + worldOff) * par;
+    const i0 = Math.floor(((0 - W * 0.5) / scale + off) / cw) - 1, i1 = Math.floor(((W - W * 0.5) / scale + off) / cw) + 1;
+    for (let i = i0; i <= i1; i++) {
+      if (hash(i * 3.1) < 0.18) continue; // ところどころ空き地
+      const x = W * 0.5 + (i * cw - off) * scale, w = scale * cw * (0.62 + hash(i) * 0.3), h = scale * (0.7 + hash(i + 7) * 0.9);
+      const col = hash(i + 3) < 0.5 ? T.town[0] : T.town[1];
+      ctx.fillStyle = col; ctx.fillRect(x - w / 2, base - h, w, h + H);
+      ctx.beginPath();
+      if (hash(i + 5) < 0.6) { ctx.moveTo(x - w / 2 - 4, base - h); ctx.lineTo(x, base - h - w * 0.42); ctx.lineTo(x + w / 2 + 4, base - h); }
+      else { ctx.rect(x - w / 2 - 3, base - h - 6, w + 6, 6); }
+      ctx.fill();
+      if (T.night > 0) {
+        for (let k = 0; k < 2; k++) {
+          if (hash(i * 7 + k) < 0.45) continue;
+          ctx.fillStyle = `rgba(255,214,110,${0.45 + T.night * 0.5})`;
+          ctx.fillRect(x - w * 0.3 + k * w * 0.36, base - h * 0.7, w * 0.22, w * 0.18);
+        }
+      }
+    }
+  }
+  // 電柱と電線（手前を流れていく）
+  function drawPoles(T) {
+    const par = 0.7, gap = 5.5, top = H * 0.4, base = H * 0.78, off = (cam.x + worldOff) * par;
+    const i0 = Math.floor((-W * 0.5 / scale + off) / gap) - 1, i1 = Math.floor((W * 0.5 / scale + off) / gap) + 1;
+    ctx.strokeStyle = T.pole; ctx.fillStyle = T.pole; ctx.lineWidth = 1.5;
+    let prev = null;
+    for (let i = i0; i <= i1; i++) {
+      const x = W * 0.5 + (i * gap - off) * scale;
+      ctx.fillRect(x - 3, top, 6, base - top);
+      ctx.fillRect(x - scale * 0.35, top + 10, scale * 0.7, 4);
+      if (prev != null) for (const dy of [12, 22]) { ctx.beginPath(); ctx.moveTo(prev, top + dy); ctx.quadraticCurveTo((prev + x) / 2, top + dy + scale * 0.35, x, top + dy); ctx.stroke(); }
+      prev = x;
+    }
   }
   function cloud(x, y, r) {
     ctx.beginPath();
@@ -478,11 +537,51 @@
     let [sx, sy] = W2S(p[0][0], p[0][1]); ctx.moveTo(sx, sy);
     for (const [x, h] of p) { [sx, sy] = W2S(x, h); ctx.lineTo(sx, sy); }
     ctx.lineTo(sx, H + 10); [sx] = W2S(p[0][0], 0); ctx.lineTo(sx, H + 10); ctx.closePath();
-    ctx.fillStyle = '#c99566'; ctx.fill();
-    ctx.lineWidth = Math.max(6, scale * 0.14); ctx.strokeStyle = '#6cc04a'; ctx.lineJoin = 'round';
+    const [, gy0] = W2S(cam.x, game.groundHeightAt(cam.x));
+    const gg = ctx.createLinearGradient(0, gy0, 0, H);
+    const nt = themeOf(level).night;
+    gg.addColorStop(0, nt >= 1 ? '#9c7556' : nt > 0 ? '#d29462' : '#cf9b6a'); gg.addColorStop(1, nt >= 1 ? '#6e4f38' : nt > 0 ? '#a26a44' : '#a8764a');
+    ctx.fillStyle = gg; ctx.fill();
+    ctx.save(); ctx.clip();
+    // 土の層（地面の形にそった帯）
+    for (const [dy, col] of [[0.55, 'rgba(120,72,38,.16)'], [1.35, 'rgba(120,72,38,.12)'], [2.3, 'rgba(255,240,210,.10)']]) {
+      ctx.lineWidth = scale * 0.22; ctx.strokeStyle = col; ctx.beginPath();
+      [sx, sy] = W2S(p[0][0], p[0][1]); ctx.moveTo(sx, sy + scale * dy);
+      for (const [x, h] of p) { [sx, sy] = W2S(x, h); ctx.lineTo(sx, sy + scale * dy + Math.sin((x + worldOff) * 1.3) * scale * 0.06); }
+      ctx.stroke();
+    }
+    // 小石
+    const vx0 = cam.x - W * 0.5 / scale - 1, vx1 = cam.x + W * 0.6 / scale + 1;
+    for (let k = Math.floor((vx0 + worldOff) / 0.55); k * 0.55 - worldOff < vx1; k++) {
+      const r = hash(k * 1.7); if (r < 0.45) continue;
+      const wx = k * 0.55 - worldOff + hash(k) * 0.4, [px, py] = W2S(wx, game.groundHeightAt(wx));
+      const d = scale * (0.35 + hash(k + 11) * 2.2), rr = scale * (0.04 + r * 0.06);
+      ctx.fillStyle = r > 0.8 ? 'rgba(255,240,215,.45)' : 'rgba(110,66,34,.35)';
+      ctx.beginPath(); ctx.ellipse(px, py + d, rr * 1.4, rr, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+    // 草のふち（下に影の線・上に草の束）
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(9, scale * 0.2); ctx.strokeStyle = '#4f9e3a';
+    ctx.beginPath(); [sx, sy] = W2S(p[0][0], p[0][1]); ctx.moveTo(sx, sy + 3);
+    for (const [x, h] of p) { [sx, sy] = W2S(x, h); ctx.lineTo(sx, sy + 3); }
+    ctx.stroke();
+    ctx.lineWidth = Math.max(6, scale * 0.14); ctx.strokeStyle = '#6cc04a';
     ctx.beginPath(); [sx, sy] = W2S(p[0][0], p[0][1]); ctx.moveTo(sx, sy);
     for (const [x, h] of p) { [sx, sy] = W2S(x, h); ctx.lineTo(sx, sy); }
     ctx.stroke();
+    ctx.fillStyle = '#5fb444';
+    for (let k = Math.floor((vx0 + worldOff) / 0.38); k * 0.38 - worldOff < vx1; k++) {
+      if (hash(k * 2.3) < 0.35) continue;
+      const wx = k * 0.38 - worldOff + hash(k + 5) * 0.2;
+      if (stage.pits.some((q) => wx > q.x0 - 0.15 && wx < q.x1 + 0.15)) continue;
+      const [px, py] = W2S(wx, game.groundHeightAt(wx)), hgt = scale * (0.1 + hash(k + 9) * 0.1), bw = scale * 0.035;
+      ctx.beginPath();
+      ctx.moveTo(px - bw * 3, py - 2); ctx.lineTo(px - bw * 2.2, py - hgt * 0.8); ctx.lineTo(px - bw, py - 2);
+      ctx.moveTo(px - bw, py - 2); ctx.lineTo(px, py - hgt); ctx.lineTo(px + bw, py - 2);
+      ctx.moveTo(px + bw, py - 2); ctx.lineTo(px + bw * 2.4, py - hgt * 0.75); ctx.lineTo(px + bw * 3, py - 2);
+      ctx.fill();
+    }
     // 穴（暗い穴）とジャンプ台
     for (const q of stage.pits) {
       const [ax, ay] = W2S(q.x0, q.h), [bx] = W2S(q.x1, q.h);
@@ -557,7 +656,7 @@
       if (b.taken) {
         const a = (now - b.taken) / 1000; if (a > 1) continue;
         const [x, y] = W2S(b.x, b.y + a * 0.9);
-        ctx.globalAlpha = 1 - a * a; ctx.font = `${Math.round(s * 0.55)}px sans-serif`; ctx.fillText(b.item.icon, x, y); ctx.globalAlpha = 1;
+        ctx.globalAlpha = 1 - a * a; IC.draw(ctx, b.item.icon, x, y, s * 0.62); ctx.globalAlpha = 1;
         continue;
       }
       const [x, y] = W2S(b.x, b.y + Math.sin(now / 300 + b.x) * 0.05); const h = s * 0.19;
@@ -621,7 +720,7 @@
     ctx.fillStyle = tone(roof, 0.7); roundRect(gx - s * 1.68, gy - s * 1.92, s * 3.36, s * 0.14, 4); ctx.fill(); ctx.stroke();
     // まど（わく・十字・まどがまち）
     const wx0 = gx + s * 0.2, wy0 = gy - s * 1.45, ww = s * 0.72, wh = s * 0.58;
-    ctx.fillStyle = '#9fdcff'; ctx.fillRect(wx0, wy0, ww, wh);
+    ctx.fillStyle = themeOf(level).night > 0.3 ? '#ffd56b' : '#9fdcff'; ctx.fillRect(wx0, wy0, ww, wh);
     ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.beginPath(); ctx.moveTo(wx0 + ww * 0.12, wy0 + wh * 0.85); ctx.lineTo(wx0 + ww * 0.32, wy0 + wh * 0.12); ctx.lineTo(wx0 + ww * 0.42, wy0 + wh * 0.12); ctx.lineTo(wx0 + ww * 0.22, wy0 + wh * 0.85); ctx.fill();
     ctx.strokeRect(wx0, wy0, ww, wh);
     ctx.beginPath(); ctx.moveTo(wx0 + ww / 2, wy0); ctx.lineTo(wx0 + ww / 2, wy0 + wh); ctx.moveTo(wx0, wy0 + wh / 2); ctx.lineTo(wx0 + ww, wy0 + wh / 2); ctx.stroke();
@@ -783,6 +882,57 @@
       else if (sid === 'rocket' && on) { ctx.fillStyle = '#ff9a1a'; ctx.beginPath(); ctx.moveTo(-0.09, 0.23); ctx.lineTo(-0.2 - Math.random() * 0.08, 0.245); ctx.lineTo(-0.09, 0.26); ctx.closePath(); ctx.fill(); } // ほのお
       else if (sid === 'goldshoe' && Math.sin(performance.now() / 150 + (back ? 1 : 0)) > 0.6) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0.16, 0.25, 0.018, 0, Math.PI * 2); ctx.fill(); }
     });
+  }
+  // つぶ（土ぼこり・キラキラ・プリンのしぶき・ピヨピヨ星・紙吹雪）。scr=true は画面の位置
+  const parts = []; let shakeA = 0, partT = performance.now(), partDt = 0;
+  function puff(x, y, n, big) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.PI * (0.1 + 0.8 * Math.random()), sp = (big ? 1.6 : 0.8) * (0.4 + Math.random());
+      parts.push({ k: 'dust', x: x + (Math.random() - 0.5) * 0.2, y: y + 0.03, vx: Math.cos(a) * sp * (i % 2 ? 1 : -1), vy: Math.sin(a) * sp * 0.5, g: -0.4, life: 0, max: 0.45 + Math.random() * 0.3, r: (big ? 0.12 : 0.07) + Math.random() * 0.05 });
+    }
+  }
+  function sparkle(x, y, n, col) {
+    for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 2; parts.push({ k: 'spark', x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, g: 2, life: 0, max: 0.6 + Math.random() * 0.3, r: 0.09 + Math.random() * 0.06, col: col || '#ffd23a' }); }
+  }
+  function splat(x, y) {
+    for (let i = 0; i < 16; i++) { const a = -Math.PI * Math.random(), sp = 1.5 + Math.random() * 3; parts.push({ k: 'blob', x, y, vx: Math.cos(a) * sp, vy: -Math.sin(a) * sp, g: 9, life: 0, max: 1.2, r: 0.05 + Math.random() * 0.07, col: i % 4 ? '#ffd23a' : '#8a4a1c' }); }
+  }
+  function confetti() {
+    const cols = ['#ffd23a', '#ff6b8b', '#4fb8ff', '#5fc96b', '#b46cf0', '#ff9a3d'];
+    for (let i = 0; i < 90; i++) parts.push({ k: 'conf', scr: true, x: Math.random() * W, y: -20 - Math.random() * H * 0.5, vx: (Math.random() - 0.5) * 60, vy: 120 + Math.random() * 160, g: 0, life: 0, max: 4.5, r: 5 + Math.random() * 4, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 10, col: cols[i % cols.length] });
+  }
+  function drawParts(scr) {
+    if (!scr) { const now = performance.now(); partDt = Math.min(0.05, (now - partT) / 1000); partT = now; }
+    const dt = partDt;
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const q = parts[i]; if (!!q.scr !== scr) continue;
+      if (!scr || q.k === 'conf') { q.life += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vy += (scr ? 0 : -q.g) * dt; }
+      if (q.life > q.max) { parts.splice(i, 1); continue; }
+      const a = 1 - q.life / q.max;
+      if (q.k === 'conf') {
+        q.rot += q.vr * dt; q.vx += Math.sin(q.life * 4 + i) * 2;
+        ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.rot); ctx.scale(1, Math.abs(Math.cos(q.life * 6 + i)) + 0.2);
+        ctx.globalAlpha = Math.min(1, a * 3); ctx.fillStyle = q.col; ctx.fillRect(-q.r, -q.r * 0.6, q.r * 2, q.r * 1.2); ctx.restore(); ctx.globalAlpha = 1; continue;
+      }
+      const [x, y] = W2S(q.x, q.y), r = q.r * scale;
+      if (q.k === 'dust') { ctx.globalAlpha = a * 0.75; ctx.fillStyle = '#f3e3cc'; ctx.beginPath(); ctx.arc(x, y, r * (1 + q.life * 2.2), 0, Math.PI * 2); ctx.fill(); }
+      else if (q.k === 'blob') { ctx.globalAlpha = Math.min(1, a * 2); ctx.fillStyle = q.col; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+      else if (q.k === 'spark') { ctx.globalAlpha = a; star4(x, y, r * (0.6 + a * 0.6), q.col); }
+      ctx.globalAlpha = 1;
+    }
+  }
+  function star4(x, y, r, col) {
+    ctx.fillStyle = col; ctx.beginPath();
+    ctx.moveTo(x, y - r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.quadraticCurveTo(x, y, x, y + r); ctx.quadraticCurveTo(x, y, x - r, y); ctx.quadraticCurveTo(x, y, x, y - r); ctx.fill();
+  }
+  // 転んだあと、頭のまわりを回る星
+  function drawDizzy() {
+    if (S.status !== 'fallen' || !S.char) return;
+    const hp = S.char.head.getPosition(), [x, y] = W2S(hp.x, hp.y + 0.32), t = performance.now() / 1000;
+    for (let i = 0; i < 3; i++) {
+      const a = t * 4 + i * Math.PI * 2 / 3, px = x + Math.cos(a) * scale * 0.32, py = y + Math.sin(a) * scale * 0.1;
+      ctx.lineWidth = 2; ctx.strokeStyle = '#3b2a1e'; star4(px, py, scale * 0.11, '#ffd23a');
+    }
   }
   // 足あと（地面についた足。青＝ひだり・ピンク＝みぎ。交互にならんでいればいいリズム）
   const prints = [];
@@ -1007,7 +1157,7 @@
     ui.meter2.classList.toggle('low', st < 0.35 && S.status === 'play');
     const v = S.char && S.status === 'play' ? Math.max(0, S.char.torso.getLinearVelocity().x) : 0;
     spdShown += (v - spdShown) * 0.1;
-    ui.spd.textContent = `⚡${spdShown.toFixed(1)}m/秒`;
+    ui.spd.textContent = `${spdShown.toFixed(1)}m/秒`;
     ui.spd.classList.toggle('fast', spdShown > 2.3);
     const x = Math.max(0, game.charX());
     $('stgNow').textContent = level; $('stgNext').textContent = level + 1;
@@ -1046,15 +1196,23 @@
       }
       for (const ev of S.events.splice(0)) {
         if (ev.type === 'clear') continue; // 届けたときの音は deliver() で鳴らす
-        else if (ev.type === 'fall' || ev.type === 'pudding' || ev.type === 'timeup') { snd.bgm(false); snd.play(ev.type); }
+        else if (ev.type === 'fall' || ev.type === 'pudding' || ev.type === 'timeup') {
+          snd.bgm(false); snd.play(ev.type);
+          if (S.char) {
+            const tp = S.char.torso.getPosition(); puff(tp.x, game.groundHeightAt(tp.x), 14, true); shakeA = 14;
+            if (ev.type === 'pudding') { const tr = S.char.tray.getPosition(); splat(tr.x, tr.y + 0.1); }
+            if (navigator.vibrate) navigator.vibrate(60);
+          }
+        }
         else {
           snd.play(ev.type, ev.v);
+          if ((ev.type === 'land' || ev.type === 'boing') && S.char) { const tp = S.char.torso.getPosition(); puff(tp.x, game.groundHeightAt(tp.x), 8, true); shakeA = Math.max(shakeA, ev.type === 'land' ? 4 : 3); }
           if (ev.type === 'stumble') pop({ same: '同じ足！', fast: 'あせりすぎ！', slow: 'もたもた！' }[ev.v.why] || 'おっと！', ev.v.bad > 0.6 ? '#e8303a' : '#ff8a00');
           if (ev.type === 'stop') { for (let i = pops.length - 1; i >= 0; i--) if (pops[i].text.startsWith('ふらふら')) pops.splice(i, 1); pop('止まっちゃだめ！', '#e8303a'); }
           if (ev.type === 'wobble') pop('ふらふら…', '#ff8a00');
           if (ev.type === 'combo') pop(`ナイスリズム ×${ev.v} スピードUP！`, '#2f9e44');
           if (ev.type === 'jump2') pop('2だんジャンプ！', '#2f6fd6');
-          if (ev.type === 'step') { addPrint(ev.v); if (++tutSteps === 6 && !tutDone) { tutDone = true; store.set('yoro.tut', '1'); } }
+          if (ev.type === 'step') { const fp = S.char && S.char[ev.v] && S.char[ev.v].shin.getWorldPoint(planck.Vec2(0.07, -0.25)); if (fp) puff(fp.x, game.groundHeightAt(fp.x), 3, false); addPrint(ev.v); if (++tutSteps === 6 && !tutDone) { tutDone = true; store.set('yoro.tut', '1'); } }
         }
       }
       if (level <= 10 && S.status === 'play') { // 最初のうちは、しかけの手前でやり方を出す
@@ -1087,7 +1245,9 @@
       cam.x += (p.x + 0.6 - cam.x) * 0.08;
       cam.y += (game.groundHeightAt(p.x) + 0.9 - cam.y) * 0.05;
     }
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    shakeA *= 0.86; if (shakeA < 0.3) shakeA = 0;
+    const shx = shakeA ? (Math.random() - 0.5) * 2 * shakeA : 0, shy = shakeA ? (Math.random() - 0.5) * 2 * shakeA : 0;
+    ctx.setTransform(DPR, 0, 0, DPR, shx * DPR, shy * DPR);
     drawBackground();
     drawGround();
     drawPrints();
@@ -1095,8 +1255,12 @@
     drawWind();
     drawSpeedLines();
     drawChar();
+    drawParts(false);
+    drawDizzy();
     drawCharge();
     drawPops();
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    drawParts(true);
     updateHud();
     if (S.char && !ui.title.classList.contains('show')) {
       if (S.status === 'fallen') CLIP.stopAfter(1400, now); // 転んだあと少しだけ取って止める

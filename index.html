@@ -4,6 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ヨロヨロ">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="img/icon-192.png">
+<meta name="description" content="左右の足をこうごに押して、プリンを落とさずおうちまで届ける おつかいゲーム">
+<meta property="og:title" content="ヨロヨロおつかい">
+<meta property="og:description" content="左右の足で、プリンを届けよう">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kensho-goto.github.io/yoroyoro-otsukai/">
+<meta property="og:image" content="https://kensho-goto.github.io/yoroyoro-otsukai/img/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#8fd3ff">
 <meta name="robots" content="noindex, nofollow">
 <title>ヨロヨロおつかい</title>
@@ -50,7 +62,7 @@
   @keyframes pulse { 50% { transform: scale(1.12); } }
   /* プリンのぐらぐら・体を保つ力：絵＋細いバーだけ */
   .meters { position: fixed; left: 14px; top: calc(max(8px, env(safe-area-inset-top)) + 96px); pointer-events: none; z-index: 4; display: grid; gap: 6px; }
-  .meter { display: flex; align-items: center; gap: 5px; }
+  .meter { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,.72); border-radius: 999px; padding: 2px 6px 2px 4px; }
   .meter svg.ic { font-size: 24px; }
   .meter .bar { width: 64px; height: 8px; border-radius: 4px; background: rgba(255,255,255,.55); box-shadow: 0 0 0 2px var(--ink); overflow: hidden; }
   .meter .fill { height: 100%; width: 0; background: #5cc96b; transition: width .08s; }
@@ -170,6 +182,11 @@
   .clg { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
   .cl { font: inherit; color: var(--ink); border: 2px solid #dfe5ec; border-radius: 12px; background: #fff; padding: 6px; text-align: center; font-weight: 800; font-size: 14px; cursor: pointer; }
   .cl b { display: block; font-size: 28px; line-height: 1.2; }
+  .ico { width: 1.3em; height: 1.3em; vertical-align: middle; display: inline-block; }
+  .ico.dim { opacity: .45; }
+  .cl b .ico, .zk b .ico { width: 40px; height: 40px; }
+  .gres b .ico { width: 84px; height: 84px; }
+  .gall .ico { width: 28px; height: 28px; }
   .cl i { display: block; font-style: normal; font-size: 11px; opacity: .8; font-weight: 700; }
   .cl.on { background: #fff3c4; box-shadow: 0 0 0 3px var(--accent) inset; }
   .cl.no { background: #f2f4f7; color: #9aa4b1; border-style: dashed; cursor: default; }
@@ -401,6 +418,7 @@
 </div>
 
 <script src="vendor/planck.min.js"></script>
+<script src="src/icons.js"></script>
 <script src="src/core.js"></script>
 <script src="src/sound.js"></script>
 <script src="src/waiter.js"></script>

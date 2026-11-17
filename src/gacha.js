@@ -11,24 +11,24 @@
   const SLOTS = { shoe: 'くつ', hat: 'ぼうし', tray: 'おぼん', skin: 'すがた' };
   // fx（効き目）：jump=ジャンプの高さ×・wind=風の強さ×・speed=いちばん速い速さ＋・balance=体を立て直す力×・pudding=ぐらぐらのたまり方×
   const ITEMS = [
-    { id: 'sneaker', slot: 'shoe', r: 'N', name: '赤いスニーカー', icon: '👟', color: '#e8303a' },
-    { id: 'boots', slot: 'shoe', r: 'N', name: '長ぐつ', icon: '🥾', color: '#3f9a3a' },
-    { id: 'spring', slot: 'shoe', r: 'R', name: 'バネぐつ', icon: '🦘', color: '#8a8f99', fx: { jump: 1.08 }, say: 'ジャンプが少し高い' },
-    { id: 'grip', slot: 'shoe', r: 'R', name: 'すべらないくつ', icon: '🧲', color: '#5a4636', fx: { wind: 0.6 }, say: '風におされにくい' },
-    { id: 'rocket', slot: 'shoe', r: 'SR', name: 'ロケットぐつ', icon: '🚀', color: '#d0d4dc', fx: { speed: 0.3 }, say: 'いちばん速い速さが少し上がる' },
-    { id: 'goldshoe', slot: 'shoe', r: 'SSR', name: '金のくつ', icon: '✨', color: '#ffc61a', fx: { jump: 1.06, speed: 0.2 }, say: 'ジャンプも速さも少し上がる' },
-    { id: 'straw', slot: 'hat', r: 'N', name: 'むぎわらぼうし', icon: '👒' },
-    { id: 'catears', slot: 'hat', r: 'N', name: 'ねこみみ', icon: '🐱' },
-    { id: 'helmet', slot: 'hat', r: 'R', name: 'ヘルメット', icon: '⛑️', fx: { balance: 1.05 }, say: '体を立て直す力が少し強い' },
-    { id: 'propeller', slot: 'hat', r: 'SR', name: 'プロペラぼうし', icon: '🚁', fx: { jump: 1.1 }, say: 'ジャンプがふわっと高い' },
-    { id: 'halo', slot: 'hat', r: 'SSR', name: '天使のわっか', icon: '😇', fx: { balance: 1.08, pudding: 0.9 }, say: '体もプリンも少し安定する' },
-    { id: 'redtray', slot: 'tray', r: 'N', name: '赤いおぼん', icon: '🟥', color: '#d9534f' },
-    { id: 'woodtray', slot: 'tray', r: 'R', name: 'すべり止めおぼん', icon: '🟩', color: '#4fb36b', fx: { pudding: 0.9 }, say: 'ぐらぐらが少したまりにくい' },
-    { id: 'silvertray', slot: 'tray', r: 'SR', name: '銀のおぼん', icon: '🥈', color: '#c9ced8', fx: { pudding: 0.85 }, say: 'ぐらぐらがたまりにくい' },
-    { id: 'robot', slot: 'skin', r: 'R', name: 'ロボット', icon: '🤖', skin: { face: '#c9ced8', arm: '#aab0bb', hair: '#6b7280', extra: 'antenna' } },
-    { id: 'bear', slot: 'skin', r: 'SR', name: 'くま', icon: '🐻', skin: { face: '#c98a4b', arm: '#b97a3b', hair: '#8a5a35', extra: 'ears' } },
-    { id: 'penguin', slot: 'skin', r: 'SR', name: 'ペンギン', icon: '🐧', skin: { face: '#ffffff', arm: '#2b2b2b', hair: '#2b2b2b', extra: 'beak' } },
-    { id: 'gold', slot: 'skin', r: 'SSR', name: 'ゴールド', icon: '🌟', skin: { face: '#ffd84d', arm: '#f0c020', hair: '#e0a800', extra: 'shine' }, fx: { speed: 0.1, jump: 1.03 }, say: 'ピカピカ。ほんの少し速くて高い' },
+    { id: 'sneaker', slot: 'shoe', r: 'N', name: '赤いスニーカー', icon: 'g.sneaker', color: '#e8303a' },
+    { id: 'boots', slot: 'shoe', r: 'N', name: '長ぐつ', icon: 'g.boots', color: '#3f9a3a' },
+    { id: 'spring', slot: 'shoe', r: 'R', name: 'バネぐつ', icon: 'g.spring', color: '#8a8f99', fx: { jump: 1.08 }, say: 'ジャンプが少し高い' },
+    { id: 'grip', slot: 'shoe', r: 'R', name: 'すべらないくつ', icon: 'g.grip', color: '#5a4636', fx: { wind: 0.6 }, say: '風におされにくい' },
+    { id: 'rocket', slot: 'shoe', r: 'SR', name: 'ロケットぐつ', icon: 'g.rocket', color: '#d0d4dc', fx: { speed: 0.3 }, say: 'いちばん速い速さが少し上がる' },
+    { id: 'goldshoe', slot: 'shoe', r: 'SSR', name: '金のくつ', icon: 'g.goldshoe', color: '#ffc61a', fx: { jump: 1.06, speed: 0.2 }, say: 'ジャンプも速さも少し上がる' },
+    { id: 'straw', slot: 'hat', r: 'N', name: 'むぎわらぼうし', icon: 'g.straw' },
+    { id: 'catears', slot: 'hat', r: 'N', name: 'ねこみみ', icon: 'g.catears' },
+    { id: 'helmet', slot: 'hat', r: 'R', name: 'ヘルメット', icon: 'g.helmet', fx: { balance: 1.05 }, say: '体を立て直す力が少し強い' },
+    { id: 'propeller', slot: 'hat', r: 'SR', name: 'プロペラぼうし', icon: 'g.propeller', fx: { jump: 1.1 }, say: 'ジャンプがふわっと高い' },
+    { id: 'halo', slot: 'hat', r: 'SSR', name: '天使のわっか', icon: 'g.halo', fx: { balance: 1.08, pudding: 0.9 }, say: '体もプリンも少し安定する' },
+    { id: 'redtray', slot: 'tray', r: 'N', name: '赤いおぼん', icon: 'g.redtray', color: '#d9534f' },
+    { id: 'woodtray', slot: 'tray', r: 'R', name: 'すべり止めおぼん', icon: 'g.woodtray', color: '#4fb36b', fx: { pudding: 0.9 }, say: 'ぐらぐらが少したまりにくい' },
+    { id: 'silvertray', slot: 'tray', r: 'SR', name: '銀のおぼん', icon: 'g.silvertray', color: '#c9ced8', fx: { pudding: 0.85 }, say: 'ぐらぐらがたまりにくい' },
+    { id: 'robot', slot: 'skin', r: 'R', name: 'ロボット', icon: 'g.robot', skin: { face: '#c9ced8', arm: '#aab0bb', hair: '#6b7280', extra: 'antenna' } },
+    { id: 'bear', slot: 'skin', r: 'SR', name: 'くま', icon: 'g.bear', skin: { face: '#c98a4b', arm: '#b97a3b', hair: '#8a5a35', extra: 'ears' } },
+    { id: 'penguin', slot: 'skin', r: 'SR', name: 'ペンギン', icon: 'g.penguin', skin: { face: '#ffffff', arm: '#2b2b2b', hair: '#2b2b2b', extra: 'beak' } },
+    { id: 'gold', slot: 'skin', r: 'SSR', name: 'ゴールド', icon: 'g.gold', skin: { face: '#ffd84d', arm: '#f0c020', hair: '#e0a800', extra: 'shine' }, fx: { speed: 0.1, jump: 1.03 }, say: 'ピカピカ。ほんの少し速くて高い' },
   ];
 
   const read = (k, d) => { try { const v = JSON.parse(store.get(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
@@ -75,11 +75,11 @@
     const w = worn();
     const html = Object.entries(SLOTS).map(([slot, label]) => {
       const list = ITEMS.filter((i) => i.slot === slot);
-      const cards = [`<button type="button" class="cl${w[slot] ? '' : ' on'}" data-s="${slot}" data-id=""><b>➖</b><span>なし</span></button>`]
+      const cards = [`<button type="button" class="cl${w[slot] ? '' : ' on'}" data-s="${slot}" data-id=""><b>${window.YoroIcon.html('x.none')}</b><span>なし</span></button>`]
         .concat(list.map((i) => {
           const has = !!owned[i.id], on = w[slot] && w[slot].id === i.id;
           return `<button type="button" class="cl${on ? ' on' : ''}${has ? '' : ' no'}" data-s="${slot}" data-id="${i.id}" ${has ? '' : 'disabled'}>`
-            + `<b>${has ? i.icon : '？'}</b><span>${has ? i.name : 'ガチャで出る'}</span><i style="color:${RARITY[i.r].color}">${RARITY[i.r].name}</i>${has && i.say ? `<i>${i.say}</i>` : ''}</button>`;
+            + `<b>${has ? window.YoroIcon.html(i.icon) : '？'}</b><span>${has ? i.name : 'ガチャで出る'}</span><i style="color:${RARITY[i.r].color}">${RARITY[i.r].name}</i>${has && i.say ? `<i>${i.say}</i>` : ''}</button>`;
         })).join('');
       return `<h3>${label}（ガチャ）</h3><div class="clg">${cards}</div>`;
     }).join('');

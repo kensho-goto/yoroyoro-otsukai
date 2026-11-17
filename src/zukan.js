@@ -7,35 +7,35 @@
   };
   // ころび方（見ていないものはヒントだけ出す）
   const FALLS = [
-    { id: 'pudding', name: 'プリン飛ばし', icon: '🍮', hint: 'ガクガク歩くと…' },
-    { id: 'hole', name: '穴ポチャ', icon: '🕳️', hint: '穴のところで…' },
-    { id: 'timeup', name: '時間切れ', icon: '⏰', hint: 'のんびりしすぎると…' },
-    { id: 'rhythm', name: '足もつれ', icon: '🌀', hint: 'リズムがばらばらだと…' },
-    { id: 'stop', name: '立ち止まり', icon: '🧍', hint: '押すのをやめると…' },
-    { id: 'head', name: '頭からゴツン', icon: '🤕', hint: '前にたおれこむと…' },
-    { id: 'torso', name: 'おなかからドテッ', icon: '💥', hint: 'うつぶせに…' },
-    { id: 'knee', name: 'ひざカックン', icon: '🦵', hint: 'ひざから くずれると…' },
-    { id: 'down', name: 'しりもち', icon: '🍑', hint: 'うしろに すわりこむと…' },
+    { id: 'pudding', name: 'プリン飛ばし', icon: 'f.pudding', hint: 'ガクガク歩くと…' },
+    { id: 'hole', name: '穴ポチャ', icon: 'f.hole', hint: '穴のところで…' },
+    { id: 'timeup', name: '時間切れ', icon: 'f.timeup', hint: 'のんびりしすぎると…' },
+    { id: 'rhythm', name: '足もつれ', icon: 'f.rhythm', hint: 'リズムがばらばらだと…' },
+    { id: 'stop', name: '立ち止まり', icon: 'f.stop', hint: '押すのをやめると…' },
+    { id: 'head', name: '頭からゴツン', icon: 'f.head', hint: '前にたおれこむと…' },
+    { id: 'torso', name: 'おなかからドテッ', icon: 'f.torso', hint: 'うつぶせに…' },
+    { id: 'knee', name: 'ひざカックン', icon: 'f.knee', hint: 'ひざから くずれると…' },
+    { id: 'down', name: 'しりもち', icon: 'f.down', hint: 'うしろに すわりこむと…' },
   ];
   // おたから（w が大きいほど出やすい）
   const TREASURES = [
-    { id: 'candy', name: 'あめ玉', icon: '🍬', w: 30 },
-    { id: 'cookie', name: 'クッキー', icon: '🍪', w: 25 },
-    { id: 'acorn', name: 'どんぐり', icon: '🌰', w: 20 },
-    { id: 'marble', name: 'ビー玉', icon: '🔮', w: 12 },
-    { id: 'shell', name: '貝がら', icon: '🐚', w: 10 },
-    { id: 'clover', name: '四つ葉', icon: '🍀', w: 6 },
-    { id: 'ribbon', name: 'リボン', icon: '🎀', w: 5 },
-    { id: 'gem', name: 'ほうせき', icon: '💎', w: 2.5 },
-    { id: 'goldpudding', name: '金のプリン', icon: '🏆', w: 1 },
-    { id: 'crown', name: '王かん', icon: '👑', w: 0.5 },
+    { id: 'candy', name: 'あめ玉', icon: 't.candy', w: 30 },
+    { id: 'cookie', name: 'クッキー', icon: 't.cookie', w: 25 },
+    { id: 'acorn', name: 'どんぐり', icon: 't.acorn', w: 20 },
+    { id: 'marble', name: 'ビー玉', icon: 't.marble', w: 12 },
+    { id: 'shell', name: '貝がら', icon: 't.shell', w: 10 },
+    { id: 'clover', name: '四つ葉', icon: 't.clover', w: 6 },
+    { id: 'ribbon', name: 'リボン', icon: 't.ribbon', w: 5 },
+    { id: 'gem', name: 'ほうせき', icon: 't.gem', w: 2.5 },
+    { id: 'goldpudding', name: '金のプリン', icon: 't.goldpudding', w: 1 },
+    { id: 'crown', name: '王かん', icon: 't.crown', w: 0.5 },
   ];
   // たまに起きる出来事
   const EVENTS = [
-    { id: 'headwind', name: '向かい風', icon: '🌬️', hint: 'たまに風が…' },
-    { id: 'tailwind', name: '追い風', icon: '🍃', hint: 'たまに風が…' },
-    { id: 'goldday', name: '金のプリンの日', icon: '✨', hint: 'ごくたまに…' },
-    { id: 'rare', name: 'めずらしい お客さん', icon: '🎩', hint: 'ごくたまに…' },
+    { id: 'headwind', name: '向かい風', icon: 'e.headwind', hint: 'たまに風が…' },
+    { id: 'tailwind', name: '追い風', icon: 'e.tailwind', hint: 'たまに風が…' },
+    { id: 'goldday', name: '金のプリンの日', icon: 'e.goldday', hint: 'ごくたまに…' },
+    { id: 'rare', name: 'めずらしい お客さん', icon: 'e.rare', hint: 'ごくたまに…' },
   ];
   const MOOD_NAMES = { sad: 'しょんぼり', sigh: 'あきれ', sulk: 'すね', shock: 'びっくり', angry: 'おこり', cry: 'なき', happy: 'にっこり' };
 
@@ -78,7 +78,7 @@
     const WT = window.YoroWaiter;
     const c = count();
     const sec = (title, got, all, body) => `<h3>${title} <small>${got}/${all}</small></h3>${body}`;
-    const cell = (ok, icon, name, hint) => `<div class="zk${ok ? '' : ' no'}"><b>${ok ? icon : '？'}</b><span>${ok ? name : hint || '？？？'}</span></div>`;
+    const cell = (ok, icon, name, hint) => `<div class="zk${ok ? '' : ' no'}"><b>${ok ? window.YoroIcon.html(icon) : '？'}</b><span>${ok ? name : hint || '？？？'}</span></div>`;
     const falls = FALLS.map((f) => cell(has('fall', f.id), f.icon, f.name, f.hint)).join('');
     const trs = TREASURES.map((t) => cell(has('treasure', t.id), t.icon, t.name, t.w < 3 ? 'とても めずらしい' : '')).join('');
     const evs = EVENTS.map((e) => cell(has('event', e.id), e.icon, e.name, e.hint)).join('');
