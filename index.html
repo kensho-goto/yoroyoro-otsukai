@@ -4,194 +4,198 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#ffe7b3">
+<meta name="theme-color" content="#8fd3ff">
 <meta name="robots" content="noindex, nofollow">
 <title>ヨロヨロおつかい</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&display=swap" rel="stylesheet">
 <style>
   :root {
     --ink: #3b2a1e;
-    --cream: #fff7e6;
-    --accent: #ff7a3d;
-    --accent-dark: #d9531a;
-    --left: #4aa3ff;
-    --right: #ff6b8b;
+    --pudding: #ffd23a;
+    --pudding-dark: #d99a12;
+    --left: #3d8bff;
+    --right: #ff5c7a;
+    --num: "Dela Gothic One", "Hiragino Sans", sans-serif;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
-    margin: 0; height: 100%; overflow: hidden; background: #ffe7b3; color: var(--ink);
-    font-family: "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+    margin: 0; height: 100%; overflow: hidden; background: #8fd3ff; color: var(--ink);
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
     touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   }
   canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
-  .hud {
-    position: fixed; top: max(10px, env(safe-area-inset-top)); left: 12px; right: 12px;
-    display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; gap: 8px;
-  }
-  .chip {
-    background: rgba(255, 247, 230, .92); border: 3px solid var(--ink); border-radius: 14px;
-    padding: 3px 9px; font-weight: 800; font-size: 16px; box-shadow: 0 3px 0 var(--ink); white-space: nowrap;
-  }
-  .chip small { font-size: 12px; font-weight: 700; opacity: .75; margin: 0 2px; }
-  .chip.hurry { background: #ff5a4d; color: #fff; animation: pulse .5s infinite; }
-  @keyframes pulse { 50% { transform: scale(1.08); } }
+  svg.ic { width: 1em; height: 1em; vertical-align: -0.14em; flex: none; }
+  /* 数字は 箱に入れず、ふちどりの文字で */
+  .out { color: #fff; -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill; }
+  .hud { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 0; right: 0; pointer-events: none; z-index: 4; }
+  .hud .center { display: flex; flex-direction: column; align-items: center; }
+  #dist { font-family: var(--num); font-size: 52px; line-height: 1.05; }
+  #dist small { font-size: 22px; margin-left: 2px; }
+  .prog { display: flex; align-items: center; gap: 6px; width: min(210px, 56vw); margin-top: 2px; }
+  .pbar { flex: 1; height: 8px; border-radius: 4px; background: rgba(255,255,255,.55); box-shadow: 0 0 0 2px var(--ink); overflow: hidden; }
+  .pfill { height: 100%; width: 0; background: #fff; }
+  .prog svg.ic { font-size: 26px; }
+  #best { margin-top: 2px; font-family: var(--num); font-size: 15px; -webkit-text-stroke-width: 4px; }
+  #best svg.ic { font-size: 18px; -webkit-text-stroke: 0; }
+  .timer { position: absolute; left: 14px; top: 4px; font-family: var(--num); font-size: 26px; display: flex; align-items: center; gap: 4px; }
+  .timer svg.ic { font-size: 26px; }
+  .timer.hurry { color: #ff4d4d; animation: pulse .5s infinite; }
+  @keyframes pulse { 50% { transform: scale(1.12); } }
+  /* プリンのぐらぐら・体を保つ力：絵＋細いバーだけ */
+  .meters { position: fixed; left: 14px; top: calc(max(8px, env(safe-area-inset-top)) + 42px); pointer-events: none; z-index: 4; display: grid; gap: 6px; }
+  .meter { display: flex; align-items: center; gap: 5px; }
+  .meter svg.ic { font-size: 24px; }
+  .meter .bar { width: 64px; height: 8px; border-radius: 4px; background: rgba(255,255,255,.55); box-shadow: 0 0 0 2px var(--ink); overflow: hidden; }
+  .meter .fill { height: 100%; width: 0; background: #5cc96b; transition: width .08s; }
+  .meter.danger { animation: shake .12s infinite; }
+  .meter.low svg.ic { animation: pulse .4s infinite; }
+  @keyframes shake { 0%,100% { transform: none; } 50% { transform: translateX(3px); } }
   .pads {
     position: fixed; left: 0; right: 0; bottom: 0; height: 42%;
     display: grid; grid-template-columns: 1fr 1fr; pointer-events: none;
   }
   .pad {
     margin: 0 12px max(14px, env(safe-area-inset-bottom)); align-self: end;
-    height: 92px; border-radius: 24px; border: 4px solid var(--ink);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-weight: 900; font-size: 20px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.25);
-    box-shadow: 0 6px 0 var(--ink); transition: transform .05s, box-shadow .05s; opacity: .9;
+    height: 96px; border-radius: 26px; display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 -6px 0 rgba(0,0,0,.18); transition: transform .05s, box-shadow .05s; opacity: .78;
   }
-  .pad small { font-size: 11px; font-weight: 700; opacity: .9; }
+  .pad svg.ic { font-size: 56px; }
+  .pad.r svg.ic { transform: scaleX(-1); }
   .pad.l { background: var(--left); }
   .pad.r { background: var(--right); }
-  .pad.on { transform: translateY(5px); box-shadow: 0 1px 0 var(--ink); filter: brightness(1.1); }
+  .pad.on { transform: translateY(4px); box-shadow: inset 0 -2px 0 rgba(0,0,0,.18); opacity: 1; }
+  .pad.next { box-shadow: inset 0 -6px 0 rgba(0,0,0,.18), 0 0 0 5px #fff; animation: nextp .5s infinite alternate; }
+  @keyframes nextp { to { box-shadow: inset 0 -6px 0 rgba(0,0,0,.18), 0 0 0 5px var(--pudding); } }
+  /* はじめての人に、指で押し方を見せる */
+  .finger { position: fixed; left: 25%; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 20px); width: 64px; height: 64px; margin-left: -20px; pointer-events: none; z-index: 5; display: none; }
+  .finger.show { display: block; animation: walkf 1.1s infinite; }
+  .finger svg { width: 100%; height: 100%; }
+  @keyframes walkf { 0% { transform: translate(0, -18px); } 12% { transform: translate(0, 0) scale(.9); } 40% { transform: translate(0, -18px); } 50% { transform: translate(50vw, -18px); } 62% { transform: translate(50vw, 0) scale(.9); } 90% { transform: translate(50vw, -18px); } 100% { transform: translate(0, -18px); } }
   .overlay {
     position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
-    background: rgba(59, 42, 30, .35); padding: 16px;
+    background: rgba(20, 30, 45, .45); padding: 16px;
   }
   .overlay.show { display: flex; }
   .card {
-    background: var(--cream); border: 4px solid var(--ink); border-radius: 24px; box-shadow: 0 8px 0 var(--ink);
-    padding: 22px 20px 20px; width: min(420px, 100%); text-align: center;
+    background: #fff; border-radius: 22px; box-shadow: 0 12px 40px rgba(0,0,0,.3);
+    padding: 20px 18px 18px; width: min(420px, 100%); text-align: center;
   }
-  .card h1 { margin: 0 0 6px; font-size: 34px; letter-spacing: .04em; color: var(--accent-dark); }
-  .card h2 { margin: 0 0 6px; font-size: 30px; }
-  .card p { margin: 6px 0; font-size: 16px; line-height: 1.6; }
-  .how { display: flex; gap: 10px; justify-content: center; margin: 14px 0 6px; }
-  .how div { flex: 1; border: 3px solid var(--ink); border-radius: 14px; padding: 8px 6px; font-size: 14px; font-weight: 700; color: #fff; }
-  .how .l { background: var(--left); } .how .r { background: var(--right); }
+  .card h1, .card h2 { font-family: var(--num); font-weight: 400; }
+  .card h1 { margin: 0 0 6px; font-size: 30px; }
+  .card h2 { margin: 0 0 8px; font-size: 26px; }
+  .card p { margin: 6px 0; font-size: 15px; line-height: 1.6; }
   .tip { font-size: 13px !important; opacity: .8; }
   .field {
     width: 100%; margin-top: 10px; padding: 12px; font: inherit; font-size: 20px; text-align: center;
-    border: 3px solid var(--ink); border-radius: 14px; background: #fff; color: var(--ink); user-select: text; -webkit-user-select: text;
+    border: 2px solid #c9d3dd; border-radius: 14px; background: #f6f9fb; color: var(--ink); user-select: text; -webkit-user-select: text;
   }
-  .overlay[hidden], .btn[hidden], .tip[hidden], .rank[hidden] { display: none !important; }
-  .btn:disabled { opacity: .55; }
-  .rule { text-align: left; font-size: 14px !important; background: #fff; border: 3px solid var(--ink); border-radius: 14px; padding: 8px 10px; }
-  .more { margin: 6px 0; font-size: 14px; }
-  .more summary { cursor: pointer; font-weight: 800; padding: 4px; }
+  .overlay[hidden], .btn[hidden], .ib[hidden], .tip[hidden], .rank[hidden], [hidden] { display: none !important; }
+  .btn:disabled, .ib:disabled { opacity: .55; }
+  .rule { text-align: left; font-size: 14px !important; }
   .overlay { overflow-y: auto; z-index: 6; }
   .card { max-height: calc(100dvh - 32px); overflow-y: auto; }
-  .rank { margin: 8px 0 10px; border: 3px solid var(--ink); border-radius: 14px; background: #fff; padding: 6px 10px; text-align: left; font-size: 14px; }
-  .rank h3 { margin: 0 0 4px; font-size: 15px; text-align: center; }
+  .rank { margin: 8px 0 10px; text-align: left; font-size: 15px; }
+  .rank h3 { margin: 0 0 6px; font-size: 15px; text-align: center; }
   .rank ol { margin: 0; padding: 0; list-style: none; }
-  .rank li { display: flex; gap: 6px; padding: 1px 0; }
-  .rank li .n { width: 2.2em; font-weight: 900; }
+  .rank li { display: flex; gap: 6px; padding: 4px 6px; border-bottom: 1px solid #eef1f4; }
+  .rank li .n { width: 2.4em; font-family: var(--num); }
   .rank li .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .rank li .d { font-weight: 900; }
+  .rank li .d { font-family: var(--num); }
   .rank li.me { background: #fff3c4; border-radius: 6px; }
-  #gate { z-index: 10; background: #ffe7b3; }
+  #gate { z-index: 10; background: #8fd3ff; }
+  /* いちばん押してほしいボタンだけ、プリン色 */
   .btn {
-    display: block; width: 100%; margin-top: 12px; padding: 14px; font: inherit; font-size: 20px; font-weight: 900;
-    color: #fff; background: var(--accent); border: 4px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink);
+    display: block; width: 100%; margin-top: 12px; padding: 14px; font-family: var(--num); font-size: 26px; font-weight: 400;
+    color: var(--ink); background: var(--pudding); border: 0; border-radius: 20px; box-shadow: inset 0 -6px 0 var(--pudding-dark);
     cursor: pointer;
   }
-  .btn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink); }
-  .btn.sub { background: #fff; color: var(--ink); font-size: 16px; padding: 10px; }
-  .big { font-size: 22px !important; font-weight: 800; }
-  .meter {
-    position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 46px); left: 50%; transform: translateX(-50%);
-    width: min(320px, calc(100% - 24px)); display: flex; align-items: center; gap: 8px; pointer-events: none;
-    background: rgba(255, 247, 230, .92); border: 3px solid var(--ink); border-radius: 14px; padding: 4px 10px;
-    font-weight: 800; font-size: 13px; box-shadow: 0 3px 0 var(--ink); white-space: nowrap;
-  }
-  .meter .lv { background: var(--accent); color: #fff; border-radius: 8px; padding: 0 6px; }
-  .meter .bar { flex: 1; height: 12px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; overflow: hidden; }
-  .meter .fill { height: 100%; width: 0; background: #5cc96b; transition: width .08s; }
-  .meter.danger { animation: shake .12s infinite; }
-  .meter.m2 { top: calc(max(10px, env(safe-area-inset-top)) + 82px); }
-  .meter.m2.low { background: #ffe0dc; }
-  .spd { min-width: 4.6em; text-align: right; }
-  .spd.fast { color: #d9531a; }
-  .guide {
-    position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 110px);
-    width: min(320px, calc(100% - 24px)); pointer-events: none; text-align: center; font-weight: 900; font-size: 15px;
-    background: rgba(255, 247, 230, .92); border: 3px solid var(--ink); border-radius: 14px; padding: 4px 10px 8px; box-shadow: 0 3px 0 var(--ink);
-    transition: background .15s;
-  }
-  .guide.ok { background: #c9f2c0; }
-  .guide.ng { background: #ffd0c8; }
-  .guide[hidden] { display: none; }
-  .gbar { position: relative; height: 14px; margin-top: 3px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; overflow: hidden; }
-  .gzone { position: absolute; top: 0; bottom: 0; background: #7fdc6a; }
-  .gdot { position: absolute; top: -2px; bottom: -2px; width: 6px; margin-left: -3px; background: var(--ink); border-radius: 3px; }
-  .pad.next { outline: 5px solid #fff; outline-offset: 2px; animation: nextp .5s infinite alternate; }
-  @keyframes nextp { to { outline-color: #ffe14d; } }
-  @keyframes shake { 0%,100% { transform: translateX(-50%); } 50% { transform: translateX(calc(-50% + 3px)); } }
-  .tag { display: inline-block; margin: 0 0 4px !important; padding: 2px 12px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px !important; font-weight: 800; }
-  .who { display: flex; align-items: center; gap: 10px; margin: 8px 0 4px; text-align: left; }
-  .face { position: static; inset: auto; width: 104px; height: 104px; flex: none; }
+  .btn:active { transform: translateY(3px); box-shadow: inset 0 -2px 0 var(--pudding-dark); }
+  .btn.sub { background: rgba(255,255,255,.92); box-shadow: inset 0 -5px 0 #c9d3dd; font-family: inherit; font-weight: 800; font-size: 16px; padding: 10px; }
+  .btn small { display: block; font-family: "Hiragino Sans", sans-serif; font-size: 12px; font-weight: 700; opacity: .7; }
+  /* 絵のボタン（下に3〜4文字の名前） */
+  .icons { display: flex; justify-content: center; gap: 14px; margin-top: 14px; }
+  .ib { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; color: #fff; }
+  .ib .ic-c { width: 56px; height: 56px; border-radius: 50%; background: rgba(255,255,255,.95); display: flex; align-items: center; justify-content: center; box-shadow: inset 0 -4px 0 #c9d3dd; }
+  .ib .ic-c svg.ic { font-size: 34px; }
+  .ib b { font-size: 12px; font-weight: 800; -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; white-space: nowrap; }
+  .ib:active .ic-c { transform: translateY(2px); }
+  .ib .badge { position: absolute; top: -4px; right: -6px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: #fff; color: var(--ink); font-style: normal; font-family: var(--num); font-size: 13px; line-height: 22px; box-shadow: 0 0 0 2px var(--ink); }
+  .ib.ready .badge { background: var(--pudding); animation: pulse .6s infinite; }
+  /* タイトル・ゲームオーバーは、箱に入れずに景色の上へ */
+  .overlay.screen { align-items: stretch; padding: 0; background: linear-gradient(to bottom, rgba(20,30,45,0) 35%, rgba(20,30,45,.6) 100%); }
+  .scr { width: min(420px, 100%); margin: 0 auto; padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; text-align: center; min-height: 100%; }
+  .grow { flex: 1; min-height: 20px; }
+  .logo { margin-top: 7vh; font-family: var(--num); line-height: 1; color: var(--pudding); -webkit-text-stroke: 10px var(--ink); paint-order: stroke fill; }
+  .logo .w { font-size: 64px; display: inline-block; animation: yoro 1.6s ease-in-out infinite; }
+  .logo .w:nth-child(2) { animation-delay: -.4s; } .logo .w:nth-child(3) { animation-delay: -.8s; } .logo .w:nth-child(4) { animation-delay: -1.2s; }
+  .logo .sub2 { display: block; font-size: 44px; color: #fff; margin-top: 4px; }
+  @keyframes yoro { 0%,100% { transform: rotate(-7deg) translateY(0); } 50% { transform: rotate(6deg) translateY(4px); } }
+  .tbest { margin: 10px 0 0 !important; font-family: var(--num); font-size: 18px; }
+  .tbest svg.ic { font-size: 22px; }
+  .streak { margin: 8px 0 0 !important; font-weight: 800; font-size: 14px; }
+  .qbtn { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 14px; }
+  .qbtn .ic-c { width: 44px; height: 44px; } .qbtn .ic-c svg.ic { font-size: 26px; }
+  .scr > .btn { max-width: 340px; }
+  .tag { display: inline-block; margin: 0 !important; padding: 3px 14px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 14px !important; font-weight: 800; }
+  .who { display: flex; align-items: center; gap: 12px; margin: 10px 0 4px; width: 100%; }
+  .face { position: static; inset: auto; width: 96px; height: 96px; flex: none; }
   .bubble {
-    position: relative; flex: 1; background: #fff; border: 3px solid var(--ink); border-radius: 16px; padding: 10px 12px;
-    font-weight: 800; font-size: 17px; line-height: 1.5; white-space: pre-line;
+    position: relative; flex: 1; background: #fff; border-radius: 16px; padding: 10px 12px;
+    font-weight: 800; font-size: 17px; line-height: 1.45; white-space: pre-line; text-align: left;
   }
-  .bubble::before { content: ''; position: absolute; left: -12px; top: 50%; margin-top: -9px; border: 9px solid transparent; border-right: 12px solid var(--ink); border-left: 0; }
-  .bubble::after { content: ''; position: absolute; left: -7px; top: 50%; margin-top: -6px; border: 6px solid transparent; border-right: 8px solid #fff; border-left: 0; }
-  .act { font-size: 14px !important; opacity: .85; margin: 4px 0 !important; }
+  .bubble::before { content: ''; position: absolute; left: -10px; top: 50%; margin-top: -8px; border: 8px solid transparent; border-right: 11px solid #fff; border-left: 0; }
   .snd {
-    position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 124px); right: 12px; z-index: 5;
-    width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--ink); background: rgba(255, 247, 230, .92);
-    box-shadow: 0 3px 0 var(--ink); font-size: 20px; padding: 0; cursor: pointer;
+    position: fixed; top: max(8px, env(safe-area-inset-top)); right: 12px; z-index: 7;
+    width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255,255,255,.85);
+    box-shadow: inset 0 -3px 0 #c9d3dd; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center;
   }
-  .near { margin: 6px 0 2px !important; font-size: 22px !important; font-weight: 900; color: #d9531a; }
-  .near.best { color: #c48a00; }
-  .near small { display: block; font-size: 14px; color: var(--ink); opacity: .75; }
-  .newbox { margin: 6px 0; padding: 6px 10px; border: 3px dashed #c48a00; border-radius: 14px; background: #fff8d6; font-size: 14px; font-weight: 800; text-align: left; }
-  .newbox[hidden] { display: none; }
-  .newbox b { color: #d9531a; }
-  .row2 { display: flex; gap: 8px; }
-  .row2 .btn { flex: 1; }
+  .snd svg.ic { font-size: 26px; }
+  .near { margin: 2px 0 !important; font-size: 18px !important; font-weight: 900; color: #fff; -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill; }
+  .near.best { color: var(--pudding); }
+  .near small { display: block; font-size: 13px; }
+  .pills { display: flex; gap: 8px; justify-content: center; margin-top: 6px; }
+  .pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 12px; border-radius: 999px; background: rgba(255,255,255,.92); font-weight: 900; font-size: 14px; }
+  .pill b { color: #e8303a; }
   #zukan, #closet { z-index: 8; }
   #closet .card { text-align: left; }
   #closet h2 { text-align: center; }
-  #closet h3 { margin: 12px 0 6px; font-size: 16px; border-bottom: 3px solid var(--ink); }
+  #closet h3 { margin: 12px 0 6px; font-size: 16px; border-bottom: 2px solid #dfe5ec; }
   .clg { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
-  .cl { font: inherit; color: var(--ink); border: 3px solid var(--ink); border-radius: 12px; background: #fff; padding: 6px; text-align: center; font-weight: 800; font-size: 14px; cursor: pointer; }
+  .cl { font: inherit; color: var(--ink); border: 2px solid #dfe5ec; border-radius: 12px; background: #fff; padding: 6px; text-align: center; font-weight: 800; font-size: 14px; cursor: pointer; }
   .cl b { display: block; font-size: 28px; line-height: 1.2; }
   .cl i { display: block; font-style: normal; font-size: 11px; opacity: .8; font-weight: 700; }
   .cl.on { background: #fff3c4; box-shadow: 0 0 0 3px var(--accent) inset; }
-  .cl.no { background: #efe6d6; color: #8a7a62; border-style: dashed; cursor: default; }
-  .sw { display: inline-block; width: 26px; height: 30px; border: 2px solid var(--ink); border-radius: 8px; }
-  .btn small { display: block; font-size: 12px; font-weight: 700; opacity: .9; }
-  .btn.daily { background: #2f9e8f; font-size: 18px; padding: 10px; }
-  .streak { margin: 8px 0 0 !important; font-size: 14px !important; font-weight: 800; }
-  .btn.vid { background: #7a4ad6; font-size: 16px; padding: 10px; }
+  .cl.no { background: #f2f4f7; color: #9aa4b1; border-style: dashed; cursor: default; }
+  .sw { display: inline-block; width: 26px; height: 30px; border: 2px solid #dfe5ec; border-radius: 8px; }
   #zukan .card { text-align: left; }
   #zukan h2 { text-align: center; }
-  #zukan h3 { margin: 12px 0 6px; font-size: 16px; border-bottom: 3px solid var(--ink); }
+  #zukan h3 { margin: 12px 0 6px; font-size: 16px; border-bottom: 2px solid #dfe5ec; }
   #zukan h3 small { font-size: 13px; opacity: .7; }
   .zt { text-align: center; font-size: 15px !important; }
   .zt b { font-size: 22px; color: var(--accent-dark); }
   .zs { font-size: 12px !important; opacity: .7; margin: 0 0 4px !important; }
   .zg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .zk { border: 2px solid var(--ink); border-radius: 10px; background: #fff; padding: 4px; text-align: center; font-size: 12px; font-weight: 800; line-height: 1.3; }
+  .zk { border: 2px solid #dfe5ec; border-radius: 10px; background: #fff; padding: 4px; text-align: center; font-size: 12px; font-weight: 800; line-height: 1.3; }
   .zk b { display: block; font-size: 24px; }
-  .zk.no { background: #efe6d6; color: #8a7a62; border-style: dashed; }
+  .zk.no { background: #f2f4f7; color: #9aa4b1; border-style: dashed; }
   .zrow { margin: 4px 0; }
   .zn { font-size: 13px; font-weight: 800; }
   .zfs { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
   .zf { position: static; inset: auto; display: block; width: 100%; height: auto; aspect-ratio: 1; }
   .hint {
-    position: fixed; left: 0; right: 0; top: 30%; text-align: center; font-weight: 900; font-size: 18px; padding: 0 12px;
-    color: var(--ink); text-shadow: 0 2px 0 #fff, 0 -2px 0 #fff, 2px 0 0 #fff, -2px 0 0 #fff; pointer-events: none;
-    transition: opacity .6s;
+    position: fixed; left: 0; right: 0; top: 30%; text-align: center; font-family: var(--num); font-size: 22px; line-height: 1.35; padding: 0 16px;
+    color: #fff; -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill; pointer-events: none; transition: opacity .6s;
   }
+  .hint b { color: var(--pudding); }
   .medal {
-    position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 128px); left: 12px; z-index: 5; pointer-events: none;
-    padding: 4px 10px; border-radius: 999px; border: 3px solid var(--ink); background: rgba(255, 247, 230, .92);
-    box-shadow: 0 3px 0 var(--ink); font-weight: 900; font-size: 15px;
+    position: fixed; top: calc(max(8px, env(safe-area-inset-top)) + 52px); right: 14px; z-index: 4; pointer-events: none;
+    display: flex; align-items: center; gap: 4px; font-family: var(--num); font-size: 22px;
   }
-  .medal small { font-size: 11px; font-weight: 800; opacity: .75; margin-left: 4px; }
-  .medal.ready { background: #ffe066; }
+  .medal.ready .coin { box-shadow: 0 0 0 2px var(--ink), 0 0 10px 4px #fff59a; }
   .medal.bump { animation: bump .45s; }
   @keyframes bump { 40% { transform: scale(1.35); } }
-  .btn.gacha { background: #e8a600; font-size: 17px; padding: 10px; }
-  .btn.gacha:disabled { background: #cdbf9e; box-shadow: 0 3px 0 var(--ink); }
-  .mline { margin: 4px 0 !important; font-size: 15px !important; font-weight: 900; }
   #gacha { z-index: 9; }
   #gacha .ghow { font-size: 13px; text-align: left; background: #fff8d6; border: 3px dashed #c48a00; border-radius: 12px; padding: 6px 10px; margin: 6px 0; font-weight: 700; }
   .gm { position: relative; height: 170px; margin: 6px auto; width: 190px; }
@@ -206,7 +210,7 @@
   .cap { position: absolute; left: 70px; top: 60px; width: 50px; height: 50px; border-radius: 50%; border: 4px solid var(--ink); opacity: 0; }
   .gm.drop .cap { animation: drop .6s ease-in forwards; }
   @keyframes drop { 0% { opacity: 1; transform: translateY(40px) scale(.6); } 70% { transform: translateY(110px) scale(1); } 100% { opacity: 1; transform: translateY(96px) scale(1.1); } }
-  .gres { border: 4px solid var(--ink); border-radius: 16px; padding: 8px; margin: 6px 0; background: #fff; animation: popin .4s; }
+  .gres { border: 2px solid #dfe5ec; border-radius: 16px; padding: 8px; margin: 6px 0; background: #fff; animation: popin .4s; }
   .gres b { display: block; font-size: 54px; line-height: 1.1; }
   .gres .rr { font-weight: 900; font-size: 15px; }
   .gres .nm { font-weight: 900; font-size: 20px; }
@@ -215,122 +219,164 @@
   .gres.ssr { background: radial-gradient(circle, #fff6c4, #ffd84d); }
   @keyframes popin { 0% { transform: scale(.3); opacity: 0; } 70% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
   .gall { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin: 6px 0; }
-  .gall span { border: 2px solid var(--ink); border-radius: 8px; font-size: 20px; background: #fff; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; }
-  .gall span.no { background: #efe6d6; color: #8a7a62; font-size: 14px; font-weight: 900; border-style: dashed; }
+  .gall span { border: 2px solid #dfe5ec; border-radius: 8px; font-size: 20px; background: #fff; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; }
+  .gall span.no { background: #f2f4f7; color: #9aa4b1; font-size: 14px; font-weight: 900; border-style: dashed; }
+  .fnum { font-family: var(--num); font-size: 64px; line-height: 1.05; margin-top: 4px; }
+  .fnum small { font-size: 26px; }
+  .coin { display: inline-block; width: .9em; height: .9em; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff2a8 0 18%, #ffcf3d 19% 100%); box-shadow: 0 0 0 2px var(--ink); vertical-align: -0.1em; position: relative; }
+  .coin::after { content: ''; position: absolute; inset: 22%; border-radius: 50%; border: 2px solid #d99a12; }
+  #fail .scr { justify-content: flex-end; }
+  /* タイトル・ゲームオーバーのあいだは、遊ぶときの表示を出さない */
+  body.menu .hud, body.menu .meters, body.menu .medal, body.menu .pads, body.menu .hint, body.menu .finger { display: none !important; }
 </style>
 </head>
-<body>
+<body class="menu">
 <canvas id="c"></canvas>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-foot" viewBox="0 0 24 24"><path d="M8.5 22c-2.6 0-3.6-2.4-3.2-5.2.4-2.9 1-4.6 2.6-6.1 1.5-1.4 3.7-1 4.4.9.8 2.1-.3 3.6-.8 5.6-.5 2.2.4 4.8-3 4.8z" fill="#fff"/><circle cx="7.2" cy="6.6" r="1.6" fill="#fff"/><circle cx="10.4" cy="5.2" r="1.5" fill="#fff"/><circle cx="13.3" cy="5.6" r="1.35" fill="#fff"/><circle cx="15.6" cy="7.2" r="1.2" fill="#fff"/><circle cx="16.9" cy="9.6" r="1.05" fill="#fff"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8.5" fill="#fff" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M12 8.5V13l3 2" fill="none" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M9.5 2.8h5" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" fill="none"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 22V3" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" fill="none"/><path d="M6 4c4-2 7 2 13 0v9c-6 2-9-2-13 0z" fill="#ffcf3d" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="i-house" viewBox="0 0 24 24"><path d="M4.5 11v10h15V11" fill="#fff4dc" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M2.5 12 12 3.5l9.5 8.5z" fill="#e8553a" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M10 21v-5.5h4V21" fill="#9a6a3a" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="i-pudding" viewBox="0 0 24 24"><path d="M6.5 20 8 8.5h8L17.5 20z" fill="#ffd23a" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M8 8.5c.2-2.6 1.8-4 4-4s3.8 1.4 4 4z" fill="#9a5a24" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M3.5 20.5h17" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" fill="none"/></symbol>
+  <symbol id="i-body" viewBox="0 0 24 24"><circle cx="12" cy="5" r="3" fill="#ffe0bd" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M12 8.5v7M5 11.5h14M12 15.5l-3.5 6M12 15.5l3.5 6" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" fill="none"/></symbol>
+  <symbol id="i-snd" viewBox="0 0 24 24"><path d="M3.5 9.5h4l5-4.5v14l-5-4.5h-4z" fill="#fff" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M16 9c1.2 1.6 1.2 4.4 0 6M18.6 6.5c2.6 3 2.6 8 0 11" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" fill="none"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M3.5 9.5h4l5-4.5v14l-5-4.5h-4z" fill="#fff" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M16 9.5l5 5M21 9.5l-5 5" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" fill="none"/></symbol>
+  <symbol id="i-capsule" viewBox="0 0 24 24"><rect x="5" y="2.5" width="14" height="19" rx="7" fill="#fff" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M5 12V9.5a7 7 0 0 1 14 0V12z" fill="#ff5c7a" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M8 6.5c.8-1 1.8-1.5 3-1.6" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.5C9.5 4.5 6 4.5 3 5.5v14c3-1 6.5-1 9 1 2.5-2 6-2 9-1v-14c-3-1-6.5-1-9 1z" fill="#7ad36b" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M12 6.5v14" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" fill="none"/></symbol>
+  <symbol id="i-shirt" viewBox="0 0 24 24"><path d="M8.5 3.5 3 6.5l2 4 2.5-1V21h9V9.5l2.5 1 2-4-5.5-3c-.5 1.6-1.8 2.5-3.5 2.5S9 5.1 8.5 3.5z" fill="#ff8a3d" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 3.5h10v5a5 5 0 0 1-10 0z" fill="#ffcf3d" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M7 5.5H3.5c0 3 1.5 4.5 3.8 4.6M17 5.5h3.5c0 3-1.5 4.5-3.8 4.6M12 13.5v4M8 21h8l-1-3.5H9z" fill="none" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="i-q" viewBox="0 0 24 24"><path d="M8.8 8.5c0-2 1.5-3.3 3.3-3.3s3.3 1.2 3.3 3c0 2.6-3.3 2.8-3.3 5.3" fill="none" stroke="#3b2a1e" stroke-width="2.8" stroke-linecap="round"/><circle cx="12.1" cy="18.3" r="1.6" fill="#3b2a1e"/></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M19 12a7 7 0 1 1-2.2-5.1" fill="none" stroke="#3b2a1e" stroke-width="3" stroke-linecap="round"/><path d="M17.8 2.8v4.6h-4.6" fill="none" stroke="#3b2a1e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24"><rect x="2.5" y="6.5" width="13" height="11" rx="2.5" fill="#b46cf0" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M15.5 10.5l6-3v9l-6-3z" fill="#b46cf0" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M5 11v9h14v-9" fill="none" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M12 15V3.5M7.5 8 12 3.5 16.5 8" fill="none" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 22c-4 0-7-2.6-7-6.5 0-4 3.5-5.5 4-10 2.5 1.5 3 3.5 3 5 1-1 1.5-2.5 1.5-4 3 2 5.5 5 5.5 9 0 3.9-3 6.5-7 6.5z" fill="#ff7a3d" stroke="#3b2a1e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="i-finger" viewBox="0 0 24 24"><path d="M9 13V4.5a1.6 1.6 0 0 1 3.2 0V11l5.2.9c1.4.3 2.3 1.6 2 3l-.9 4.6c-.3 1.4-1.4 2.5-2.9 2.5h-4.2c-1.1 0-2-.5-2.6-1.4L5 15.8c-.6-.8-.4-1.9.4-2.4.7-.5 1.7-.4 2.3.3z" fill="#fff" stroke="#3b2a1e" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+</svg>
 <div class="hud">
-  <div class="chip" id="dist">0<small>m</small></div>
-  <div class="chip" id="time"><small>のこり</small>20<small>秒</small></div>
-  <div class="chip" id="best">ベスト ―</div>
+  <div class="timer out" id="time"><svg class="ic"><use href="#i-clock"/></svg><span id="timeN">20</span></div>
+  <div class="center">
+    <div class="out" id="dist">0.0<small>m</small></div>
+    <div class="prog"><div class="pbar"><div class="pfill" id="progFill"></div></div><svg class="ic"><use href="#i-house"/></svg></div>
+    <div class="out" id="best"></div>
+  </div>
 </div>
 
-<div class="meter" id="meter"><b class="lv" id="meterLabel">🏠あと12m</b><span>ぐらぐら</span><div class="bar"><div class="fill" id="meterFill"></div></div></div>
+<div class="meters">
+  <div class="meter" id="meter"><svg class="ic"><use href="#i-pudding"/></svg><div class="bar"><div class="fill" id="meterFill"></div></div><span id="meterLabel" hidden></span></div>
+  <div class="meter" id="meter2"><svg class="ic"><use href="#i-body"/></svg><div class="bar"><div class="fill" id="balFill"></div></div><span id="spd" hidden></span></div>
+</div>
 
-<div class="meter m2" id="meter2"><span>バランス</span><div class="bar"><div class="fill" id="balFill"></div></div><span class="spd" id="spd">0.0m/秒</span></div>
+<div class="medal out" id="medalChip" hidden></div>
 
+<button class="snd" id="sndBtn" type="button" aria-label="音をけす"><svg class="ic"><use href="#i-snd"/></svg></button>
 
-<div class="medal" id="medalChip" hidden></div>
-
-<button class="snd" id="sndBtn" type="button" aria-label="音をけす">🔊</button>
-
-<div class="hint" id="hint">左・右・左・右…<br>トン、トン、とリズムよく！</div>
+<div class="hint" id="hint"></div>
 
 <div class="pads">
-  <div class="pad l" id="padL">ひだり足<small>左半分をタッチ</small></div>
-  <div class="pad r" id="padR">みぎ足<small>右半分をタッチ</small></div>
+  <div class="pad l" id="padL"><svg class="ic"><use href="#i-foot"/></svg></div>
+  <div class="pad r" id="padR"><svg class="ic"><use href="#i-foot"/></svg></div>
 </div>
+<div class="finger" id="finger"><svg viewBox="0 0 24 24"><use href="#i-finger"/></svg></div>
 
 <div class="overlay show" id="gate" hidden>
   <div class="card">
     <h1>ヨロヨロおつかい</h1>
-    <p>メンバー用の試作版です。<br>合言葉を入れてください。</p>
+    <p>合言葉を入れてね</p>
     <input id="gateInput" class="field" type="text" inputmode="text" autocomplete="off" autocapitalize="off" placeholder="合言葉">
     <p class="tip" id="gateMsg">&nbsp;</p>
     <button class="btn" id="gateBtn">はいる</button>
   </div>
 </div>
 
-<div class="overlay show" id="title">
-  <div class="card">
-    <h1>ヨロヨロおつかい</h1>
-    <p>おうちで待っている人に、<br>プリンを落とさず届けよう！<br>道はどこまでも続く。<b>何m歩けるかな？</b></p>
-    <div class="how">
-      <div class="l">画面の左半分<br>＝ ひだり足</div>
-      <div class="r">画面の右半分<br>＝ みぎ足</div>
+<div class="overlay screen show" id="title">
+  <div class="scr">
+    <button class="ib qbtn" id="howBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-q"/></svg></span><b>あそびかた</b></button>
+    <div class="logo"><span class="w">ヨ</span><span class="w">ロ</span><span class="w">ヨ</span><span class="w">ロ</span><span class="sub2">おつかい</span></div>
+    <p class="tbest out" id="bestRun" hidden></p>
+    <div class="grow"></div>
+    <button class="btn" id="startBtn">あるく</button>
+    <button class="btn sub" id="dailyBtn" type="button">きょうのコース</button>
+    <p class="streak out" id="streak"></p>
+    <div class="icons">
+      <button class="ib" id="titleGachaBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-capsule"/></svg></span><b>ガチャ</b><i class="badge" id="titleMedal">0</i></button>
+      <button class="ib" id="titleZukanBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-book"/></svg></span><b>ずかん</b></button>
+      <button class="ib" id="closetBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-shirt"/></svg></span><b>きせかえ</b></button>
+      <button class="ib" id="rankBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-trophy"/></svg></span><b>きろく</b></button>
     </div>
-    <p class="rule">① <b>光った足</b>を押す<br>　（交互に。<b>速く押すほど速く走る</b>。少しずつなら速さを変えてOK）<br>② 左右を<b>同時にタップでジャンプ</b>（長く押すと高く）<br>　空中で もう1回同時タップ ＝ <b>2段ジャンプ</b><br>③ 転ぶ・プリン落下・時間切れで<b>アウト</b></p>
-    <details class="more"><summary>くわしい遊び方</summary>
-    <p class="tip"><b>バランスの保ち方：</b>次に押す足が光ります。左右を同じくらいの間かくで押すと「いいリズム」で、上の「バランス」がたまります。早すぎ・おそすぎ・同じ足・止まると、バランスがへってふらふらし、なくなると転びます。<br>左右を交互に押すと歩けます。押しているあいだ足が上がり、はなすと地面をけります。<br><b>同じ足を続けて押す・リズムがばらばら・止まる と、ころびます。</b><br>足ぶみしながら前に進んでいないと、体を保てず ふらふらして ころびます（何も押さないと、すぐ転びます）。<br>トン、トン、と同じ間かくで！<br><b>左右を同時にタップするとジャンプ！</b>（片方を押したままでは飛べません。両方はなしてから、同時にタップ）長く押すほど高く飛びます。空中で もう1回 同時にタップすると2段ジャンプ。穴もジャンプでこえよう。<br>ジャンプ台に乗ると、ピョーンと飛ばしてくれます。<br>ガクガク歩くと「ぐらぐらメーター」がたまり、満タンでプリンが飛んでいきます。<br>パソコンは「F」と「J」キーでも遊べます。<br>コースは毎回同じ。おぼえれば上達します。<br>道に立っている金色の旗が、あなたの自己ベストです。</p>
-    </details>
-    <button class="btn" id="startBtn">はじめる</button>
-    <button class="btn daily" id="dailyBtn" type="button">📅 今日のコース</button>
-    <p class="streak" id="streak"></p>
-    <button class="btn gacha" id="titleGachaBtn" type="button">🎰 ガチャ</button>
-    <div class="row2"><button class="btn sub" id="titleZukanBtn" type="button">📖 ずかん</button><button class="btn sub" id="closetBtn" type="button">👕 きせかえ</button></div>
-    <p class="tip" id="bestRun" hidden></p>
-    <div class="rank" id="titleRank" hidden></div>
   </div>
 </div>
 
 <div class="overlay" id="pause">
   <div class="card">
-    <h2>ひと休み中</h2>
-    <p>指をボタンにおいたら、<br>つづけよう。</p>
+    <h2>ひと休み</h2>
     <button class="btn" id="resumeBtn">つづける</button>
   </div>
 </div>
 
-<div class="overlay" id="fail">
-  <div class="card">
-    <p class="tag" id="failTag">ゲームオーバー</p>
-    <h2 id="failTitle">しょんぼり…</h2>
-    <div class="who"><canvas class="face" id="failFace" width="240" height="240"></canvas><div class="bubble" id="failLine"></div></div>
-    <p class="act" id="failAct"></p>
+<div class="overlay screen" id="fail">
+  <div class="scr">
+    <p class="tag" id="failTag"></p>
+    <div class="fnum out" id="failNum"></div>
     <p class="near" id="failNear"></p>
-    <p class="tip" id="failDist" style="white-space:pre-line"></p>
-    <div class="newbox" id="failNew" hidden></div>
-    <p class="mline" id="failMedal"></p>
+    <div class="who"><canvas class="face" id="failFace" width="240" height="240"></canvas><div class="bubble" id="failLine"></div></div>
+    <div class="pills"><span class="pill" id="failNew" hidden></span><span class="pill" id="failMedal" hidden></span></div>
     <button class="btn" id="retryBtn">もう一回</button>
-    <button class="btn gacha" id="failGachaBtn" type="button" hidden>🎰 ガチャを回す</button>
-    <button class="btn vid" id="vidBtn" type="button">🎬 転んだところを動画にする</button>
-    <div class="rank" id="failRank" hidden></div>
-    <div class="row2"><button class="btn sub" id="failZukanBtn" type="button">📖 ずかん</button><button class="btn sub" id="shareBtn" type="button">記録を送る</button></div>
+    <div class="icons">
+      <button class="ib" id="vidBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-cam"/></svg></span><b>動画</b></button>
+      <button class="ib" id="shareBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-share"/></svg></span><b>送る</b></button>
+      <button class="ib" id="failZukanBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-book"/></svg></span><b>ずかん</b></button>
+      <button class="ib" id="failGachaBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-capsule"/></svg></span><b>ガチャ</b></button>
+    </div>
+    <div hidden><h2 id="failTitle"></h2><p id="failAct"></p><p id="failDist"></p><div class="rank" id="failRank"></div></div>
+  </div>
+</div>
+
+<div class="overlay" id="records">
+  <div class="card">
+    <h2>きろく</h2>
+    <div class="rank" id="titleRank"></div>
+    <button class="btn sub" id="recordsClose" type="button">とじる</button>
+  </div>
+</div>
+
+<div class="overlay" id="howto">
+  <div class="card">
+    <h2>あそびかた</h2>
+    <p class="rule">・左と右の足を、こうごに押して歩く。速く押すほど速い<br>・左右を同時に押すとジャンプ。空中でもう一回で2段ジャンプ<br>・ころぶ・プリンを落とす・時間切れでおしまい<br>・<svg class="ic"><use href="#i-pudding"/></svg> がたまるとプリンが飛ぶ。<svg class="ic"><use href="#i-body"/></svg> がへるとふらふら<br>・？の箱をとるとメダル。5枚でガチャ<br>・パソコンは F と J キー</p>
+    <button class="btn sub" id="howtoClose" type="button">とじる</button>
   </div>
 </div>
 
 <div class="overlay" id="zukan">
   <div class="card">
-    <h2>📖 ずかん</h2>
+    <h2>ずかん</h2>
     <div id="zukanBody"></div>
-    <button class="btn" id="zukanClose" type="button">とじる</button>
+    <button class="btn sub" id="zukanClose" type="button">とじる</button>
   </div>
 </div>
 
 <div class="overlay" id="closet">
   <div class="card">
-    <h2>👕 きせかえ</h2>
-    <p class="tip">遊ぶほど、運ぶものと服がふえます。くつ・ぼうし・おぼん・すがたは 🎰ガチャで出ます。</p>
+    <h2>きせかえ</h2>
+    <p class="tip">遊ぶほど ふえるよ。くつ・ぼうし・おぼん・すがたは ガチャで出る</p>
     <div id="closetBody"></div>
     <div id="closetGacha"></div>
-    <button class="btn" id="closetClose" type="button">とじる</button>
+    <button class="btn sub" id="closetClose" type="button">とじる</button>
   </div>
 </div>
 
 <div class="overlay" id="gacha">
   <div class="card">
-    <h2>🎰 ガチャ</h2>
-    <p class="ghow">道の <b>？の箱</b>（おたから）をとると <b>メダル🪙</b> がもらえる。めずらしいおたからほど たくさん。<br><b>🪙5枚でガチャ1回</b>。くつ・ぼうし・おぼん・すがた が出て、見た目が変わる。ちょっとだけ 有利になるものも！</p>
+    <h2>ガチャ</h2>
+    <p class="tip">？の箱でメダルがもらえる。5枚で1回</p>
     <div class="gm" id="gMachine"><div class="glass"><i style="left:12px;top:70px;background:#ff6b8b"></i><i style="left:50px;top:78px;background:#4aa3ff"></i><i style="left:88px;top:68px;background:#ffd23a"></i><i style="left:30px;top:44px;background:#7ad36b"></i><i style="left:70px;top:40px;background:#b46cf0"></i></div><div class="base"></div><div class="knob"></div><div class="cap" id="gCap"></div></div>
     <div id="gResult"></div>
-    <p class="mline" id="gMedals"></p>
-    <button class="btn gacha" id="gPull" type="button">🎰 回す（🪙5）</button>
+    <p class="tip" id="gMedals"></p>
+    <button class="btn" id="gPull" type="button">回す</button>
     <p class="tip" id="gCount"></p>
     <div class="gall" id="gAll"></div>
-    <div class="row2"><button class="btn sub" id="gCloset" type="button">👕 きせかえで えらぶ</button><button class="btn sub" id="gClose" type="button">とじる</button></div>
+    <button class="btn sub" id="gCloset" type="button">きせかえ</button><button class="btn sub" id="gClose" type="button">とじる</button>
   </div>
 </div>
 

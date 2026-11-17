@@ -4,7 +4,7 @@
   const ctx = canvas.getContext('2d');
   const $ = (id) => document.getElementById(id);
   const ui = {
-    dist: $('dist'), time: $('time'), best: $('best'), hint: $('hint'),
+    dist: $('dist'), time: $('time'), timeN: $('timeN'), best: $('best'), hint: $('hint'), prog: $('progFill'), finger: $('finger'),
     padL: $('padL'), padR: $('padR'),
     title: $('title'), fail: $('fail'), pause: $('pause'), retry: $('retryBtn'),
     failTitle: $('failTitle'), failLine: $('failLine'), failDist: $('failDist'),
@@ -66,13 +66,13 @@
     const windy = n >= 3 && (force.wind != null ? force.wind !== 0 : R() < 0.15);
     S.wind = (windy ? (force.wind || (R() < 0.5 ? -4 : 4)) : 0) * S.fx.wind;
     makeBoxes(R);
-    let msg = n === 1 ? `${waiter.name}に プリンを とどけよう！<br>光った足を、左右交互に押そう！<br>速く押すほど 速く走れるよ`
-      : n === 3 ? `つぎは ${waiter.name}の家<br>じゃまな物は ジャンプで こえよう！`
-      : `つぎは ${waiter.name}の家<br>${stage.goal}m先で まってるよ`;
-    if (rare) { msg = `えっ！？ つぎは <b>${waiter.name}</b>の家！？<br>めずらしいお客さんだ！`; noteNew(ZK.mark('event', 'rare'), 'できごと「めずらしい お客さん」'); }
-    if (S.wind) { const head = S.wind < 0; msg = `${head ? '🌬️ 向かい風だ！ おされるぞ' : '🍃 追い風だ！ 前につんのめるぞ'}<br>${msg.split('<br>')[0]}`; noteNew(ZK.mark('event', head ? 'headwind' : 'tailwind'), `できごと「${head ? '向かい風' : '追い風'}」`); }
-    if (n === 1 && goldDay) msg = '✨ きょうは 金のプリンの日！ ✨<br>おたからが いつもの2ばい！';
-    if (n === 1 && mode === 'daily') msg = `📅 今日のコース（${DY.label()}）<br>${msg.split('<br>')[0]}`;
+    let msg = n === 1 ? `${waiter.name}に<br>プリンを とどけよう`
+      : n === 3 ? `つぎは ${waiter.name}の家<br>左右同時で ジャンプ`
+      : `つぎは ${waiter.name}の家`;
+    if (rare) { msg = `えっ！？ つぎは<br><b>${waiter.name}</b>の家！？`; noteNew(ZK.mark('event', 'rare'), 'できごと「めずらしい お客さん」'); }
+    if (S.wind) { const head = S.wind < 0; msg = `${head ? '向かい風だ！' : '追い風だ！'}<br>${msg.split('<br>')[0]}`; noteNew(ZK.mark('event', head ? 'headwind' : 'tailwind'), `できごと「${head ? '向かい風' : '追い風'}」`); }
+    if (n === 1 && goldDay) msg = 'きょうは<br><b>金のプリンの日！</b>';
+    if (n === 1 && mode === 'daily') msg = `きょうのコース<br>${DY.label()}`;
     showBanner(tr(msg));
     if (n > 1 && (rare || S.wind)) { snd.play(S.wind ? 'gust' : 'event'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 3000); }
   }
@@ -108,8 +108,8 @@
       b.taken = performance.now(); b.item = t; runTreasure++;
       const isNew = noteNew(ZK.mark('treasure', t.id), `おたから「${t.name}」`);
       const m = medalOf(t), could = GA.canPull(); GA.addMedals(m); runMedals += m;
-      pop(`${t.icon} ${t.name} 🪙+${m}${isNew ? ' NEW！' : ''}`, isNew ? '#d48a00' : '#7a4ad6');
-      if (!could && GA.canPull()) setTimeout(() => pop('🎰 ガチャが回せる！', '#e8a600'), 450);
+      pop(`${t.icon} ${t.name} +${m}${isNew ? ' NEW！' : ''}`, isNew ? '#d48a00' : '#7a4ad6');
+      if (!could && GA.canPull()) setTimeout(() => pop('ガチャが回せる！', '#e8a600'), 450);
       paintMedal(true);
       snd.play('treasure', ZK.rareOf(t));
     }
@@ -184,6 +184,7 @@
   }
   function showOnly(el) {
     for (const o of [ui.title, ui.fail, ui.pause]) o.classList.toggle('show', o === el);
+    document.body.classList.toggle('menu', el === ui.title || el === ui.fail);
   }
   function start() { restart('free'); }
   // ゲームオーバーのあとは、いつも最初（おかしや）から
@@ -196,7 +197,7 @@
     CLIP.reset();
     goldDay = force.gold != null ? !!force.gold : (mode === 'daily' ? DY.rng(0)() : Math.random()) < 0.03; // ごくたまに「金のプリンの日」
     if (goldDay) noteNew(ZK.mark('event', 'goldday'), 'できごと「金のプリンの日」');
-    loadLevel(1); pops.length = 0; elapsed = 0; runDist = 0; passedBest = false; nextMile = 50; game.spawn(0); showOnly(null); snd.play(goldDay ? 'event' : 'start'); snd.bgm(true);
+    tutSteps = 0; loadLevel(1); pops.length = 0; elapsed = 0; runDist = 0; passedBest = false; nextMile = 50; game.spawn(0); showOnly(null); snd.play(goldDay ? 'event' : 'start'); snd.bgm(true);
   }
   const retry = () => restart();
   // おうちに着いた：プリンを届けて、止まらずに次のおうちへ
@@ -221,8 +222,8 @@
   ui.fail.addEventListener('click', (e) => { if (!e.target.closest('button, a, summary') && !ui.retry.disabled && !vidBusy) restart(); });
   // 転んだ動画：1回目のタップで作る → できたら、もう1回のタップで送る（スマホは送るときにタップが要る）
   let vidFile = null, vidBusy = false, clipInfo = null;
-  const vidBtn = $('vidBtn');
-  function resetVid() { vidFile = null; vidBusy = false; vidBtn.disabled = false; vidBtn.textContent = '🎬 転んだところを動画にする'; }
+  const vidBtn = $('vidBtn'), vidLabel = vidBtn.querySelector('b');
+  function resetVid() { vidFile = null; vidBusy = false; vidBtn.disabled = false; vidLabel.textContent = '動画'; }
   async function shareFile(f) {
     try {
       if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], text: lastShare }); return; }
@@ -233,10 +234,10 @@
   vidBtn.onclick = async () => {
     if (vidFile) { shareFile(vidFile); return; }
     if (vidBusy || !clipInfo) return;
-    vidBusy = true; vidBtn.disabled = true; vidBtn.textContent = '🎬 動画をつくっています…';
-    try { vidFile = await CLIP.make(clipInfo, (p) => { vidBtn.textContent = `🎬 動画をつくっています… ${Math.round(p * 100)}%`; }); } catch (e) { vidFile = null; }
+    vidBusy = true; vidBtn.disabled = true; vidLabel.textContent = 'つくり中';
+    try { vidFile = await CLIP.make(clipInfo, (p) => { vidLabel.textContent = `${Math.round(p * 100)}%`; }); } catch (e) { vidFile = null; }
     vidBusy = false; vidBtn.disabled = false;
-    vidBtn.textContent = !vidFile ? 'このスマホでは動画を作れませんでした' : vidFile.type.startsWith('video') ? '🎬 できた！ 動画を送る・保存' : '🖼 画像を送る・保存';
+    vidLabel.textContent = !vidFile ? 'つくれない' : '動画を送る';
   };
   // きせかえ
   const closetEl = $('closet');
@@ -253,10 +254,10 @@
   let gBusy = false;
   function paintGacha() {
     const c = GA.count();
-    $('gMedals').textContent = `🪙 メダル ${GA.medals}枚${GA.canPull() ? '' : `（ガチャまで あと ${GA.COST - GA.medals}枚）`}`;
+    $('gMedals').innerHTML = `<span class="coin"></span> ${GA.medals}枚${GA.canPull() ? '' : `（あと ${GA.COST - GA.medals}枚）`}`;
     gPull.disabled = gBusy || !GA.canPull();
-    gPull.textContent = GA.canPull() || gBusy ? `🎰 回す（🪙${GA.COST}）` : '🪙 メダルが たりない';
-    $('gCount').textContent = `あつめた ${c.got} / ${c.total}（？はまだ出ていないもの）`;
+    gPull.textContent = GA.canPull() || gBusy ? '回す' : 'メダルが たりない';
+    $('gCount').textContent = `${c.got} / ${c.total}`;
     $('gAll').innerHTML = GA.ITEMS.map((i) => (GA.has(i.id) ? `<span title="${i.name}">${i.icon}</span>` : '<span class="no">？</span>')).join('');
     paintMedal();
   }
@@ -273,8 +274,8 @@
     setTimeout(() => {
       gBusy = false; gMachine.className = 'gm';
       $('gResult').innerHTML = `<div class="gres${it.r === 'SSR' ? ' ssr' : ''}"><span class="rr" style="color:${rr.color}">★ ${rr.name} ★</span><b>${it.icon}</b>`
-        + `<span class="nm">${it.name}</span>（${GA.SLOTS[it.slot]}）<br>${it.say ? `<span class="fx">✨ ${it.say}</span><br>` : ''}`
-        + (res.isNew ? '<span class="nw">NEW！ さっそく身につけたよ</span>' : `ダブり… 🪙${res.back}枚 もどってきた`) + '</div>';
+        + `<span class="nm">${it.name}</span>（${GA.SLOTS[it.slot]}）<br>${it.say ? `<span class="fx">${it.say}</span><br>` : ''}`
+        + (res.isNew ? '<span class="nw">NEW！ 身につけたよ</span>' : `ダブり… メダル${res.back}枚 もどった`) + '</div>';
       if (res.isNew) noteNew(true, `ガチャ「${it.name}」`);
       snd.play('treasure', it.r === 'SR' || it.r === 'SSR');
       if (navigator.vibrate) navigator.vibrate(it.r === 'SSR' ? [60, 40, 60, 40, 120] : 40);
@@ -291,16 +292,15 @@
   function paintMedal(bump) {
     const n = GA.medals, ok = GA.canPull();
     medalChip.hidden = false;
-    medalChip.innerHTML = `🪙 ${n}<small>${ok ? 'ガチャOK！' : `ガチャまで${GA.COST - n}`}</small>`;
+    medalChip.innerHTML = `<span class="coin"></span>${n}`;
     medalChip.classList.toggle('ready', ok);
     if (bump) { medalChip.classList.remove('bump'); void medalChip.offsetWidth; medalChip.classList.add('bump'); }
   }
   function paintFailGacha() {
     const b = $('failGachaBtn'), n = GA.medals;
     b.hidden = !GA.canPull();
-    b.textContent = `🎰 ガチャを回す（🪙${n}枚 → ${Math.floor(n / GA.COST)}回）`;
-    $('failMedal').innerHTML = runMedals ? `🪙 この回 メダル +${runMedals}枚（いま ${n}枚）${GA.canPull() ? '' : `<br><small>ガチャまで あと ${GA.COST - n}枚。？の箱をとろう</small>`}`
-      : `🪙 いま ${n}枚${GA.canPull() ? '' : `・ガチャまで あと ${GA.COST - n}枚`}<br><small>道の ？の箱をとると メダルがもらえるよ</small>`;
+    const fm = $('failMedal'); fm.hidden = !runMedals;
+    fm.innerHTML = `<span class="coin"></span>+${runMedals}`;
   }
   // ずかん
   const zukanEl = $('zukan');
@@ -329,24 +329,31 @@
     try {
       if (navigator.share) { await navigator.share({ title: 'ヨロヨロおつかい', text: lastShare, url }); return; }
       await navigator.clipboard.writeText(`${lastShare}\n${url}`);
-      $('shareBtn').textContent = 'コピーしました！';
-      setTimeout(() => { $('shareBtn').textContent = '記録を送る'; }, 1800);
+      $('shareBtn').querySelector('b').textContent = 'コピーした';
+      setTimeout(() => { $('shareBtn').querySelector('b').textContent = '送る'; }, 1800);
     } catch (e) { /* やめた・使えないときは何もしない */ }
   };
   const sndBtn = $('sndBtn');
-  const paintSnd = () => { sndBtn.textContent = snd.on ? '🔊' : '🔇'; sndBtn.setAttribute('aria-label', snd.on ? '音をけす' : '音を出す'); };
+  const paintSnd = () => { sndBtn.innerHTML = `<svg class="ic"><use href="#${snd.on ? 'i-snd' : 'i-mute'}"/></svg>`; sndBtn.setAttribute('aria-label', snd.on ? '音をけす' : '音を出す'); };
   sndBtn.onclick = () => { snd.toggle(); paintSnd(); snd.play('tap'); };
   paintSnd();
   function refreshTitle() {
     $('bestRun').hidden = bestRun <= 0;
-    $('bestRun').textContent = `自己ベスト：${bestRun.toFixed(1)}m`;
+    $('bestRun').innerHTML = `<svg class="ic"><use href="#i-flag"/></svg> ${bestRun.toFixed(1)}m`;
     const sk = DY.streak(), dd = DY.daily();
-    $('streak').innerHTML = sk.n > 0 ? `🔥 <b>${sk.n}日</b> れんぞくで遊んでいます${sk.playedToday ? '' : '（きょうも遊ぶと ' + (sk.n + 1) + '日！）'}` : '🔥 毎日遊ぶと「れんぞく日数」がふえるよ';
-    $('dailyBtn').innerHTML = `📅 今日のコース（${DY.label()}）<small>${dd.tries ? `今日のベスト ${dd.best.toFixed(1)}m・${dd.tries}回` : 'きょうだけのコース。みんな同じ'}</small>`;
-    const c = GA.count();
-    $('titleGachaBtn').innerHTML = `🎰 ガチャ（🪙${GA.medals}枚）<small>${GA.canPull() ? '回せるよ！' : 'おたから🪙を5枚あつめると1回'}・あつめた ${c.got}/${c.total}</small>`;
+    $('streak').innerHTML = sk.n > 0 ? `<svg class="ic"><use href="#i-flame"/></svg> ${sk.n}日れんぞく` : '';
+    $('dailyBtn').innerHTML = `きょうのコース<small>${DY.label()}${dd.tries ? `・ベスト ${dd.best.toFixed(1)}m` : ''}</small>`;
+    $('titleMedal').textContent = GA.medals;
+    $('titleGachaBtn').classList.toggle('ready', GA.canPull());
     paintMedal();
     showTitleRank();
+  }
+  // きろく・あそびかた（タイトルのすみの絵のボタン）
+  for (const [btn, el, cl] of [['rankBtn', 'records', 'recordsClose'], ['howBtn', 'howto', 'howtoClose']]) {
+    const o = $(el);
+    $(btn).onclick = () => { o.classList.add('show'); snd.play('tap'); };
+    $(cl).onclick = () => o.classList.remove('show');
+    o.addEventListener('click', (e) => { if (e.target === o) o.classList.remove('show'); });
   }
   // タイトルに、じぶんの記録の上位を出す
   function showTitleRank() { RANK.render($('titleRank'), { list: RANK.list(), idx: -1 }); }
@@ -370,16 +377,17 @@
     CL.addRun(total);
     const sk = DY.touch();
     const extra = [];
-    if (sk.up && sk.n >= 2) extra.push(`🔥 ${sk.n}日 れんぞく！`);
-    for (const x of CL.newly(unlockAtStart, ctxNow())) extra.push(`🎁${x.name}が使える！`);
+    if (sk.up && sk.n >= 2) extra.push(`${sk.n}日 れんぞく！`);
+    for (const x of CL.newly(unlockAtStart, ctxNow())) extra.push(`${x.name}が使える！`);
     runNew = extra.concat(runNew);
     refreshTitle();
-    ui.failTag.textContent = tr(`${daily ? '📅 ' : ''}ゲームオーバー（${{ pudding: 'プリンを落とした', timeup: '時間切れ', rhythm: 'リズムがくずれてころんだ', stop: '止まってころんだ', hole: '穴に落ちた' }[S.fallReason] || 'ころんだ'}）`);
+    ui.failTag.textContent = tr(`${{ pudding: 'プリンを落とした', timeup: '時間切れ', rhythm: 'リズムがくずれた', stop: '止まってころんだ', hole: '穴に落ちた' }[S.fallReason] || 'ころんだ'}`);
+    $('failNum').innerHTML = `${total.toFixed(1)}<small>m</small>`;
     ui.failTitle.textContent = r.title;
     ui.failLine.textContent = r.say;
     ui.failAct.textContent = r.action;
-    ui.failDist.textContent = `${daily ? `📅 今日のコース ${DY.daily().tries}回目\n` : ''}${level}軒目・${waiter.name}のおうちまで あと ${left.toFixed(1)}m\n歩いたきょり ${total.toFixed(1)}m${newBest ? '' : `（${daily ? '今日の' : ''}ベスト ${curBest.toFixed(1)}m）`}${runTreasure ? `\nこの回のおたから ${runTreasure}こ` : ''}`;
-    $('retryBtn').textContent = 'タップで もう一回';
+    ui.failDist.textContent = `${daily ? `今日のコース ${DY.daily().tries}回目\n` : ''}${level}軒目・${waiter.name}のおうちまで あと ${left.toFixed(1)}m\n歩いたきょり ${total.toFixed(1)}m${newBest ? '' : `（${daily ? '今日の' : ''}ベスト ${curBest.toFixed(1)}m）`}${runTreasure ? `\nこの回のおたから ${runTreasure}こ` : ''}`;
+    $('retryBtn').textContent = 'もう一回';
     ui.retry.disabled = true; setTimeout(() => { ui.retry.disabled = false; }, 700); // 歩いていた指でうっかり押さないように
     lastShare = `ヨロヨロおつかい${daily ? `の今日のコース（${DY.label()}）` : ''}で ${total.toFixed(1)}m 歩いた！${newBest ? (daily ? '（今日のベスト！）' : '（自己ベスト！）') : ''} ${level}軒目の${waiter.name}に「${r.say}」と言われた…`;
     clipInfo = { dist: `${total.toFixed(1)}m`, title: r.title, say: r.say, tag: ui.failTag.textContent };
@@ -390,7 +398,7 @@
     // あとちょっと：すぐ上の記録まで何mだったか
     const near = $('failNear'); near.classList.toggle('best', newBest);
     const bestWord = daily ? '今日のベスト' : '自己ベスト';
-    if (newBest) near.textContent = prevBest > 0 ? `🎉 ${bestWord}更新！ +${(total - prevBest).toFixed(1)}m` : (daily ? '🎉 今日の はじめての記録！' : '🎉 はじめての記録！');
+    if (newBest) near.textContent = prevBest > 0 ? `${bestWord}更新！ +${(total - prevBest).toFixed(1)}m` : 'はじめての記録！';
     else if (daily) { const gap = curBest - total; near.textContent = `今日のベストまで あと ${gap.toFixed(1)}m${gap < 5 ? '！ おしい！' : '！'}`; }
     else {
       const above = rk.list.filter((x) => x.d > total + 0.05).pop(); // すぐ上の記録
@@ -401,12 +409,8 @@
     }
     // ずかん：この回で新しく入ったもの（なければ、まだ見ていないころび方のヒント）
     const zc = ZK.count(), nb = $('failNew');
-    if (runNew.length) nb.innerHTML = `<b>NEW！</b>（📖 ずかん ${zc.got}/${zc.total}）<br>${runNew.slice(0, 4).join('・')}${runNew.length > 4 ? ` ほか${runNew.length - 4}こ` : ''}`;
-    else {
-      const rest = ZK.FALLS.filter((f) => !ZK.has('fall', f.id));
-      nb.innerHTML = `📖 ずかん ${zc.got}/${zc.total}${rest.length ? `<br>まだ見ていない ころび方：「${pickOne(rest).hint}」` : ''}`;
-    }
-    nb.hidden = false;
+    nb.innerHTML = `<b>NEW</b> ずかん ${zc.got}/${zc.total}`;
+    nb.hidden = !runNew.length;
     paintFailGacha();
     showTitleRank();
     showOnly(ui.fail);
@@ -898,6 +902,7 @@
   }
 
   let lastTick = 0, spdShown = 0;
+  let tutSteps = 0, tutDone = store.get('yoro.tut') === '1';
   function updateHud() {
     updateGuide();
     const st = S.steady == null ? 1 : S.steady;
@@ -910,9 +915,10 @@
     ui.spd.classList.toggle('fast', spdShown > 2.3);
     const x = Math.max(0, game.charX());
     ui.dist.innerHTML = `${(runDist + Math.min(stage.goal, S.status === 'play' ? x : S.bestX)).toFixed(1)}<small>m</small>`; // ここまで歩いたきょり
-    ui.meterLabel.textContent = `🏠あと${Math.ceil(Math.max(0, stage.goal - x))}m`;
+    ui.prog.style.width = `${Math.round(Math.min(1, x / stage.goal) * 100)}%`; // おうちまでの線
+    ui.finger.classList.toggle('show', !tutDone && level === 1 && S.status === 'play' && tutSteps < 6 && !ui.title.classList.contains('show') && !ui.pause.classList.contains('show'));
     const tl = Math.max(0, stage.timeLimit - elapsed);
-    ui.time.innerHTML = `<small>のこり</small>${tl < 10 ? tl.toFixed(1) : Math.ceil(tl)}<small>秒</small>`;
+    ui.timeN.textContent = tl < 10 ? tl.toFixed(1) : Math.ceil(tl);
     ui.time.classList.toggle('hurry', tl < 10 && S.status === 'play');
     if (S.status === 'play' && tl <= 5 && Math.ceil(tl) !== lastTick) { lastTick = Math.ceil(tl); snd.play('tick', lastTick); }
     const d = S.danger || 0;
@@ -920,7 +926,7 @@
     ui.meterFill.style.background = d > 0.7 ? '#ff4d4d' : d > 0.4 ? '#ffb020' : '#5cc96b';
     ui.meter.classList.toggle('danger', d > 0.7 && S.status === 'play');
     const now = S.status === 'play' ? runDist + Math.min(stage.goal, x) : 0; // ベストをこえたら、ベストの数字も一緒にふえる
-    ui.best.innerHTML = `<small>${mode === 'daily' ? '今日の' : ''}ベスト</small>${Math.floor(Math.max(curBest, now))}<small>m</small>`;
+    const bb = Math.floor(Math.max(curBest, now)); ui.best.innerHTML = bb > 0 ? `<svg class="ic"><use href="#i-flag"/></svg> ${bb}m` : '';
   }
 
   // ---- ループ ----
@@ -952,7 +958,7 @@
           if (ev.type === 'wobble') pop('ふらふら…', '#ff8a00');
           if (ev.type === 'combo') pop(`ナイスリズム ×${ev.v} スピードUP！`, '#2f9e44');
           if (ev.type === 'jump2') pop('2だんジャンプ！', '#2f6fd6');
-          if (ev.type === 'step') addPrint(ev.v);
+          if (ev.type === 'step') { addPrint(ev.v); if (++tutSteps === 6 && !tutDone) { tutDone = true; store.set('yoro.tut', '1'); } }
         }
       }
       if (level <= 10 && S.status === 'play') { // 最初のうちは、しかけの手前でやり方を出す

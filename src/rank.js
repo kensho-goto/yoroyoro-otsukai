@@ -26,7 +26,7 @@
     if (!el) return;
     if (!data || !data.list.length) { el.hidden = true; return; }
     const rows = data.list.map((r, i) => `<li class="${i === data.idx ? 'me' : ''}"><span class="n">${i + 1}位</span><span class="nm">${day(r.t)}${i === data.idx ? '　いまの記録！' : ''}</span><span class="d">${r.d.toFixed(1)}m</span></li>`).join('');
-    el.innerHTML = `<h3>🏆 じぶんの記録</h3><ol>${rows}</ol>`;
+    el.innerHTML = `<h3>じぶんの記録</h3><ol>${rows}</ol>`;
     el.hidden = false;
   }
   window.YoroRank = { list, add, render };
