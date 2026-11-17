@@ -4,7 +4,7 @@
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存できなくても鳴らせる */ } },
   };
-  let ctx = null, master = null, sfxBus = null, bgmBus = null;
+  let ctx = null, master = null, sfxBus = null, bgmBus = null, comp = null;
   let on = store.get('yoro.sound') !== 'off';
   let bgmWanted = false, bgmTimer = null, bgmStep = 0, bgmNext = 0;
 
@@ -13,7 +13,10 @@
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return false;
     ctx = new AC();
-    master = ctx.createGain(); master.gain.value = on ? 0.9 : 0; master.connect(ctx.destination);
+    master = ctx.createGain(); master.gain.value = on ? 0.9 : 0;
+    comp = ctx.createDynamicsCompressor(); // たくさん重なっても音が割れないように
+    comp.threshold.value = -12; comp.knee.value = 8; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.2;
+    master.connect(comp); comp.connect(ctx.destination);
     sfxBus = ctx.createGain(); sfxBus.gain.value = 0.8; sfxBus.connect(master);
     bgmBus = ctx.createGain(); bgmBus.gain.value = 0.22; bgmBus.connect(master);
     return true;
@@ -34,7 +37,7 @@
     o.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.02);
   }
   let noiseBuf = null;
-  function noise(t, dur, { vol = 0.3, freq = 800, q = 1, type = 'lowpass' } = {}) {
+  function noise(t, dur, { vol = 0.3, freq = 800, q = 1, type = 'lowpass', bus = sfxBus } = {}) {
     if (!noiseBuf) {
       noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
       const d = noiseBuf.getChannelData(0);
@@ -43,7 +46,7 @@
     const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
     s.buffer = noiseBuf; f.type = type; f.frequency.value = freq; f.Q.value = q;
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    s.connect(f); f.connect(g); g.connect(sfxBus); s.start(t); s.stop(t + dur + 0.02);
+    s.connect(f); f.connect(g); g.connect(bus); s.start(t); s.stop(t + dur + 0.02);
   }
   const N = (n) => 440 * Math.pow(2, (n - 69) / 12); // 音の高さ（ドレミの番号→周波数）
 
@@ -148,12 +151,63 @@
       const t = ctx.currentTime;
       [[79, 0], [83, 0.1], [86, 0.2], [91, 0.3]].forEach(([m, d]) => tone(N(m), t + d, 0.22, { type: 'triangle', vol: 0.12 }));
     },
+    voice(v = {}) {
+      const t0 = ctx.currentTime + (v.delay || 0), kind = v.kind || 'human', mood = v.mood || 'happy';
+      const n = Math.max(3, Math.min(9, Math.round((v.len || 12) / 2.2)));
+      const up = mood === 'happy', down = mood === 'sad' || mood === 'cry' || mood === 'sigh' || mood === 'sulk', mad = mood === 'angry' || mood === 'shock';
+      if (kind === 'cat') { // ニャーオ
+        for (let k = 0; k < (mad ? 2 : 1); k++) {
+          const t = t0 + k * 0.42, o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+          o.type = 'sawtooth'; o.frequency.setValueAtTime(520, t); o.frequency.linearRampToValueAtTime(up ? 900 : 760, t + 0.12); o.frequency.linearRampToValueAtTime(down ? 380 : 560, t + 0.38);
+          f.type = 'bandpass'; f.Q.value = 3; f.frequency.setValueAtTime(900, t); f.frequency.linearRampToValueAtTime(2200, t + 0.14); f.frequency.linearRampToValueAtTime(1000, t + 0.38);
+          g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.04); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+          o.connect(f); f.connect(g); g.connect(sfxBus); o.start(t); o.stop(t + 0.42);
+        }
+        return;
+      }
+      if (kind === 'dog') { // ワンワン
+        for (let k = 0; k < (down ? 1 : 2); k++) {
+          const t = t0 + k * 0.22;
+          tone(down ? 300 : 420, t, 0.16, { type: 'square', vol: 0.16, to: down ? 160 : 230 });
+          noise(t, 0.06, { vol: 0.12, freq: 1500, q: 2, type: 'bandpass' });
+        }
+        return;
+      }
+      if (kind === 'ghost') { // ひゅ〜ゆ〜
+        const o = ctx.createOscillator(), l = ctx.createOscillator(), lg = ctx.createGain(), g = ctx.createGain(), d = 0.9;
+        o.type = 'sine'; o.frequency.setValueAtTime(up ? 500 : 700, t0); o.frequency.linearRampToValueAtTime(up ? 760 : 380, t0 + d);
+        l.frequency.value = 7; lg.gain.value = 30; l.connect(lg); lg.connect(o.frequency);
+        g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.15); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+        o.connect(g); g.connect(sfxBus); o.start(t0); l.start(t0); o.stop(t0 + d + 0.02); l.stop(t0 + d + 0.02);
+        return;
+      }
+      const base = v.pitch || 300, step = mad ? 0.075 : down ? 0.11 : 0.09;
+      for (let i = 0; i < n; i++) {
+        const t = t0 + i * step, last = i === n - 1;
+        let f = base * (1 + (Math.random() - 0.5) * 0.25);
+        if (up) f *= 1 + (i / n) * 0.25 + (last ? 0.2 : 0);
+        if (down) f *= 1 - (i / n) * 0.25;
+        if (kind === 'alien') f = base * [1, 1.5, 0.75, 2, 1.25][Math.floor(Math.random() * 5)];
+        const dur = last ? step * 1.8 : step * 0.8;
+        tone(f, t, dur, { type: kind === 'alien' ? 'square' : mad ? 'square' : 'triangle', vol: kind === 'alien' ? 0.13 : mad ? 0.17 : 0.2, to: last ? f * (up ? 1.25 : 0.8) : f * 0.92 });
+        if (v.shaky) tone(f * 1.02, t, dur, { type: 'sine', vol: 0.06 }); // おばあちゃんの ふるえ声
+      }
+    },
     gust() { const t = ctx.currentTime; noise(t, 0.9, { vol: 0.16, freq: 500, q: 0.7, type: 'bandpass' }); },
     tap() { const t = ctx.currentTime; tone(880, t, 0.06, { type: 'sine', vol: 0.15 }); },
   };
 
   // ---- BGM（のんびりしたオリジナルの曲。2小節×4のくり返し） ----
-  const BPM = 112, STEP = 60 / BPM / 2; // 8分音符
+  // 朝＝ふつう／昼＝速くにぎやか／夕方＝ゆっくり少しさみしい（短調）／夜＝オルゴール
+  const MOODS = [
+    { bpm: 112, mel: 'triangle', vol: 0.32, hat: 1, kick: 0 },
+    { bpm: 128, mel: 'square', vol: 0.14, hat: 1, kick: 1 },
+    { bpm: 96, mel: 'triangle', vol: 0.3, hat: 0, kick: 0, minor: 1 },
+    { bpm: 84, mel: 'sine', vol: 0.36, hat: 0, kick: 0, bell: 1 },
+  ];
+  let mood = MOODS[0];
+  const MINOR = { 4: 3, 9: 8, 11: 10 }; // ミ・ラ・シを半音下げる
+  const key = (n) => (mood.minor && MINOR[n % 12] != null ? n - (n % 12) + MINOR[n % 12] : n);
   // メロディ（0=休み）・ベース（ドレミの番号）
   const MEL = [
     76, 0, 79, 76, 74, 0, 72, 0, 74, 0, 76, 74, 72, 0, 67, 0,
@@ -165,13 +219,17 @@
   function scheduleBgm() {
     if (!ctx) return;
     while (bgmNext < ctx.currentTime + 0.25) {
-      const i = bgmStep % MEL.length, t = bgmNext;
-      if (MEL[i]) tone(N(MEL[i]), t, STEP * 1.6, { type: 'triangle', vol: 0.32, bus: bgmBus, attack: 0.01 });
-      if (i % 4 === 0) { // ベースは4分音符ごと、2拍ずつ同じ音
-        const b = BASS[Math.floor(i / 8) % BASS.length];
-        tone(N(b), t, STEP * 1.8, { type: 'sine', vol: 0.5, bus: bgmBus, attack: 0.01 });
+      const i = bgmStep % MEL.length, t = bgmNext, STEP = 60 / mood.bpm / 2; // 8分音符
+      if (MEL[i]) {
+        if (mood.bell) { tone(N(key(MEL[i]) + 12), t, STEP * 3, { type: 'sine', vol: mood.vol, bus: bgmBus, attack: 0.003 }); tone(N(key(MEL[i]) + 24), t, STEP, { type: 'sine', vol: mood.vol * 0.25, bus: bgmBus, attack: 0.003 }); }
+        else tone(N(key(MEL[i])), t, STEP * 1.6, { type: mood.mel, vol: mood.vol, bus: bgmBus, attack: 0.01 });
       }
-      if (i % 2 === 1) noise(t, 0.03, { vol: 0.04, freq: 6000, type: 'highpass' }); // チッ
+      if (i % 4 === 0) { // ベースは4分音符ごと、2拍ずつ同じ音
+        const b = key(BASS[Math.floor(i / 8) % BASS.length]);
+        tone(N(b), t, STEP * 1.8, { type: 'sine', vol: mood.bell ? 0.3 : 0.5, bus: bgmBus, attack: 0.01 });
+        if (mood.kick) tone(120, t, 0.12, { type: 'sine', vol: 0.45, to: 45, bus: bgmBus });
+      }
+      if (mood.hat && i % 2 === 1) noise(t, 0.03, { vol: 0.04, freq: 6000, type: 'highpass', bus: bgmBus }); // チッ
       bgmStep++; bgmNext += STEP;
     }
   }
@@ -192,6 +250,8 @@
       try { SFX[name](v); } catch (e) { console.warn("sound", name, e); /* 音が出なくても遊べる */ }
     },
     bgm(play) { if (play) { ensure(); startBgm(); } else stopBgm(); },
+    mood(i) { mood = MOODS[((i % MOODS.length) + MOODS.length) % MOODS.length]; }, // 朝・昼・夕方・夜
+    get _ctx() { return ctx; }, get _out() { return comp; }, // 確かめ用
     get on() { return on; },
     sleep(s) { if (ctx) { if (s) ctx.suspend(); else ctx.resume(); } }, // アプリを離れたら音を止める
     toggle() {

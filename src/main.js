@@ -19,7 +19,7 @@
   let waiter = WT.forLevel(1), fails = 0, faceNow = 'wait', faceT0 = 0; // 待っている人・続けて失敗した回数・今の顔
   const RANK = window.YoroRank || { list: () => [], add: () => null, render() {} };
   const IC = window.YoroIcon;
-  const snd = window.YoroSound || { play() {}, bgm() {}, on: false, toggle() { return false; } };
+  const snd = window.YoroSound || { play() {}, bgm() {}, mood() {}, on: false, toggle() { return false; } };
   const ZK = window.YoroZukan || { mark: () => false, has: () => false, count: () => ({ got: 0, total: 0 }), pickTreasure: () => null, rareOf: () => false, render() {}, FALLS: [], MOOD_NAMES: {} };
   const pickOne = (a) => a[Math.floor(Math.random() * a.length)];
   // この回で起きたこと（ずかんに新しく入ったもの・拾ったおたから・金のプリンの日・テスト用の強制）
@@ -51,7 +51,7 @@
   let prevWaiter = null, delivered = null, worldOff = 0; // 前のおうちの人・届けたときのひとこと・背景をつなぐためのずれ
   function loadLevel(n, carry) {
     const old = carry ? { goal: stage.goal, gy: game.groundHeightAt(stage.goal) } : null;
-    level = n;
+    level = n; snd.mood(Math.floor((n - 1) / 3)); // 空の色（themeOf）と同じ区切りで曲の雰囲気を変える
     game = YoroCore.create(planck, { level: n, seed: mode === 'daily' ? DY.seed() : 0 });
     const R = mode === 'daily' ? DY.rng(n) : Math.random; // 今日のコースは、風・お客さん・箱の場所もみんな同じ
     S = game.state; stage = game.stage;
@@ -207,13 +207,21 @@
     tutSteps = 0; loadLevel(mode === 'daily' ? dailyStage() : stageNow); pops.length = 0; elapsed = 0; runDist = 0; passedBest = false; nextMile = 50; game.spawn(0); showOnly(null); snd.play(goldDay ? 'event' : 'start'); snd.bgm(true);
   }
   const retry = () => restart();
+  // 届け先の人の声（言葉ではなく「ごにょごにょ」。人ごとに高さ・くせが変わる）
+  const VOICE = { mom: 330, grandma: [290, 1], grandpa: 150, dad: 125, sister: 560, brother: 470, aunt: 360, uncle: 165, friend: 420, teacher: 380,
+    cat: 'cat', dog: 'dog', king: 115, ghost: 'ghost', alien: [520, 'alien'] };
+  function speak(who, mood, text, delay = 0) {
+    const v = VOICE[who.id] || 300, a = Array.isArray(v) ? v : [v];
+    const kind = typeof a[0] === 'string' ? a[0] : a[1] === 'alien' ? 'alien' : 'human';
+    snd.play('voice', { pitch: typeof a[0] === 'number' ? a[0] : 0, shaky: a[1] === 1, kind, mood, len: (text || '').length, delay });
+  }
   // おうちに着いた：GOAL！ タップで次のステージへ
   let goalSay = '', goalAt = 0;
   function deliver() {
     goalSay = WT.happy(waiter, itemName()).say;
     noteNew(ZK.mark('face', `${waiter.id}.happy`), `${waiter.name}の「にっこり」顔`);
     faceNow = 'happy'; faceT0 = performance.now();
-    snd.play('clear'); snd.bgm(false); confetti();
+    snd.play('clear'); snd.bgm(false); confetti(); speak(waiter, 'happy', goalSay, 1.1); // ファンファーレのあとに よろこぶ声
     fails = 0;
     runDist += stage.goal;
     CL.addRun(stage.goal);
@@ -396,7 +404,7 @@
     const left = Math.max(0, stage.goal - S.bestX);
     fails++;
     const r = WT.reaction(waiter, { reason: S.fallReason, fails, left, item: itemName() });
-    faceNow = r.face; faceT0 = performance.now();
+    faceNow = r.face; faceT0 = performance.now(); speak(waiter, r.mood, r.say);
     const fr = ZK.FALLS.find((f) => f.id === S.fallReason);
     if (fr) noteNew(ZK.mark('fall', fr.id), `ころび方「${fr.name}」`);
     noteNew(ZK.mark('face', `${waiter.id}.${r.mood}`), `${waiter.name}の「${ZK.MOOD_NAMES[r.mood] || r.mood}」顔`);
