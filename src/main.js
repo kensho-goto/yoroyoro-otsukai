@@ -540,7 +540,7 @@
       ctx.fillStyle = '#8fd3ff'; ctx.fillRect(sx0 - s * 0.7, sy0 - s * 1.4, s * 1.4, s * 0.8); ctx.strokeRect(sx0 - s * 0.7, sy0 - s * 1.4, s * 1.4, s * 0.8);
     } else {
       drawHouse(1.6, prevWaiter, 'happy', level - 1);
-      if (delivered && performance.now() - delivered.t0 < 3500) bubble(-0.15, 1.45, delivered.say);
+      if (delivered && performance.now() - delivered.t0 < 3500) bubble(0.28, 1.45, delivered.say);
     }
     // ゴールの線
     const [lx, ly] = W2S(stage.goal, game.groundHeightAt(stage.goal)); const s = scale;
@@ -595,20 +595,94 @@
   }
   // おうちと、げんかんの前で待っている人（x はおうちのまん中）
   const ROOFS = ['#e8574f', '#4f8be8', '#4fb36b', '#b05fd1', '#e8a24f', '#5fc7c7'];
+  // 色を少し暗く（k<1）・明るく（k>1）
+  function tone(hex, k) {
+    const n = parseInt(hex.slice(1), 16), f = (v) => Math.max(0, Math.min(255, Math.round(k < 1 ? v * k : v + (255 - v) * (k - 1))));
+    return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+  }
+  const SHIRTS = { mom: '#f28aa0', grandma: '#9b7bd1', grandpa: '#7a9a5a', dad: '#4a6fa5', sister: '#ffa8c2', brother: '#5fb3e8', aunt: '#e8a24f', uncle: '#6b8e5a', friend: '#e8574f', teacher: '#3b4a6b' };
   function drawHouse(hx, who, face, n) {
     const [gx, gy] = W2S(hx, game.groundHeightAt(hx)); const s = scale;
-    ctx.lineWidth = 3; ctx.strokeStyle = '#3b2a1e';
-    ctx.fillStyle = '#fff1d0'; ctx.fillRect(gx - s * 1.2, gy - s * 1.9, s * 2.4, s * 1.9); ctx.strokeRect(gx - s * 1.2, gy - s * 1.9, s * 2.4, s * 1.9);
-    ctx.fillStyle = ROOFS[n % ROOFS.length]; ctx.beginPath(); ctx.moveTo(gx - s * 1.5, gy - s * 1.9); ctx.lineTo(gx, gy - s * 3); ctx.lineTo(gx + s * 1.5, gy - s * 1.9); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#9b6a43'; ctx.fillRect(gx - s * 1.0, gy - s * 1.2, s * 0.6, s * 1.2); ctx.strokeRect(gx - s * 1.0, gy - s * 1.2, s * 0.6, s * 1.2);
-    ctx.fillStyle = '#8fd3ff'; ctx.fillRect(gx + s * 0.2, gy - s * 1.4, s * 0.7, s * 0.55); ctx.strokeRect(gx + s * 0.2, gy - s * 1.4, s * 0.7, s * 0.55);
-    ctx.fillStyle = '#3b2a1e'; ctx.font = `900 ${Math.round(s * 0.24)}px sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText(`${who.name}の家`, gx, gy - s * 2.1);
-    const wx = gx - s * 1.75, wy = gy;
-    ctx.fillStyle = who.animal ? who.hair : who.body || '#7bb7e8'; ctx.lineWidth = 3;
-    if (!who.animal) { roundRect(wx - s * 0.2, wy - s * 0.75, s * 0.4, s * 0.75, s * 0.1); ctx.fill(); ctx.stroke(); }
-    else { ctx.beginPath(); ctx.ellipse(wx, wy - s * 0.2, s * 0.3, s * 0.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
-    WT.drawFace(ctx, who, face, wx, wy - s * (who.animal ? 0.55 : 0.98), s * 0.26, performance.now() / 1000);
+    const roof = ROOFS[n % ROOFS.length];
+    ctx.save(); ctx.lineWidth = 3; ctx.strokeStyle = '#3b2a1e'; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    // えんとつ（屋根のうしろ）
+    ctx.fillStyle = '#c96f4a'; ctx.fillRect(gx + s * 0.55, gy - s * 3.0, s * 0.32, s * 0.75); ctx.strokeRect(gx + s * 0.55, gy - s * 3.0, s * 0.32, s * 0.75);
+    ctx.fillStyle = '#8a4a32'; ctx.fillRect(gx + s * 0.5, gy - s * 3.08, s * 0.42, s * 0.12); ctx.strokeRect(gx + s * 0.5, gy - s * 3.08, s * 0.42, s * 0.12);
+    // かべ（よこの板）
+    ctx.fillStyle = '#fff1d0'; ctx.fillRect(gx - s * 1.2, gy - s * 1.9, s * 2.4, s * 1.9);
+    ctx.strokeStyle = 'rgba(59,42,30,.12)'; ctx.lineWidth = 2;
+    for (let i = 1; i < 6; i++) { const y = gy - s * 1.9 + i * s * 0.32; ctx.beginPath(); ctx.moveTo(gx - s * 1.2, y); ctx.lineTo(gx + s * 1.2, y); ctx.stroke(); }
+    ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 3; ctx.strokeRect(gx - s * 1.2, gy - s * 1.9, s * 2.4, s * 1.9);
+    // 屋根（のき＋かわらの段）
+    ctx.fillStyle = roof; ctx.beginPath(); ctx.moveTo(gx - s * 1.6, gy - s * 1.85); ctx.lineTo(gx, gy - s * 3.05); ctx.lineTo(gx + s * 1.6, gy - s * 1.85); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.save(); ctx.clip(); ctx.strokeStyle = tone(roof, 0.75); ctx.lineWidth = 2.5;
+    for (let i = 1; i < 4; i++) { const y = gy - s * 1.85 - i * s * 0.3; ctx.beginPath(); ctx.moveTo(gx - s * 1.6, y); ctx.lineTo(gx + s * 1.6, y); ctx.stroke(); }
+    ctx.restore();
+    ctx.fillStyle = tone(roof, 0.7); roundRect(gx - s * 1.68, gy - s * 1.92, s * 3.36, s * 0.14, 4); ctx.fill(); ctx.stroke();
+    // まど（わく・十字・まどがまち）
+    const wx0 = gx + s * 0.2, wy0 = gy - s * 1.45, ww = s * 0.72, wh = s * 0.58;
+    ctx.fillStyle = '#9fdcff'; ctx.fillRect(wx0, wy0, ww, wh);
+    ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.beginPath(); ctx.moveTo(wx0 + ww * 0.12, wy0 + wh * 0.85); ctx.lineTo(wx0 + ww * 0.32, wy0 + wh * 0.12); ctx.lineTo(wx0 + ww * 0.42, wy0 + wh * 0.12); ctx.lineTo(wx0 + ww * 0.22, wy0 + wh * 0.85); ctx.fill();
+    ctx.strokeRect(wx0, wy0, ww, wh);
+    ctx.beginPath(); ctx.moveTo(wx0 + ww / 2, wy0); ctx.lineTo(wx0 + ww / 2, wy0 + wh); ctx.moveTo(wx0, wy0 + wh / 2); ctx.lineTo(wx0 + ww, wy0 + wh / 2); ctx.stroke();
+    ctx.fillStyle = '#fff'; roundRect(wx0 - s * 0.06, wy0 + wh, ww + s * 0.12, s * 0.08, 3); ctx.fill(); ctx.stroke();
+    // ドア（ふち・ノブ・ステップ）
+    ctx.fillStyle = '#a8703f'; roundRect(gx - s * 1.0, gy - s * 1.25, s * 0.62, s * 1.25, 6); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(59,42,30,.35)'; ctx.lineWidth = 2; roundRect(gx - s * 0.92, gy - s * 1.15, s * 0.46, s * 0.45, 4); ctx.stroke(); roundRect(gx - s * 0.92, gy - s * 0.62, s * 0.46, s * 0.5, 4); ctx.stroke();
+    ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 3;
+    ctx.fillStyle = '#ffcf3d'; ctx.beginPath(); ctx.arc(gx - s * 0.48, gy - s * 0.62, s * 0.05, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#c9c2b4'; ctx.fillRect(gx - s * 1.08, gy - s * 0.07, s * 0.78, s * 0.07); ctx.strokeRect(gx - s * 1.08, gy - s * 0.07, s * 0.78, s * 0.07);
+    // 表札（木の小さい板）
+    ctx.font = `800 ${Math.round(s * 0.13)}px "Hiragino Sans", sans-serif`; ctx.textAlign = 'center';
+    const tw = ctx.measureText(who.name).width + s * 0.16, tx = wx0 + ww / 2, ty = gy - s * 0.6;
+    ctx.fillStyle = '#e9c48f'; roundRect(tx - tw / 2, ty - s * 0.13, tw, s * 0.24, 4); ctx.fill(); ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#3b2a1e'; ctx.fillText(who.name, tx, ty + s * 0.04);
+    // 植木
+    ctx.lineWidth = 3; ctx.fillStyle = '#5fb35a';
+    for (const [dx, r] of [[0.95, 0.22], [1.18, 0.17], [0.76, 0.16]]) { ctx.beginPath(); ctx.arc(gx + s * dx, gy - s * r * 0.9, s * r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+    ctx.restore();
+    drawWaiter(gx - s * 1.32, gy, who, face); // ゴールの線の先・ドアの前に立つ
+  }
+  // 待っている人：主人公と同じ線の太さで、体と手足をかく。気持ちで手の動きが変わる
+  function drawWaiter(wx, wy, who, face) {
+    const s = scale, t = performance.now() / 1000;
+    ctx.save(); ctx.lineWidth = 3; ctx.strokeStyle = '#3b2a1e'; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    const limb = (x, y, len, ang, w, col) => { ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.fillStyle = col; roundRect(-w / 2, -w / 2, w, len + w / 2, w / 2); ctx.fill(); ctx.stroke(); ctx.restore(); };
+    if (who.animal) { // すわっている ねこ・犬（しっぽをふる）
+      const col = who.hair, wag = Math.sin(t * (face === 'happy' ? 14 : 4)) * 0.5;
+      ctx.save(); ctx.translate(wx + s * 0.28, wy - s * 0.18); ctx.rotate(-0.9 + wag); ctx.fillStyle = col; roundRect(-s * 0.05, -s * 0.38, s * 0.1, s * 0.4, s * 0.05); ctx.fill(); ctx.stroke(); ctx.restore();
+      ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(wx, wy - s * 0.28, s * 0.3, s * 0.3, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = tone(col, 1.35); ctx.beginPath(); ctx.ellipse(wx, wy - s * 0.24, s * 0.15, s * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+      for (const dx of [-0.12, 0.12]) { ctx.fillStyle = col; roundRect(wx + s * (dx - 0.06), wy - s * 0.22, s * 0.12, s * 0.22, s * 0.05); ctx.fill(); ctx.stroke(); }
+      WT.drawFace(ctx, who, face, wx, wy - s * 0.72, s * 0.26, t);
+      ctx.restore(); return;
+    }
+    const shirt = who.body || SHIRTS[who.id] || '#7bb7e8', pants = who.id === 'ghost' ? null : tone(shirt, 0.55);
+    const hipY = wy - s * 0.5, shY = wy - s * 1.0;
+    if (pants) { // 足とくつ
+      for (const dx of [-0.08, 0.08]) {
+        limb(wx + s * dx, hipY, s * 0.42, 0, s * 0.13, pants);
+        ctx.fillStyle = '#3b2a1e'; roundRect(wx + s * dx - s * 0.08, wy - s * 0.07, s * 0.2, s * 0.08, s * 0.04); ctx.fill();
+      }
+    }
+    // 手（気持ちで動き）
+    const arm = (side) => {
+      let a; // 0 = まっすぐ下
+      if (face === 'happy') a = side * (2.6 + Math.sin(t * 12 + side) * 0.35);
+      else if (face === 'wait') a = side < 0 ? -(2.4 + Math.sin(t * 5) * 0.4) : 0.15;
+      else if (face === 'angry') a = side * 0.9;
+      else if (face === 'cry' || face === 'sad') a = side * 0.12;
+      else a = side * 0.3;
+      limb(wx + side * s * 0.2, shY + s * 0.06, s * 0.36, -a, s * 0.11, shirt);
+    };
+    arm(1);
+    // 体（服）
+    ctx.fillStyle = shirt;
+    if (who.id === 'ghost') { ctx.beginPath(); ctx.moveTo(wx - s * 0.26, shY); ctx.lineTo(wx - s * 0.3, wy - s * 0.1); for (let i = 0; i < 4; i++) ctx.quadraticCurveTo(wx - s * 0.3 + (i + 0.5) * s * 0.15, wy + s * (i % 2 ? 0.02 : -0.2), wx - s * 0.3 + (i + 1) * s * 0.15, wy - s * 0.1); ctx.lineTo(wx + s * 0.26, shY); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    else { roundRect(wx - s * 0.24, shY, s * 0.48, s * 0.56, s * 0.14); ctx.fill(); ctx.stroke(); }
+    arm(-1);
+    WT.drawFace(ctx, who, face, wx, shY - s * 0.26, s * 0.27, t);
+    ctx.restore();
   }
   // ふきだし（世界の座標 x,y の上に）
   function bubble(x, y, text) {
