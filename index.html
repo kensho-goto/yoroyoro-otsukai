@@ -217,12 +217,6 @@
   .gall { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin: 6px 0; }
   .gall span { border: 2px solid var(--ink); border-radius: 8px; font-size: 20px; background: #fff; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; }
   .gall span.no { background: #efe6d6; color: #8a7a62; font-size: 14px; font-weight: 900; border-style: dashed; }
-  .how .j { background: #2f9e44; font-size: 15px; }
-  .pad.j { display: none; grid-column: 1 / 3; background: #2f9e44; }
-  body.tapmode .pad.l, body.tapmode .pad.r { display: none; }
-  body.tapmode .pad.j { display: flex; }
-  #ctrlBtn { font-size: 15px; padding: 8px; margin-bottom: 6px; }
-  #ctrlBtn small { display: block; font-size: 11px; opacity: .7; }
 </style>
 </head>
 <body>
@@ -249,7 +243,6 @@
 <div class="pads">
   <div class="pad l" id="padL">ひだり足<small>左半分をタッチ</small></div>
   <div class="pad r" id="padR">みぎ足<small>右半分をタッチ</small></div>
-  <div class="pad j" id="padJ">タップで ジャンプ<small>空中で もう1回 ＝ 2段ジャンプ</small></div>
 </div>
 
 <div class="overlay show" id="gate" hidden>
@@ -266,18 +259,11 @@
   <div class="card">
     <h1>ヨロヨロおつかい</h1>
     <p>おうちで待っている人に、<br>プリンを落とさず届けよう！<br>道はどこまでも続く。<b>何m歩けるかな？</b></p>
-    <div id="ruleTap">
-      <div class="how"><div class="j">歩くのは自動！<br>画面のどこでも <b>タップ ＝ ジャンプ</b></div></div>
-      <p class="rule">① じゃまな物や穴の前で <b>タップでジャンプ</b><br>② 空中で <b>もう1回タップ ＝ 2段ジャンプ</b>（遠くへ・高い箱へ）<br>③ ジャンプしすぎると プリンがぐらぐら…<br>④ 転ぶ・プリン落下・時間切れで<b>アウト</b></p>
-    </div>
-    <div id="ruleLegs" hidden>
     <div class="how">
       <div class="l">画面の左半分<br>＝ ひだり足</div>
       <div class="r">画面の右半分<br>＝ みぎ足</div>
     </div>
     <p class="rule">① <b>光った足</b>を、下のバーが<b>緑のとき</b>に押す<br>　（同じ間かくで交互に。<b>速く押すほど速く走る</b>）<br>② 両方押して <b>はなすとジャンプ</b><br>③ 転ぶ・プリン落下・時間切れで<b>アウト</b></p>
-    </div>
-    <button class="btn sub" id="ctrlBtn" type="button">操作</button>
     <details class="more"><summary>くわしい遊び方</summary>
     <p class="tip"><b>バランスの保ち方：</b>次に押す足が光ります。ボタンの上のバーの黒い線が<b>緑のところ</b>に来たら押すと「いいリズム」で、上の「バランス」がたまります。早すぎ・おそすぎ・同じ足・止まると、バランスがへってふらふらし、なくなると転びます。<br>左右を交互に押すと歩けます。押しているあいだ足が上がり、はなすと地面をけります。<br><b>同じ足を続けて押す・リズムがばらばら・止まる と、ころびます。</b><br>足ぶみしながら前に進んでいないと、体を保てず ふらふらして ころびます（何も押さないと、すぐ転びます）。<br>トン、トン、と同じ間かくで！<br><b>両方いっしょに押して、はなすとジャンプ！</b>長く押すほど高く飛びます。穴もジャンプでこえよう。<br>ジャンプ台に乗ると、ピョーンと飛ばしてくれます。<br>ガクガク歩くと「ぐらぐらメーター」がたまり、満タンでプリンが飛んでいきます。<br>パソコンは「F」と「J」キーでも遊べます。<br>コースは毎回同じ。おぼえれば上達します。<br>道に立っている金色の旗が、あなたの自己ベストです。</p>
     </details>

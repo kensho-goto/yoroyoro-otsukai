@@ -5,7 +5,7 @@
   const $ = (id) => document.getElementById(id);
   const ui = {
     dist: $('dist'), time: $('time'), best: $('best'), hint: $('hint'),
-    padL: $('padL'), padR: $('padR'), padJ: $('padJ'),
+    padL: $('padL'), padR: $('padR'),
     title: $('title'), fail: $('fail'), pause: $('pause'), retry: $('retryBtn'),
     failTitle: $('failTitle'), failLine: $('failLine'), failDist: $('failDist'),
     failTag: $('failTag'), failAct: $('failAct'), failFace: $('failFace'),
@@ -42,27 +42,18 @@
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存できなくても遊べる */ } },
   };
-  // 操作：tap＝自動で歩いて、タップでジャンプ（空中でもう1回で2段ジャンプ）／legs＝左右の足を交互に押して歩く（むずかしい）
-  let ctrl = store.get('yoro.ctrl') === 'legs' ? 'legs' : 'tap';
-  const tapMode = () => ctrl === 'tap';
-  function paintCtrl() {
-    document.body.classList.toggle('tapmode', tapMode());
-    $('ctrlBtn').innerHTML = tapMode() ? '🎮 操作：<b>タップでジャンプ</b><small>押すと「左右の足で歩く（むずかしい）」に変える</small>'
-      : '🦵 操作：<b>左右の足で歩く</b><small>押すと「タップでジャンプ（かんたん）」に変える</small>';
-    $('ruleTap').hidden = !tapMode(); $('ruleLegs').hidden = tapMode();
-  }
   let runDist = 0; // 届けたおうちまでのきょりの合計（今の道の分は入れない）
   let bestRun = Math.max(0, parseFloat(store.get('yoro.bestRun')) || 0); // 歩いたきょりの自己ベスト
   let prevWaiter = null, delivered = null, worldOff = 0; // 前のおうちの人・届けたときのひとこと・背景をつなぐためのずれ
   function loadLevel(n, carry) {
     const old = carry ? { goal: stage.goal, gy: game.groundHeightAt(stage.goal) } : null;
     level = n;
-    game = YoroCore.create(planck, { level: n, seed: mode === 'daily' ? DY.seed() : 0, auto: tapMode() });
+    game = YoroCore.create(planck, { level: n, seed: mode === 'daily' ? DY.seed() : 0 });
     const R = mode === 'daily' ? DY.rng(n) : Math.random; // 今日のコースは、風・お客さん・箱の場所もみんな同じ
     S = game.state; stage = game.stage;
     { // ガチャで出たものの効き目（ほんの少し）
       const fx = GA.effects(), T = S.tuning;
-      T.jumpVy = T.jumpVy.map((v) => v * fx.jump); T.jump2Vy *= fx.jump; T.balance *= fx.balance; T.accGain *= fx.pudding; T.driveMax += fx.speed;
+      T.jumpVy = T.jumpVy.map((v) => v * fx.jump); T.balance *= fx.balance; T.accGain *= fx.pudding; T.driveMax += fx.speed;
       S.fx = fx;
     }
     if (old) { cam.x -= old.goal; cam.y -= old.gy; worldOff += old.goal; for (const q of prints) q.x -= old.goal; }
@@ -76,8 +67,8 @@
     const windy = n >= 3 && (force.wind != null ? force.wind !== 0 : R() < 0.15);
     S.wind = (windy ? (force.wind || (R() < 0.5 ? -4 : 4)) : 0) * S.fx.wind;
     makeBoxes(R);
-    let msg = n === 1 ? (tapMode() ? `${waiter.name}に プリンを とどけよう！<br>タップで ジャンプ！<br>空中で もう1回タップで 2段ジャンプ！` : `${waiter.name}に プリンを とどけよう！<br>光った足を、バーが緑のときに押そう！<br>速く押すほど 速く走れるよ`)
-      : n === 3 && !tapMode() ? `つぎは ${waiter.name}の家<br>じゃまな物は ジャンプで こえよう！`
+    let msg = n === 1 ? `${waiter.name}に プリンを とどけよう！<br>光った足を、バーが緑のときに押そう！<br>速く押すほど 速く走れるよ`
+      : n === 3 ? `つぎは ${waiter.name}の家<br>じゃまな物は ジャンプで こえよう！`
       : `つぎは ${waiter.name}の家<br>${stage.goal}m先で まってるよ`;
     if (rare) { msg = `えっ！？ つぎは <b>${waiter.name}</b>の家！？<br>めずらしいお客さんだ！`; noteNew(ZK.mark('event', 'rare'), 'できごと「めずらしい お客さん」'); }
     if (S.wind) { const head = S.wind < 0; msg = `${head ? '🌬️ 向かい風だ！ おされるぞ' : '🍃 追い風だ！ 前につんのめるぞ'}<br>${msg.split('<br>')[0]}`; noteNew(ZK.mark('event', head ? 'headwind' : 'tailwind'), `できごと「${head ? '向かい風' : '追い風'}」`); }
@@ -151,15 +142,9 @@
     ui.padR.classList.toggle('on', r);
     if ((l || r) && playing()) hideHintSoon();
   }
-  function tapJump() { // タップ操作：どこをタップしてもジャンプ
-    if (!playing()) return;
-    game.jump(); hideHintSoon();
-    const pj = ui.padJ; pj.classList.add('on'); setTimeout(() => pj.classList.remove('on'), 110);
-  }
   const playing = () => S.status === 'play' && !ui.title.classList.contains('show') && !ui.pause.classList.contains('show');
   window.addEventListener('pointerdown', (e) => {
     if (e.target.closest('.overlay.show') || e.target.closest('#sndBtn')) return;
-    if (tapMode()) { tapJump(); e.preventDefault(); return; }
     pointers.set(e.pointerId, e.clientX); updateInput(); e.preventDefault();
   }, { passive: false });
   window.addEventListener('pointermove', (e) => {
@@ -171,7 +156,6 @@
   window.addEventListener('blur', () => { pointers.clear(); keys.left = keys.right = false; updateInput(); });
   const LK = ['KeyF', 'KeyA', 'ArrowLeft', 'KeyZ'], RK = ['KeyJ', 'KeyL', 'ArrowRight', 'KeyM'];
   window.addEventListener('keydown', (e) => {
-    if (tapMode() && playing() && !e.repeat && (LK.includes(e.code) || RK.includes(e.code) || e.code === 'Space' || e.code === 'ArrowUp')) { tapJump(); e.preventDefault(); return; }
     if (LK.includes(e.code)) keys.left = true;
     else if (RK.includes(e.code)) keys.right = true;
     else if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
@@ -354,8 +338,6 @@
   const paintSnd = () => { sndBtn.textContent = snd.on ? '🔊' : '🔇'; sndBtn.setAttribute('aria-label', snd.on ? '音をけす' : '音を出す'); };
   sndBtn.onclick = () => { snd.toggle(); paintSnd(); snd.play('tap'); };
   paintSnd();
-  $('ctrlBtn').onclick = () => { ctrl = tapMode() ? 'legs' : 'tap'; store.set('yoro.ctrl', ctrl); paintCtrl(); snd.play('tap'); };
-  paintCtrl();
   function refreshTitle() {
     $('bestRun').hidden = bestRun <= 0;
     $('bestRun').textContent = `自己ベスト：${bestRun.toFixed(1)}m`;
@@ -910,7 +892,7 @@
   let guideFlashT = 0, guideFlash = '';
   function flashGuide(k) { guideFlash = k; guideFlashT = performance.now(); }
   function updateGuide() {
-    const R = S.rhythm, T = S.tuning, on = S.status === 'play' && R && S.char && !tapMode();
+    const R = S.rhythm, T = S.tuning, on = S.status === 'play' && R && S.char;
     ui.guide.hidden = !on;
     if (!on) { ui.padL.classList.remove('next'); ui.padR.classList.remove('next'); return; }
     const air = S.jump && S.jump.phase !== 'none';
@@ -989,7 +971,6 @@
           if (ev.type === 'wobble') pop('ふらふら…', '#ff8a00');
           if (ev.type === 'combo') pop(`ナイスリズム ×${ev.v} スピードUP！`, '#2f9e44');
           if (ev.type === 'good') flashGuide('ok');
-          if (ev.type === 'jump2') pop('2だんジャンプ！', '#2f6fd6');
           if (ev.type === 'step') addPrint(ev.v);
           if (ev.type === 'stumble') flashGuide('ng');
         }
@@ -1000,11 +981,11 @@
           if (!hinted.has('s' + i) && q.x - x < 2.6 && q.x - x > 0) { hinted.add('s' + i); showBanner('赤い台に乗ると<br>ピョーンと飛ぶよ！'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 2500); }
         });
         stage.pits.forEach((q, i) => {
-          if (!hinted.has('p' + i) && q.x0 - x < 2.8 && q.x0 - x > 0) { hinted.add('p' + i); showBanner(tapMode() ? '穴だ！ タップでジャンプ！<br>とどかなければ 空中でもう1回！' : '穴だ！ 両方押して…<br>はなしてジャンプ！'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 2500); }
+          if (!hinted.has('p' + i) && q.x0 - x < 2.8 && q.x0 - x > 0) { hinted.add('p' + i); showBanner('穴だ！ 両方押して…<br>はなしてジャンプ！'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 2500); }
         });
         if (level <= 6) stage.obstacles.forEach((o, i) => {
           if (!hinted.has(i) && o.x - x < 2.6 && o.x - x > 0) {
-            hinted.add(i); showBanner(tapMode() ? 'じゃまな物だ！<br>タップで ジャンプ！' : '両方の足を いっしょに押して…<br>はなすと ジャンプ！'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 3000);
+            hinted.add(i); showBanner('両方の足を いっしょに押して…<br>はなすと ジャンプ！'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 3000);
           }
         });
       }
