@@ -712,7 +712,26 @@
     return { X, Y, box, poly, line, dot };
   }
   const HOUSES = {
-    // おばあちゃん：瓦屋根の平屋。縁側・しょうじ・ぼんさい・湯のみ
+    // お母さん：自分の家。洗濯物に水玉の巨大パンツ
+    mom(g) {
+      const { X, Y, box, poly, line, dot } = H0(g), t = g.t, lit = g.night ? '#ffd56b' : '#bfe6ff';
+      box(-1.0, 0, 1.05, 1.75, '#fdf1dc');
+      poly([[-1.25, 1.7], [1.3, 1.7], [0.95, 2.4], [-0.9, 2.4]], '#c96a4a');
+      for (let i = 1; i < 3; i++) line(-1.1 + i * 0.05, 1.7 + i * 0.23, 1.15 - i * 0.05, 1.7 + i * 0.23, 2, 'rgba(0,0,0,.18)');
+      box(-0.75, 0, -0.2, 1.05, '#9b6a43', 4); dot(-0.3, 0.52, 0.04, '#ffcf3d');
+      box(0.15, 0.55, 0.8, 1.05, lit); line(0.475, 0.55, 0.475, 1.05, 2);
+      box(-0.6, 1.15, 0.6, 1.5, lit); line(0, 1.15, 0, 1.5, 2);
+      // ものほしと洗濯物
+      box(1.12, 0, 1.18, 1.6, '#9aa3ad'); box(1.72, 0, 1.78, 1.6, '#9aa3ad');
+      ctx.beginPath(); ctx.moveTo(X(1.15), Y(1.55)); ctx.quadraticCurveTo(X(1.45), Y(1.45), X(1.75), Y(1.55)); ctx.stroke();
+      const w = Math.sin(t * 3) * 0.04;
+      ctx.save(); ctx.translate(X(1.45), Y(1.5)); ctx.rotate(w); ctx.scale(1.45, 1.45); ctx.lineWidth = 2;
+      ctx.fillStyle = '#ff6b8b'; ctx.beginPath(); const P = (x, y) => [x * g.s, -y * g.s];
+      ctx.moveTo(...P(-0.2, 0)); ctx.lineTo(...P(0.2, 0)); ctx.lineTo(...P(0.22, -0.42)); ctx.lineTo(...P(0.05, -0.42)); ctx.lineTo(...P(0, -0.25)); ctx.lineTo(...P(-0.05, -0.42)); ctx.lineTo(...P(-0.22, -0.42)); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#fff'; for (const [x, y] of [[-0.12, -0.12], [0.08, -0.08], [-0.1, -0.32], [0.14, -0.3], [0, -0.17]]) { ctx.beginPath(); ctx.arc(...P(x, y), 0.035 * g.s, 0, 7); ctx.fill(); }
+      ctx.restore();
+    },
+    // おばあちゃん：瓦屋根の平屋。縁側も屋根もねこだらけ
     grandma(g) {
       const { X, Y, box, poly, line, dot } = H0(g), s = g.s;
       box(-1.15, 0, 1.55, 1.25, '#efe0c0');
@@ -722,90 +741,296 @@
       for (let j = 1; j < 3; j++) line(-1.0, 0.42 + j * 0.243, 0.95, 0.42 + j * 0.243, 1.5, 'rgba(59,42,30,.35)');
       box(1.1, 0.55, 1.45, 1.05, g.night ? '#ffd98a' : '#cfe8f2'); line(1.275, 0.55, 1.275, 1.05, 2); line(1.1, 0.8, 1.45, 0.8, 2);
       for (const x of [-1.15, -0.03, 0.95, 1.55]) box(x - 0.06, 0, x + 0.06, 1.25, '#7a4a2a');
-      // 縁側
       box(-1.3, 0.3, 1.0, 0.42, '#b9824f'); for (const x of [-1.2, -0.1, 0.9]) box(x - 0.04, 0, x + 0.04, 0.3, '#8a5a35');
-      // 瓦屋根（両はしが少し反る）
       ctx.beginPath(); ctx.moveTo(X(-1.6), Y(1.18)); ctx.quadraticCurveTo(X(-1.2), Y(1.26), X(-0.95), Y(2.05)); ctx.lineTo(X(1.35), Y(2.05)); ctx.quadraticCurveTo(X(1.6), Y(1.26), X(2.0), Y(1.18)); ctx.closePath();
       ctx.fillStyle = '#5d6672'; ctx.fill(); ctx.save(); ctx.clip();
       for (let i = 0; i < 4; i++) line(-1.7, 1.38 + i * 0.2, 2.1, 1.38 + i * 0.2, 2.5, '#7d8794');
-      for (let k = 0; k < 24; k++) line(-1.5 + k * 0.15, 1.15, -1.5 + k * 0.15, 2.1, 1.2, 'rgba(255,255,255,.12)');
       ctx.restore(); ctx.stroke();
       box(-1.0, 2.02, 1.4, 2.14, '#4a525d', 3); poly([[-1.12, 2.0], [-0.94, 2.0], [-0.94, 2.24], [-1.06, 2.3], [-1.12, 2.22]], '#4a525d'); poly([[1.52, 2.0], [1.34, 2.0], [1.34, 2.24], [1.46, 2.3], [1.52, 2.22]], '#4a525d');
-      // 表札（柱にたて書き）
-      box(0.0 - 0.1, 0.5, 0.1, 1.05, '#e9c48f', 3);
+      box(-0.1, 0.5, 0.1, 1.05, '#e9c48f', 3);
       ctx.fillStyle = INK; ctx.font = `800 ${Math.round(s * 0.12)}px "Hiragino Sans", sans-serif`; ctx.textAlign = 'center';
       [...g.who.name].slice(0, 4).forEach((ch, i) => ctx.fillText(ch, X(0), Y(0.92 - i * 0.13)));
-      // 湯のみと湯気・ぼんさい
-      box(0.38, 0.42, 0.52, 0.57, '#7fae8a', 3);
-      ctx.save(); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.85)'; const tt = g.t * 2;
-      ctx.beginPath(); ctx.moveTo(X(0.44), Y(0.61)); ctx.bezierCurveTo(X(0.39 + Math.sin(tt) * 0.04), Y(0.71), X(0.52), Y(0.77), X(0.46 + Math.sin(tt + 1) * 0.04), Y(0.87)); ctx.stroke(); ctx.restore();
-      poly([[0.72, 0.42], [0.92, 0.42], [0.89, 0.54], [0.75, 0.54]], '#4e6fa0'); // 縁側の上のぼんさい
-      line(0.82, 0.54, 0.85, 0.7, 4, '#6b4a2a'); line(0.85, 0.7, 0.74, 0.8, 3, '#6b4a2a');
-      dot(0.75, 0.84, 0.09, '#4f9e3a'); dot(0.93, 0.76, 0.08, '#4f9e3a'); dot(0.85, 0.9, 0.07, '#5fb444');
-      drawWaiter(X(-1.32), g.gy, g.who, g.face);
+      // ねこだらけ（縁側に4匹・屋根に1匹）
+      const cols = ['#f0a85a', '#fafafa', '#3b3b3b', '#c9c9c9', '#e8c08a'];
+      const loaf = (x, y, col, k) => {
+        const zz = Math.sin(g.t * 2 + k) * 0.01;
+        ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(X(x), Y(y + 0.09 + zz), 0.16 * s, 0.1 * s, 0, 0, 7); ctx.fill(); ctx.stroke();
+        poly([[x - 0.13, y + 0.14], [x - 0.11, y + 0.25], [x - 0.04, y + 0.17]], col); poly([[x - 0.02, y + 0.18], [x + 0.03, y + 0.27], [x + 0.06, y + 0.17]], col);
+        line(x - 0.1, y + 0.1, x - 0.06, y + 0.1, 2); line(x - 0.01, y + 0.1, x + 0.03, y + 0.1, 2);
+      };
+      [[-0.75, 0], [-0.4, 1], [0.05, 2], [0.65, 3]].forEach(([x, k]) => loaf(x, 0.42, cols[k], k));
+      loaf(0.6, 2.14, cols[4], 4);
+      ctx.fillStyle = 'rgba(59,42,30,.6)'; ctx.font = `800 ${Math.round(s * 0.14)}px sans-serif`; ctx.fillText('z', X(-0.55 + Math.sin(g.t) * 0.03), Y(0.78 + (g.t % 2) * 0.08));
     },
-    // ねこのタマ：ダンボール箱。中からのぞいている。えさ皿と毛糸玉
-    cat(g) {
+    // おじいちゃん：畑のある家。家より大きい大根
+    grandpa(g) {
+      const { X, Y, box, poly, line, dot } = H0(g), t = g.t;
+      box(0.3, 0, 1.65, 1.2, '#e9dcc0');
+      ctx.beginPath(); ctx.moveTo(X(0.1), Y(1.15)); for (let i = 0; i <= 8; i++) ctx.lineTo(X(0.1 + i * 0.2), Y(1.15 + (i % 2) * 0.05)); ctx.lineTo(X(1.85), Y(1.15)); ctx.lineTo(X(1.45), Y(1.75)); ctx.lineTo(X(0.5), Y(1.75)); ctx.closePath(); ctx.fillStyle = '#7d9a5a'; ctx.fill(); ctx.stroke();
+      box(0.5, 0, 0.95, 0.95, '#c9a27a'); for (let i = 1; i < 4; i++) line(0.5, i * 0.24, 0.95, i * 0.24, 1.5, 'rgba(59,42,30,.4)');
+      box(1.1, 0.5, 1.5, 0.9, g.night ? '#ffd56b' : '#cfe8f2');
+      line(1.58, 0, 1.75, 1.0, 4, '#8a5a35'); poly([[1.7, 0.95], [1.88, 1.02], [1.8, 0.86]], '#9aa3ad');
+      // 畑のうね
+      for (let i = 0; i < 3; i++) { ctx.fillStyle = '#8a5a35'; ctx.beginPath(); ctx.ellipse(X(-1.0 + i * 0.42), Y(0.02), 0.2 * g.s, 0.1 * g.s, 0, Math.PI, 0); ctx.fill(); ctx.stroke(); dot(-1.0 + i * 0.42, 0.13, 0.05, '#6cc04a'); }
+      // 巨大な大根
+      const sw = Math.sin(t * 1.5) * 0.04;
+      for (const [a, len] of [[-0.5, 1.3], [-0.15, 1.6], [0.2, 1.45], [0.5, 1.15]]) {
+        ctx.save(); ctx.translate(X(0.05), Y(0.82)); ctx.rotate(a + sw);
+        ctx.fillStyle = '#5fb444'; ctx.beginPath(); ctx.ellipse(0, -len * g.s / 2, 0.16 * g.s, len * g.s / 2, 0, 0, 7); ctx.fill(); ctx.stroke();
+        ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -len * g.s * 0.9); ctx.stroke(); ctx.restore();
+      }
+      ctx.fillStyle = '#8a5a35'; ctx.beginPath(); ctx.ellipse(X(0.05), Y(0.02), 0.6 * g.s, 0.14 * g.s, 0, Math.PI, 0); ctx.fill(); ctx.stroke();
+      const dk = ctx.createLinearGradient(0, Y(0.85), 0, Y(0.45)); dk.addColorStop(0, '#bfe08a'); dk.addColorStop(1, '#fbfbf2');
+      ctx.fillStyle = dk; ctx.beginPath(); ctx.moveTo(X(-0.4), Y(0.05)); ctx.bezierCurveTo(X(-0.46), Y(0.6), X(-0.36), Y(0.85), X(0.05), Y(0.86)); ctx.bezierCurveTo(X(0.46), Y(0.85), X(0.56), Y(0.6), X(0.5), Y(0.05)); ctx.closePath(); ctx.fill(); ctx.stroke();
+      for (const y of [0.25, 0.4]) line(-0.36, y, -0.24, y + 0.02, 2, 'rgba(59,42,30,.35)');
+      line(0.36, 0.3, 0.46, 0.32, 2, 'rgba(59,42,30,.35)');
+      ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(X(-0.08), Y(0.55), 0.035 * g.s, 0, 7); ctx.arc(X(0.18), Y(0.55), 0.035 * g.s, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(255,120,140,.5)'; ctx.beginPath(); ctx.arc(X(-0.16), Y(0.45), 0.05 * g.s, 0, 7); ctx.arc(X(0.26), Y(0.45), 0.05 * g.s, 0, 7); ctx.fill();
+      ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(X(0.05), Y(0.5), 0.06 * g.s, 0.2, Math.PI - 0.2); ctx.stroke(); ctx.lineWidth = 3;
+      ctx.fillStyle = '#8a5a35'; ctx.beginPath(); ctx.ellipse(X(0.05), Y(0.02), 0.62 * g.s, 0.07 * g.s, 0, 0, Math.PI); ctx.fill();
+      for (const d of [-0.62, 0.68]) dot(d, 0.05, 0.05, '#8a5a35');
+    },
+    // お父さん：会社のビル。窓から同僚が手をふる
+    dad(g) {
+      const { X, Y, box, poly, line, dot } = H0(g), t = g.t;
+      box(-0.4, 0, 1.6, 3.1, '#c9d3dc'); box(-0.5, 3.05, 1.7, 3.2, '#9aa8b5');
+      const skins = ['#ffd9b8', '#f3c9a4', '#ffe0c8', '#f0c49c'];
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) {
+        const x0 = -0.25 + c * 0.62, y0 = 0.95 + r * 0.52;
+        box(x0, y0, x0 + 0.45, y0 + 0.38, g.night ? '#ffd56b' : '#9fd1f0');
+        if ((r * 3 + c) % 3 !== 1) { dot(x0 + 0.22, y0 + 0.17, 0.09, skins[(r + c) % 4]); line(x0 + 0.33, y0 + 0.1, x0 + 0.4, y0 + 0.28 + Math.sin(t * 8 + r + c) * 0.05, 3, skins[(r + c) % 4]); }
+      }
+      box(0.25, 0, 0.95, 0.75, '#bfe6ff'); line(0.6, 0, 0.6, 0.75, 3);
+      box(0.1, 0.78, 1.1, 0.88, '#4a6fa5');
+      const tw = Math.sin(t * 2) * 0.03;
+      poly([[0.38, 3.2], [0.82, 3.2], [0.72, 2.95], [0.48, 2.95]], '#c0392b');
+      poly([[0.48, 2.95], [0.72, 2.95], [0.95 + tw, 1.1], [0.6 + tw, 0.92], [0.25 + tw, 1.1]], '#e8303a');
+      ctx.save(); poly([[0.48, 2.95], [0.72, 2.95], [0.95 + tw, 1.1], [0.6 + tw, 0.92], [0.25 + tw, 1.1]]); ctx.clip();
+      for (let i = 0; i < 6; i++) line(0.1, 1.2 + i * 0.35, 1.1, 1.6 + i * 0.35, 6, '#ffd23a'); ctx.restore();
+      poly([[0.48, 2.95], [0.72, 2.95], [0.95 + tw, 1.1], [0.6 + tw, 0.92], [0.25 + tw, 1.1]]);
+    },
+    // 妹：ショートケーキの家。てっぺんに巨大いちご
+    sister(g) {
       const { X, Y, box, poly, line, dot } = H0(g);
+      poly([[-0.9, 0], [1.6, 0], [1.6, 1.3], [-0.9, 1.75]], '#fff0d0');
+      ctx.save(); poly([[-0.9, 0], [1.6, 0], [1.6, 1.3], [-0.9, 1.75]]); ctx.clip();
+      line(-0.9, 0.62, 1.6, 0.52, 10, '#ff8fb1'); line(-0.9, 1.15, 1.6, 0.98, 8, '#ffffff');
+      ctx.restore(); poly([[-0.9, 0], [1.6, 0], [1.6, 1.3], [-0.9, 1.75]]);
+      poly([[-1.0, 1.72], [1.7, 1.27], [1.7, 1.45], [-1.0, 1.95]], '#ffffff');
+      for (let i = 0; i < 6; i++) dot(-0.8 + i * 0.45, 1.95 - i * 0.075, 0.1, '#ffffff');
+      // 巨大いちご
+      ctx.fillStyle = '#e8303a'; ctx.beginPath(); ctx.moveTo(X(0.35), Y(1.7)); ctx.bezierCurveTo(X(-0.35), Y(1.85), X(-0.2), Y(2.85), X(0.35), Y(2.8)); ctx.bezierCurveTo(X(0.9), Y(2.85), X(1.05), Y(1.85), X(0.35), Y(1.7)); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffe9a8'; for (const [x, y] of [[0.1, 2.0], [0.35, 1.95], [0.6, 2.05], [0.2, 2.35], [0.5, 2.4], [0.35, 2.6]]) { ctx.beginPath(); ctx.ellipse(X(x), Y(y), 3, 4.5, 0, 0, 7); ctx.fill(); }
+      poly([[0.1, 2.78], [0.35, 3.0], [0.6, 2.78], [0.35, 2.84]], '#4fb36b');
+      // ハートのドアと丸い窓
+      ctx.fillStyle = '#ff6b9b'; ctx.beginPath(); ctx.moveTo(X(-0.35), Y(0)); ctx.lineTo(X(-0.35), Y(0.6)); ctx.arc(X(-0.1), Y(0.6), 0.25 * g.s, Math.PI, 0); ctx.lineTo(X(0.15), Y(0)); ctx.closePath(); ctx.fill(); ctx.stroke();
+      dot(0.95, 0.85, 0.2, g.night ? '#ffd56b' : '#bfe6ff'); dot(0.07, 0.3, 0.03, '#ffcf3d');
+    },
+    // 弟：木の上のひみつきち。ドクロの旗
+    brother(g) {
+      const { X, Y, box, poly, line, dot } = H0(g), t = g.t;
+      box(0.8, 0, 1.15, 2.2, '#8a5a35');
+      for (const [x, y, r] of [[0.4, 2.6, 0.55], [1.0, 2.9, 0.6], [1.5, 2.5, 0.45], [0.9, 2.3, 0.5]]) dot(x, y, r, '#5fb444');
+      box(-0.25, 1.4, 1.45, 1.5, '#b9824f');
+      box(-0.15, 1.5, 0.95, 2.2, '#d9a46a'); box(0.95, 1.5, 1.35, 2.05, '#c8955a');
+      poly([[-0.3, 2.15], [1.0, 2.15], [0.35, 2.55]], '#c96a4a');
+      box(0.1, 1.6, 0.5, 1.95, '#3b2a1e', 3);
+      line(-0.2, 1.4, -0.2, 0, 3); line(0.05, 1.4, 0.05, 0, 3); for (let i = 1; i < 7; i++) line(-0.2, i * 0.2, 0.05, i * 0.2, 3, '#b9824f');
+      line(1.3, 2.05, 1.3, 2.7, 3);
+      const w = Math.sin(t * 4) * 0.04;
+      poly([[1.3, 2.7], [1.75, 2.62 + w], [1.75, 2.38 + w], [1.3, 2.42]], '#2b2b2b');
+      dot(1.52, 2.55 + w, 0.07, '#ffffff'); ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(X(1.49), Y(2.56 + w), 2, 0, 7); ctx.arc(X(1.55), Y(2.56 + w), 2, 0, 7); ctx.fill();
+      box(1.05, 1.55, 1.35, 1.75, '#fff7e6', 2);
+      ctx.fillStyle = '#e8303a'; ctx.font = `900 ${Math.round(g.s * 0.12)}px sans-serif`; ctx.textAlign = 'center'; ctx.save(); ctx.translate(X(1.2), Y(1.62)); ctx.rotate(-0.08); ctx.fillText('ひみつ', 0, 0); ctx.restore();
+    },
+    // となりのおばさん：花の家。家より高いひまわり
+    aunt(g) {
+      const { X, Y, box, poly, line, dot } = H0(g), t = g.t;
+      box(-0.9, 0, 0.95, 1.4, '#fde8e8'); poly([[-1.1, 1.35], [1.15, 1.35], [0.02, 2.05]], '#e87fa8');
+      box(-0.6, 0, -0.1, 0.95, '#9b6a43', 4); box(0.2, 0.5, 0.75, 1.0, g.night ? '#ffd56b' : '#bfe6ff');
+      for (let i = 0; i < 4; i++) { box(0.18 + i * 0.15, 0.4, 0.3 + i * 0.15, 0.5, '#c96a4a'); dot(0.24 + i * 0.15, 0.56, 0.06, ['#ff6b8b', '#ffd23a', '#b46cf0', '#ff9a3d'][i]); }
+      for (let i = 0; i < 6; i++) { const x = -0.95 + i * 0.36; line(x, 0, x, 0.25, 3, '#4fb36b'); dot(x, 0.3, 0.07, ['#ff5c5c', '#ffd23a', '#ff8fb1'][i % 3]); }
+      // ひまわり
+      const sx = 1.35, top = 3.0, sw = Math.sin(t * 1.2) * 0.05;
+      line(sx, 0, sx + sw, top - 0.3, 7, '#4fb36b');
+      ctx.fillStyle = '#5fb444'; ctx.beginPath(); ctx.ellipse(X(sx + 0.18), Y(1.2), 0.18 * g.s, 0.08 * g.s, -0.5, 0, 7); ctx.fill(); ctx.stroke();
+      for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; ctx.fillStyle = '#ffd23a'; ctx.beginPath(); ctx.ellipse(X(sx + sw) + Math.cos(a) * 0.38 * g.s, Y(top) + Math.sin(a) * 0.38 * g.s, 0.18 * g.s, 0.07 * g.s, a, 0, 7); ctx.fill(); ctx.stroke(); }
+      dot(sx + sw, top, 0.3, '#8a5a35');
+      ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(X(sx + sw - 0.1), Y(top + 0.05), 3, 0, 7); ctx.arc(X(sx + sw + 0.1), Y(top + 0.05), 3, 0, 7); ctx.fill();
+      ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(X(sx + sw), Y(top - 0.02), 0.12 * g.s, 0.3, Math.PI - 0.3); ctx.stroke(); ctx.lineWidth = 3;
+    },
+    // 親せきのおじさん：巨大どんぶりの屋台。湯気とお箸
+    uncle(g) {
+      const { X, Y, box, poly, line, dot } = H0(g), t = g.t;
+      box(0.0, 0, 0.9, 0.25, '#c9302c');
+      // 麺・具（どんぶりのうしろ）
+      ctx.fillStyle = '#ffe28a'; ctx.beginPath(); ctx.ellipse(X(0.45), Y(1.45), 1.05 * g.s, 0.22 * g.s, 0, 0, 7); ctx.fill(); ctx.stroke();
+      dot(0.0, 1.55, 0.22, '#e8b07a'); dot(0.0, 1.55, 0.12, '#f5d0a5');
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(X(0.55), Y(1.55), 0.18 * g.s, 0.12 * g.s, 0, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.save(); ctx.strokeStyle = '#ff6b8b'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(X(0.55), Y(1.55), 0.06 * g.s, 0, 5); ctx.stroke(); ctx.restore();
+      poly([[0.85, 1.4], [1.15, 1.4], [1.1, 2.05], [0.85, 2.0]], '#2f4a2a');
+      line(-0.2, 1.4, 0.7, 2.9, 7, '#d9a868'); line(0.0, 1.4, 0.95, 2.85, 7, '#d9a868');
+      // どんぶり
+      ctx.fillStyle = '#c9302c'; ctx.beginPath(); ctx.moveTo(X(-0.65), Y(1.45)); ctx.quadraticCurveTo(X(-0.55), Y(0.25), X(0.45), Y(0.25)); ctx.quadraticCurveTo(X(1.45), Y(0.25), X(1.55), Y(1.45)); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.save(); ctx.clip(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4;
+      ctx.beginPath(); for (let i = 0; i <= 12; i++) { const x = -0.6 + i * 0.18; ctx.lineTo(X(x), Y(1.15 + (i % 2) * 0.12)); } ctx.stroke(); ctx.restore();
+      // 湯気
+      ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 4;
+      for (let k = 0; k < 3; k++) { const x = 0.1 + k * 0.35, ph = t * 2 + k; ctx.beginPath(); ctx.moveTo(X(x), Y(1.75)); ctx.bezierCurveTo(X(x - 0.1 + Math.sin(ph) * 0.05), Y(2.0), X(x + 0.1), Y(2.15), X(x + Math.sin(ph + 1) * 0.06), Y(2.4)); ctx.stroke(); }
+      ctx.restore();
+    },
+    // となりのケンタ：家。窓が割れてボールが刺さっている
+    friend(g) {
+      const { X, Y, box, poly, line, dot } = H0(g);
+      box(-0.95, 0, 1.25, 1.75, '#e6f0f7');
+      poly([[-1.15, 1.7], [1.45, 1.7], [0.15, 2.45]], '#4f8be8');
+      box(-0.7, 0, -0.15, 1.05, '#9b6a43', 4); dot(-0.25, 0.52, 0.04, '#ffcf3d');
+      box(0.15, 0.55, 0.95, 1.2, g.night ? '#ffd56b' : '#bfe6ff');
+      // ひび
+      ctx.save(); ctx.lineWidth = 2;
+      for (let i = 0; i < 7; i++) { const a = i * 0.9; line(0.62, 0.9, 0.62 + Math.cos(a) * 0.3, 0.9 + Math.sin(a) * 0.28, 2); }
+      ctx.restore();
+      dot(0.62, 0.9, 0.15, '#ffffff');
+      for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5 - Math.PI / 2; ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(X(0.62 + Math.cos(a) * 0.08), Y(0.9 - Math.sin(a) * 0.08), 0.035 * g.s, 0, 7); ctx.fill(); }
+      dot(-0.4, 1.95, 0.12, '#ffffff'); // 屋根にもボール
+      // 小さいゴール
+      line(1.35, 0, 1.35, 0.7, 4, '#ffffff'); line(1.35, 0.7, 1.75, 0.7, 4, '#ffffff');
+      ctx.save(); ctx.strokeStyle = 'rgba(59,42,30,.4)'; ctx.lineWidth = 1.5; for (let i = 1; i < 4; i++) { line(1.35 + i * 0.1, 0, 1.35 + i * 0.1, 0.7, 1.5, 'rgba(59,42,30,.35)'); line(1.35, i * 0.17, 1.75, i * 0.17, 1.5, 'rgba(59,42,30,.35)'); } ctx.restore();
+    },
+    // ピアノの先生：グランドピアノの家。音符がうかぶ
+    teacher(g) {
+      const { X, Y, box, poly, line, dot } = H0(g), t = g.t;
+      for (const x of [-0.6, 1.3]) box(x - 0.07, 0, x + 0.07, 0.65, '#1f1f1f');
+      line(0.9, 1.25, 0.6, 2.25, 4, '#2b2b2b');
+      poly([[-0.85, 1.25], [1.7, 1.25], [1.4, 2.0], [0.2, 2.6]], '#2b2b2b');
+      ctx.beginPath(); ctx.moveTo(X(-0.85), Y(0.65)); ctx.lineTo(X(1.0), Y(0.65)); ctx.quadraticCurveTo(X(1.75), Y(0.65), X(1.7), Y(1.25)); ctx.lineTo(X(-0.85), Y(1.25)); ctx.closePath(); ctx.fillStyle = '#1f1f1f'; ctx.fill(); ctx.stroke();
+      box(-1.05, 0.95, -0.85, 1.05, '#ffffff');
+      for (let i = 0; i < 6; i++) box(-0.8 + i * 0.25, 0.68, -0.65 + i * 0.25, 1.0, '#ffffff');
+      for (let i = 0; i < 5; i++) box(-0.68 + i * 0.25, 0.8, -0.6 + i * 0.25, 1.0, '#1f1f1f');
+      dot(1.15, 0.95, 0.15, g.night ? '#ffd56b' : '#bfe6ff');
+      box(0.35, 0, 0.8, 0.62, '#7a4a2a', 3);
+      ctx.fillStyle = INK;
+      for (let k = 0; k < 3; k++) {
+        const ph = (t * 0.5 + k / 3) % 1, x = 0.4 + k * 0.4 + Math.sin(t * 2 + k) * 0.08, y = 2.2 + ph * 0.9;
+        ctx.globalAlpha = 1 - ph; ctx.beginPath(); ctx.ellipse(X(x), Y(y), 0.07 * g.s, 0.05 * g.s, -0.4, 0, 7); ctx.fill();
+        ctx.fillRect(X(x + 0.05), Y(y + 0.3), 3, 0.3 * g.s); ctx.globalAlpha = 1;
+      }
+    },
+    // ねこのタマ：ダンボール箱。横に積んだ「ねこマンション」から目がのぞく
+    cat(g) {
+      const { X, Y, box, poly, line, dot } = H0(g), t = g.t;
       const c1 = '#d9a46a', c2 = '#b98450', c3 = '#7a5230';
-      // 箱のうしろ（中の暗いところ）とうしろのふた
+      // ねこマンション
+      [[0.75, 0, 1.55, 0.7], [0.85, 0.7, 1.5, 1.3], [0.8, 1.3, 1.4, 1.85]].forEach(([x0, y0, x1, y1], i) => {
+        box(x0, y0, x1, y1, i % 2 ? c2 : c1);
+        const hx = (x0 + x1) / 2, hy = (y0 + y1) / 2; dot(hx, hy, 0.17, '#2a1c12');
+        const blink = Math.sin(t * 1.3 + i * 2) > 0.95;
+        ctx.fillStyle = g.night ? '#ffe66b' : '#d8f0a0';
+        if (!blink) for (const dx of [-0.06, 0.06]) { ctx.beginPath(); ctx.ellipse(X(hx + dx), Y(hy), 0.035 * g.s, 0.05 * g.s, 0, 0, 7); ctx.fill(); }
+      });
+      line(1.1, 1.85, 1.1, 2.2, 3); line(0.98, 2.2, 1.22, 2.2, 3);
       poly([[-1.0, 0.9], [0.45, 0.9], [0.75, 1.12], [-0.7, 1.12]], c3);
       poly([[-0.7, 1.12], [0.75, 1.12], [0.95, 1.55], [-0.5, 1.55]], c2);
-      // ねこ（箱の中にすわっている）
       drawWaiter(X(-0.25), Y(0.48), g.who, g.face);
-      // 箱の前と横
       poly([[0.45, 0], [0.75, 0.22], [0.75, 1.12], [0.45, 0.9]], c2);
       box(-1.0, 0, 0.45, 0.9, c1);
-      line(-1.0, 0.45, 0.45, 0.45, 5, 'rgba(255,255,255,.35)'); // ガムテープのあと
-      // 前のふた（手前にたれている）と左のふた
+      line(-1.0, 0.45, 0.45, 0.45, 5, 'rgba(255,255,255,.35)');
       poly([[-1.0, 0.9], [0.45, 0.9], [0.35, 0.62], [-0.9, 0.62]], c2);
       poly([[-1.0, 0.9], [-0.7, 1.12], [-1.25, 1.4], [-1.42, 1.1]], c1);
-      // 箱の落書き（足あとと魚の骨）
       ctx.save(); ctx.globalAlpha = 0.55;
       for (const [x, y] of [[-0.75, 0.25], [-0.55, 0.35]]) { dot(x, y, 0.05, INK); for (const [dx, dy] of [[-0.06, 0.07], [0, 0.09], [0.06, 0.07]]) dot(x + dx, y + dy, 0.022, INK); }
       line(-0.15, 0.25, 0.25, 0.25, 3); for (const x of [-0.05, 0.05, 0.15]) line(x, 0.17, x, 0.33, 2.5); poly([[0.25, 0.25], [0.33, 0.33], [0.33, 0.17]]); dot(-0.18, 0.25, 0.04, INK);
       ctx.restore();
-      // えさ皿と毛糸玉
-      poly([[0.9, 0], [1.4, 0], [1.33, 0.14], [0.97, 0.14]], '#e8574f');
-      ctx.fillStyle = '#c9d4de'; ctx.beginPath(); ctx.ellipse(X(1.15), Y(0.16), 0.17 * g.s, 0.06 * g.s, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      dot(1.75, 0.16, 0.16, '#ff8fb1');
-      ctx.save(); ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(59,42,30,.55)'; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(X(1.75), Y(0.16), (0.06 + i * 0.03) * g.s, 0.3 + i, 2.4 + i); ctx.stroke(); } ctx.restore();
-      line(1.6, 0.06, 1.45, 0.02, 2, '#ff8fb1');
+      return true; // 待つ人はもうかいた
     },
-    // 王さま：お城。旗がゆれる・門・赤いじゅうたん
+    // 犬のコロ：骨の形の屋根の犬小屋
+    dog(g) {
+      const { X, Y, box, poly, line, dot } = H0(g);
+      box(-0.3, 0, 0.9, 0.75, '#c96a4a');
+      ctx.fillStyle = '#2a1c12'; ctx.beginPath(); ctx.moveTo(X(0.1), Y(0)); ctx.lineTo(X(0.1), Y(0.35)); ctx.arc(X(0.3), Y(0.35), 0.2 * g.s, Math.PI, 0); ctx.lineTo(X(0.5), Y(0)); ctx.closePath(); ctx.fill(); ctx.stroke();
+      // 骨の屋根
+      box(-0.45, 0.75, 1.05, 1.05, '#fff7e6', 12);
+      for (const [x, y] of [[-0.5, 0.78], [-0.5, 1.02], [1.1, 0.78], [1.1, 1.02]]) dot(x, y, 0.13, '#fff7e6');
+      box(-0.4, 0.8, 1.0, 1.0, '#fff7e6', 10); ctx.stroke();
+      box(0.12, 0.8, 0.48, 0.98, '#e9c48f', 3);
+      ctx.fillStyle = INK; ctx.font = `800 ${Math.round(g.s * 0.12)}px "Hiragino Sans", sans-serif`; ctx.textAlign = 'center'; ctx.fillText('コロ', X(0.3), Y(0.85));
+      // えさ皿と骨の山
+      poly([[1.1, 0], [1.55, 0], [1.48, 0.13], [1.17, 0.13]], '#4f8be8');
+      for (const [x, y, a] of [[1.25, 0.2, 0.3], [1.42, 0.24, -0.4], [1.33, 0.33, 0.1]]) { ctx.save(); ctx.translate(X(x), Y(y)); ctx.rotate(a); ctx.fillStyle = '#fff7e6'; ctx.fillRect(-0.12 * g.s, -0.025 * g.s, 0.24 * g.s, 0.05 * g.s); ctx.strokeRect(-0.12 * g.s, -0.025 * g.s, 0.24 * g.s, 0.05 * g.s); ctx.restore(); }
+    },
+    // 王さま：プリンのお城（真ん中が巨大プリン）
     king(g) {
       const { X, Y, box, poly, line } = H0(g), t = g.t;
-      const st = '#ddd6c6', sd = '#c2b9a5', rf = '#c0392b', win = g.night ? '#ffd56b' : '#3b4a6b';
-      const bricks = (x0, y0, x1, y1) => { ctx.save(); ctx.beginPath(); ctx.rect(X(x0), Y(y1), (x1 - x0) * g.s, (y1 - y0) * g.s); ctx.clip(); for (let r = 0; r * 0.22 < y1 - y0; r++) { line(x0, y0 + r * 0.22, x1, y0 + r * 0.22, 1.5, 'rgba(59,42,30,.22)'); for (let c = 0; c * 0.4 < x1 - x0 + 0.4; c++) { const x = x0 + c * 0.4 + (r % 2) * 0.2; line(x, y0 + r * 0.22, x, y0 + (r + 1) * 0.22, 1.5, 'rgba(59,42,30,.22)'); } } ctx.restore(); };
-      const crenel = (x0, x1, y) => { const n = Math.round((x1 - x0) / 0.22); for (let i = 0; i < n; i += 2) box(x0 + i * (x1 - x0) / n, y, x0 + (i + 1) * (x1 - x0) / n, y + 0.18, st); };
+      const sd = '#c2b9a5', rf = '#c0392b', win = g.night ? '#ffd56b' : '#3b4a6b';
       const tower = (x0, x1, h) => {
-        box(x0, 0, x1, h, sd); bricks(x0, 0, x1, h); ctx.strokeRect(X(x0), Y(h), (x1 - x0) * g.s, h * g.s);
+        box(x0, 0, x1, h, sd);
+        ctx.save(); ctx.beginPath(); ctx.rect(X(x0), Y(h), (x1 - x0) * g.s, h * g.s); ctx.clip(); for (let r = 1; r * 0.22 < h; r++) line(x0, r * 0.22, x1, r * 0.22, 1.5, 'rgba(59,42,30,.22)'); ctx.restore();
         poly([[x0 - 0.08, h], [x1 + 0.08, h], [(x0 + x1) / 2, h + 0.9]], rf);
         const fx = (x0 + x1) / 2, fy = h + 0.9; line(fx, fy, fx, fy + 0.45, 3);
-        const w = Math.sin(t * 5 + x0) * 0.05;
-        poly([[fx, fy + 0.45], [fx + 0.38, fy + 0.36 + w], [fx, fy + 0.27]], '#ffd23a');
-        box((x0 + x1) / 2 - 0.1, h - 0.75, (x0 + x1) / 2 + 0.1, h - 0.4, win, 6);
+        const w = Math.sin(t * 5 + x0) * 0.05; poly([[fx, fy + 0.45], [fx + 0.38, fy + 0.36 + w], [fx, fy + 0.27]], '#ffd23a');
+        box(fx - 0.1, h - 0.75, fx + 0.1, h - 0.4, win, 6);
       };
-      tower(-1.05, -0.4, 2.55); tower(1.2, 1.85, 2.55);
-      box(-0.4, 0, 1.2, 1.95, st); bricks(-0.4, 0, 1.2, 1.95); ctx.strokeRect(X(-0.4), Y(1.95), 1.6 * g.s, 1.95 * g.s);
-      crenel(-0.4, 1.2, 1.95);
-      // 門（アーチ）
-      ctx.fillStyle = '#6b4226'; ctx.beginPath(); ctx.moveTo(X(0.08), Y(0)); ctx.lineTo(X(0.08), Y(0.75)); ctx.arc(X(0.4), Y(0.75), 0.32 * g.s, Math.PI, 0); ctx.lineTo(X(0.72), Y(0)); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.save(); ctx.clip(); for (let i = 1; i < 4; i++) line(0.08 + i * 0.16, 0, 0.08 + i * 0.16, 1.1, 2.5, 'rgba(0,0,0,.35)'); ctx.restore();
-      for (const x of [-0.05, 0.85]) box(x - 0.1, 1.2, x + 0.1, 1.55, win, 6);
-      // 王さまのしるし（盾）
-      poly([[0.28, 1.25], [0.52, 1.25], [0.52, 1.5], [0.4, 1.62], [0.28, 1.5]].map(([x, y]) => [x, y + 0.08]), '#2f6fd6');
-      // 赤いじゅうたん（門から王さまの足もとまで）
-      ctx.fillStyle = '#d63a3a'; ctx.beginPath(); ctx.moveTo(X(0.12), Y(0)); ctx.lineTo(X(0.68), Y(0)); ctx.lineTo(X(-1.0), Y(-0.08)); ctx.lineTo(X(-1.6), Y(-0.08)); ctx.closePath(); ctx.fill();
-      drawWaiter(X(-1.32), g.gy, g.who, g.face);
+      tower(-1.05, -0.45, 2.4); tower(1.15, 1.75, 2.4);
+      // お皿と巨大プリン
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(X(0.35), Y(0.05), 1.0 * g.s, 0.12 * g.s, 0, 0, 7); ctx.fill(); ctx.stroke();
+      poly([[-0.5, 0.08], [1.2, 0.08], [0.95, 2.0], [-0.25, 2.0]], '#ffd23a');
+      ctx.fillStyle = '#8a4a1c'; ctx.beginPath(); ctx.moveTo(X(-0.25), Y(2.0)); ctx.lineTo(X(0.95), Y(2.0)); ctx.lineTo(X(0.98), Y(1.75)); ctx.quadraticCurveTo(X(0.85), Y(1.55), X(0.75), Y(1.78)); ctx.quadraticCurveTo(X(0.55), Y(1.45), X(0.4), Y(1.75)); ctx.quadraticCurveTo(X(0.15), Y(1.6), X(0.0), Y(1.78)); ctx.quadraticCurveTo(X(-0.15), Y(1.65), X(-0.22), Y(1.78)); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#8a4a1c'; ctx.beginPath(); ctx.ellipse(X(0.35), Y(2.0), 0.6 * g.s, 0.1 * g.s, 0, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.65)'; roundRect(X(-0.15), Y(1.5), 0.1 * g.s, 0.9 * g.s, 4); ctx.fill();
+      line(0.35, 2.05, 0.35, 2.6, 3); const w = Math.sin(t * 5) * 0.05; poly([[0.35, 2.6], [0.8, 2.5 + w], [0.35, 2.4]], '#e8303a');
+      // 門
+      ctx.fillStyle = '#6b4226'; ctx.beginPath(); ctx.moveTo(X(0.08), Y(0.06)); ctx.lineTo(X(0.08), Y(0.6)); ctx.arc(X(0.35), Y(0.6), 0.27 * g.s, Math.PI, 0); ctx.lineTo(X(0.62), Y(0.06)); ctx.closePath(); ctx.fill(); ctx.stroke();
+      for (const x of [-0.05, 0.75]) box(x - 0.09, 1.0, x + 0.09, 1.3, win, 6);
+      ctx.fillStyle = '#d63a3a'; ctx.beginPath(); ctx.moveTo(X(0.12), Y(0)); ctx.lineTo(X(0.58), Y(0)); ctx.lineTo(X(-1.0), Y(-0.08)); ctx.lineTo(X(-1.6), Y(-0.08)); ctx.closePath(); ctx.fill();
+    },
+    // おばけのフワリ：かたむいた洋館。窓から目・コウモリ
+    ghost(g) {
+      const { X, Y, box, poly, line, dot } = H0(g), t = g.t;
+      ctx.save(); ctx.translate(X(0.3), Y(0)); ctx.rotate(0.06); ctx.translate(-X(0.3), -Y(0));
+      box(-0.8, 0, 1.4, 1.9, '#7c7394');
+      poly([[-1.0, 1.85], [1.6, 1.85], [0.3, 2.9]], '#3e3756');
+      line(0.6, 2.5, 0.85, 2.3, 2, '#9d95b8'); line(-0.2, 2.2, 0.0, 2.45, 2, '#9d95b8');
+      for (const [x, y] of [[-0.55, 1.1], [0.95, 1.1], [0.2, 2.15]]) {
+        box(x, y, x + 0.4, y + 0.45, '#1c1830');
+        const bl = Math.sin(t * 1.7 + x * 3) > 0.9;
+        if (!bl) { ctx.fillStyle = '#ffe66b'; ctx.beginPath(); ctx.ellipse(X(x + 0.13), Y(y + 0.25), 0.04 * g.s, 0.06 * g.s, 0, 0, 7); ctx.ellipse(X(x + 0.27), Y(y + 0.25), 0.04 * g.s, 0.06 * g.s, 0, 0, 7); ctx.fill(); }
+      }
+      line(0.95, 1.1, 1.35, 1.55, 6, '#8a5a35'); line(0.95, 1.55, 1.35, 1.1, 6, '#8a5a35');
+      box(0.1, 0, 0.65, 0.95, '#3b2a1e', 4);
+      ctx.restore();
+      for (let k = 0; k < 2; k++) {
+        const bx = 0.4 + k * 0.9 + Math.sin(t * 1.3 + k) * 0.25, by = 3.1 + Math.cos(t * 1.7 + k) * 0.12, f = Math.sin(t * 14 + k) * 0.08;
+        ctx.fillStyle = '#2b2440'; ctx.beginPath(); ctx.moveTo(X(bx), Y(by)); ctx.lineTo(X(bx - 0.22), Y(by + 0.08 + f)); ctx.lineTo(X(bx - 0.12), Y(by - 0.02)); ctx.lineTo(X(bx), Y(by - 0.06)); ctx.lineTo(X(bx + 0.12), Y(by - 0.02)); ctx.lineTo(X(bx + 0.22), Y(by + 0.08 + f)); ctx.closePath(); ctx.fill();
+      }
+    },
+    // うちゅう人：UFO。光で牛を吸い上げている
+    alien(g) {
+      const { X, Y, poly, line, dot } = H0(g), t = g.t, hov = Math.sin(t * 2) * 0.06;
+      ctx.save(); ctx.fillStyle = 'rgba(255,240,140,.45)'; ctx.beginPath(); ctx.moveTo(X(0.2), Y(1.9 + hov)); ctx.lineTo(X(0.9), Y(1.9 + hov)); ctx.lineTo(X(1.35), Y(0)); ctx.lineTo(X(-0.25), Y(0)); ctx.closePath(); ctx.fill(); ctx.restore();
+      // うく牛
+      const cy = 0.7 + Math.sin(t * 1.2) * 0.15, cr = Math.sin(t) * 0.2;
+      ctx.save(); ctx.translate(X(0.55), Y(cy)); ctx.rotate(cr); const S = g.s;
+      for (const dx of [-0.2, -0.08, 0.1, 0.22]) { ctx.fillStyle = '#ffffff'; ctx.fillRect(dx * S - 2, 0.1 * S, 5, 0.18 * S); ctx.strokeRect(dx * S - 2, 0.1 * S, 5, 0.18 * S); }
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(0, 0, 0.32 * S, 0.17 * S, 0, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = INK; ctx.beginPath(); ctx.ellipse(-0.1 * S, -0.05 * S, 0.08 * S, 0.06 * S, 0.3, 0, 7); ctx.ellipse(0.14 * S, 0.04 * S, 0.06 * S, 0.05 * S, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(0.36 * S, -0.1 * S, 0.12 * S, 0.1 * S, 0, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffb3c1'; ctx.beginPath(); ctx.ellipse(0.44 * S, -0.08 * S, 0.06 * S, 0.05 * S, 0, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.restore();
+      // UFO
+      const uy = 2.05 + hov;
+      ctx.fillStyle = '#bfe6ff'; ctx.beginPath(); ctx.ellipse(X(0.55), Y(uy + 0.15), 0.4 * g.s, 0.35 * g.s, 0, Math.PI, 0); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#c9ced8'; ctx.beginPath(); ctx.ellipse(X(0.55), Y(uy), 1.05 * g.s, 0.25 * g.s, 0, 0, 7); ctx.fill(); ctx.stroke();
+      for (let i = 0; i < 6; i++) { const on = Math.floor(t * 6 + i) % 3 === 0; dot(-0.25 + i * 0.32, uy - 0.05, 0.05, on ? '#ffe66b' : '#7a5af8'); }
     },
   };
   function drawHouse(hx, who, face, n) {
     const [gx, gy] = W2S(hx, game.groundHeightAt(hx)); const s = scale;
     if (HOUSES[who.id]) {
       ctx.save(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-      HOUSES[who.id]({ gx, gy, s, who, face, night: themeOf(level).night > 0.3, t: performance.now() / 1000 });
-      ctx.restore(); return;
+      const done = HOUSES[who.id]({ gx, gy, s, who, face, night: themeOf(level).night > 0.3, t: performance.now() / 1000 });
+      ctx.restore();
+      if (!done) drawWaiter(gx - s * 1.32, gy, who, face); // ゴールの線の先に立つ
+      return;
     }
     const roof = ROOFS[n % ROOFS.length];
     ctx.save(); ctx.lineWidth = 3; ctx.strokeStyle = '#3b2a1e'; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
