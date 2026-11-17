@@ -628,7 +628,8 @@
     // じゃまな物
     for (const o of stage.obstacles) drawObstacle(o);
     // スタート：1軒目はおかしや、それより先は前のおうち（届けた人が手をふっている）
-    if (level === 1) {
+    if (ui.title.classList.contains('show')) drawTitleHouse();
+    else if (level === 1) {
       const [sx0, sy0] = W2S(-3.2, 0); const s = scale;
       ctx.lineWidth = 3; ctx.strokeStyle = '#3b2a1e';
       ctx.fillStyle = '#e9f4ff'; ctx.fillRect(sx0 - s * 1.0, sy0 - s * 2.2, s * 2.0, s * 2.2); ctx.strokeRect(sx0 - s * 1.0, sy0 - s * 2.2, s * 2.0, s * 2.2);
@@ -646,6 +647,20 @@
     for (let i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? '#3b2a1e' : '#fff'; ctx.fillRect(lx - 4, ly - (i + 1) * s * 0.25, 8, s * 0.25); }
     // ゴールのおうち
     drawHouse(stage.goal + 1.6, waiter, faceNow, level);
+  }
+
+  // タイトル：うしろに届け先の家が次々にポンと出てくる（15軒を順番に見せる）
+  const TITLE_WHO = [...WT.WAITERS, ...WT.RARE], TITLE_SEC = 2.6;
+  function drawTitleHouse() {
+    const tt = performance.now() / 1000, i = Math.floor(tt / TITLE_SEC) % TITLE_WHO.length, u = (tt % TITLE_SEC) / TITLE_SEC;
+    const back = (v) => 1 + 2.7 * Math.pow(v - 1, 3) + 1.7 * Math.pow(v - 1, 2); // 少し行きすぎてもどる
+    const k = u < 0.14 ? back(u / 0.14) : u > 0.93 ? 1 - (u - 0.93) / 0.07 : 1;
+    if (k <= 0.01) return;
+    const hx = game.charX() + 1.75, [fx, fy] = W2S(hx, game.groundHeightAt(hx)), sc = 0.68;
+    ctx.save(); ctx.translate(fx, fy); ctx.scale(sc * (2 - k) * k, sc * k); ctx.translate(-fx, -fy);
+    drawHouse(hx, TITLE_WHO[i], 'wait', level);
+    ctx.restore();
+    if (u < 0.05) puff(hx + 0.3, game.groundHeightAt(hx), 2, false);
   }
 
   // おたからの箱（？）。拾ったら中身が上にふわっと出る
@@ -1570,10 +1585,11 @@
         if (!shownEnd) { shownEnd = true; onFall(); }
       } else if (S.status === 'play') shownEnd = false;
     }
+    const onTitle = ui.title.classList.contains('show');
     if (S.char) {
       const p = S.char.torso.getPosition();
-      cam.x += (p.x + 0.6 - cam.x) * 0.08;
-      cam.y += (game.groundHeightAt(p.x) + 0.9 - cam.y) * 0.05;
+      cam.x += (p.x + (onTitle ? 1.0 : 0.6) - cam.x) * 0.08; // タイトルでは家が見えるよう少し左に寄せる
+      cam.y += (game.groundHeightAt(p.x) + (onTitle ? 0.2 : 0.9) - cam.y) * 0.05; // ボタンにかくれないよう地面を上げる
     }
     shakeA *= 0.86; if (shakeA < 0.3) shakeA = 0;
     const shx = shakeA ? (Math.random() - 0.5) * 2 * shakeA : 0, shy = shakeA ? (Math.random() - 0.5) * 2 * shakeA : 0;
@@ -1584,7 +1600,11 @@
     drawBoxes();
     drawWind();
     drawSpeedLines();
-    drawChar();
+    if (onTitle && S.char) { // タイトルでは足もとを支点にヨロヨロゆれる
+      const [fx, fy] = W2S(game.charX(), game.groundHeightAt(game.charX())), tt = performance.now() / 1000;
+      ctx.save(); ctx.translate(fx, fy); ctx.rotate(Math.sin(tt * 2.3) * 0.07 + Math.sin(tt * 5.1) * 0.015); ctx.translate(-fx, -fy);
+      drawChar(); ctx.restore();
+    } else drawChar();
     drawParts(false);
     drawDizzy();
     drawCharge();
