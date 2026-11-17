@@ -47,8 +47,8 @@
     game = YoroCore.create(planck, { level: n, seed: mode === 'daily' ? DY.seed() : 0 });
     const R = mode === 'daily' ? DY.rng(n) : Math.random; // 今日のコースは、風・お客さん・箱の場所もみんな同じ
     S = game.state; stage = game.stage;
-    if (old) { cam.x -= old.goal; cam.y -= old.gy; worldOff += old.goal; } // 前の道の続きに見えるように
-    else { cam.x = 0; cam.y = 1; worldOff = 0; delivered = null; }
+    if (old) { cam.x -= old.goal; cam.y -= old.gy; worldOff += old.goal; for (const q of prints) q.x -= old.goal; }
+    else { cam.x = 0; cam.y = 1; worldOff = 0; delivered = null; prints.length = 0; } // 前の道の続きに見えるように
     ui.meterLabel.textContent = `${n}軒目`;
     hinted = new Set();
     prevWaiter = n > 1 ? (carry ? waiter : WT.forLevel(n - 1)) : null;
@@ -590,20 +590,45 @@
 
   const shade = (hex, k) => { const n = parseInt(hex.slice(1), 16); const f = (v) => Math.max(0, Math.min(255, Math.round(v * k))); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; };
   const OUT = () => (look ? look.outfit : CL.OUTFITS[0]);
-  function drawLeg(lg, back) {
-    const o = OUT(), k = back ? 0.8 : 1;
-    const pants = shade(o.pants, k), shoe = shade(o.shoe, k);
+  // 足：ひだり足はいつも奥（青）、みぎ足はいつも手前（ピンク）。ボタンと同じ色の帯で、どっちの足か見て分かるように
+  const LEGCOL = { L: '#4aa3ff', R: '#ff6b8b' };
+  function drawLeg(lg, side) {
+    const back = side === 'L', o = OUT(), k = back ? 0.8 : 1;
+    const pants = shade(o.pants, k), shoe = shade(o.shoe, k), band = LEGCOL[side];
+    const on = S.status === 'play' && (side === 'L' ? S.input.left : S.input.right);
+    const glow = (fn) => { if (!on) return; ctx.save(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 9 / scale; fn(); ctx.stroke(); ctx.restore(); };
+    withBody(lg.thigh, () => { glow(() => rr(0, 0, 0.08, 0.23, 0.06)); ctx.fillStyle = pants; rr(0, 0, 0.08, 0.23, 0.06); ctx.fill(); ctx.stroke(); });
     withBody(lg.shin, () => {
+      glow(() => rr(0, 0.02, 0.065, 0.2, 0.05));
       ctx.fillStyle = pants; rr(0, 0.02, 0.065, 0.2, 0.05); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = band; rr(0, -0.08, 0.068, 0.11, 0.03); ctx.fill(); ctx.stroke(); // 色のくつした（ボタンと同じ色）
       ctx.fillStyle = shoe; rr(0.07, -0.245, 0.16, 0.05, 0.04); ctx.fill(); ctx.stroke();
     });
-    withBody(lg.thigh, () => { ctx.fillStyle = pants; rr(0, 0, 0.08, 0.23, 0.06); ctx.fill(); ctx.stroke(); });
+  }
+  // 足あと（地面についた足。青＝ひだり・ピンク＝みぎ。交互にならんでいればいいリズム）
+  const prints = [];
+  function addPrint(side) {
+    const c = S.char; if (!c) return;
+    const last = prints[prints.length - 1];
+    if (last && last.side === side && performance.now() - last.t < 200) return; // 同じ着地を2回数えない
+    const p = c[side].shin.getWorldPoint(planck.Vec2(0.07, -0.25));
+    prints.push({ x: p.x, side, t: performance.now() }); if (prints.length > 14) prints.shift();
+  }
+  function drawPrints() {
+    const now = performance.now();
+    for (const q of prints) {
+      const a = 1 - (now - q.t) / 2500; if (a <= 0) continue;
+      const [x, y] = W2S(q.x, game.groundHeightAt(q.x));
+      ctx.globalAlpha = Math.min(1, a * 1.5) * 0.85; ctx.fillStyle = LEGCOL[q.side];
+      ctx.beginPath(); ctx.ellipse(x, y - 2, scale * 0.16, scale * 0.06, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
   }
 
     function drawChar() {
     const c = S.char; if (!c) return;
     const down = S.status === 'fallen';
-    drawLeg(S.input.left ? c.L : c.R, true);
+    drawLeg(c.L, 'L');
     // 体＋おぼん
     const hand = c.tray.getWorldPoint(planck.Vec2(-0.12, -0.02));
     const hand2 = c.tray.getWorldPoint(planck.Vec2(0.0, -0.02));
@@ -635,7 +660,7 @@
     });
     const sh2 = c.torso.getWorldPoint(planck.Vec2(0.04, 0.18));
     arm(sh2.x, sh2.y, hand2.x, hand2.y); // 手前の腕
-    drawLeg(S.input.left ? c.R : c.L, false);
+    drawLeg(c.R, 'R');
     // 頭
     const tilt = c.torso.getAngle();
     const panic = Math.min(1, Math.abs(c.torso.getAngularVelocity()) * 0.6 + Math.abs(tilt) * 1.5);
@@ -844,6 +869,7 @@
           if (ev.type === 'wobble') pop('ふらふら…', '#ff8a00');
           if (ev.type === 'combo') pop(`ナイスリズム ×${ev.v} スピードUP！`, '#2f9e44');
           if (ev.type === 'good') flashGuide('ok');
+          if (ev.type === 'step') addPrint(ev.v);
           if (ev.type === 'stumble') flashGuide('ng');
         }
       }
@@ -880,6 +906,7 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     drawBackground();
     drawGround();
+    drawPrints();
     drawBoxes();
     drawWind();
     drawSpeedLines();
