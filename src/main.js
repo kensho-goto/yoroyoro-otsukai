@@ -67,7 +67,7 @@
     hinted = new Set();
     prevWaiter = n > 1 ? (carry ? waiter : WT.forLevel(n - 1)) : null;
     const rare = n >= 2 && (force.rare != null ? force.rare : R() < 0.05); // ごくたまに、めずらしいお客さん
-    waiter = rare ? WT.RARE[Math.floor(R() * WT.RARE.length)] : WT.forLevel(n); faceNow = 'wait';
+    waiter = force.who ? [...WT.WAITERS, ...WT.RARE].find((w) => w.id === force.who) : rare ? WT.RARE[Math.floor(R() * WT.RARE.length)] : WT.forLevel(n); faceNow = 'wait';
     // たまに風がふく（3軒目から）
     const windy = n >= 3 && (force.wind != null ? force.wind !== 0 : R() < 0.15);
     S.wind = (windy ? (force.wind || (R() < 0.5 ? -4 : 4)) : 0) * S.fx.wind;
@@ -700,8 +700,113 @@
     return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
   }
   const SHIRTS = { mom: '#f28aa0', grandma: '#9b7bd1', grandpa: '#7a9a5a', dad: '#4a6fa5', sister: '#ffa8c2', brother: '#5fb3e8', aunt: '#e8a24f', uncle: '#6b8e5a', friend: '#e8574f', teacher: '#3b4a6b' };
+  // 届ける相手ごとの家（人はその人らしく、動物と珍しい人はへんてこ）。g = { gx, gy, s, who, face, night, t }
+  // 座標は (gx, gy)＝家の足もと から、右へ dx・上へ dy（どちらも 1＝1m）
+  const INK = '#3b2a1e';
+  function H0(g) {
+    const X = (d) => g.gx + d * g.s, Y = (d) => g.gy - d * g.s;
+    const box = (x0, y0, x1, y1, col, r = 0) => { ctx.fillStyle = col; if (r) roundRect(X(x0), Y(y1), (x1 - x0) * g.s, (y1 - y0) * g.s, r); else { ctx.beginPath(); ctx.rect(X(x0), Y(y1), (x1 - x0) * g.s, (y1 - y0) * g.s); } ctx.fill(); ctx.stroke(); };
+    const poly = (pts, col) => { ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(X(x), Y(y)) : ctx.moveTo(X(x), Y(y)))); ctx.closePath(); if (col) { ctx.fillStyle = col; ctx.fill(); } ctx.stroke(); };
+    const line = (x0, y0, x1, y1, w, col) => { ctx.save(); ctx.lineWidth = w; ctx.strokeStyle = col || INK; ctx.beginPath(); ctx.moveTo(X(x0), Y(y0)); ctx.lineTo(X(x1), Y(y1)); ctx.stroke(); ctx.restore(); };
+    const dot = (x, y, r, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X(x), Y(y), r * g.s, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); };
+    return { X, Y, box, poly, line, dot };
+  }
+  const HOUSES = {
+    // おばあちゃん：瓦屋根の平屋。縁側・しょうじ・ぼんさい・湯のみ
+    grandma(g) {
+      const { X, Y, box, poly, line, dot } = H0(g), s = g.s;
+      box(-1.15, 0, 1.55, 1.25, '#efe0c0');
+      const shoji = g.night ? '#ffd98a' : '#fffaf0';
+      box(-1.0, 0.42, 0.95, 1.15, shoji);
+      for (let i = 1; i < 6; i++) line(-1.0 + i * 0.325, 0.42, -1.0 + i * 0.325, 1.15, i % 2 ? 1.5 : 3, i % 2 ? 'rgba(59,42,30,.35)' : INK);
+      for (let j = 1; j < 3; j++) line(-1.0, 0.42 + j * 0.243, 0.95, 0.42 + j * 0.243, 1.5, 'rgba(59,42,30,.35)');
+      box(1.1, 0.55, 1.45, 1.05, g.night ? '#ffd98a' : '#cfe8f2'); line(1.275, 0.55, 1.275, 1.05, 2); line(1.1, 0.8, 1.45, 0.8, 2);
+      for (const x of [-1.15, -0.03, 0.95, 1.55]) box(x - 0.06, 0, x + 0.06, 1.25, '#7a4a2a');
+      // 縁側
+      box(-1.3, 0.3, 1.0, 0.42, '#b9824f'); for (const x of [-1.2, -0.1, 0.9]) box(x - 0.04, 0, x + 0.04, 0.3, '#8a5a35');
+      // 瓦屋根（両はしが少し反る）
+      ctx.beginPath(); ctx.moveTo(X(-1.6), Y(1.18)); ctx.quadraticCurveTo(X(-1.2), Y(1.26), X(-0.95), Y(2.05)); ctx.lineTo(X(1.35), Y(2.05)); ctx.quadraticCurveTo(X(1.6), Y(1.26), X(2.0), Y(1.18)); ctx.closePath();
+      ctx.fillStyle = '#5d6672'; ctx.fill(); ctx.save(); ctx.clip();
+      for (let i = 0; i < 4; i++) line(-1.7, 1.38 + i * 0.2, 2.1, 1.38 + i * 0.2, 2.5, '#7d8794');
+      for (let k = 0; k < 24; k++) line(-1.5 + k * 0.15, 1.15, -1.5 + k * 0.15, 2.1, 1.2, 'rgba(255,255,255,.12)');
+      ctx.restore(); ctx.stroke();
+      box(-1.0, 2.02, 1.4, 2.14, '#4a525d', 3); poly([[-1.12, 2.0], [-0.94, 2.0], [-0.94, 2.24], [-1.06, 2.3], [-1.12, 2.22]], '#4a525d'); poly([[1.52, 2.0], [1.34, 2.0], [1.34, 2.24], [1.46, 2.3], [1.52, 2.22]], '#4a525d');
+      // 表札（柱にたて書き）
+      box(0.0 - 0.1, 0.5, 0.1, 1.05, '#e9c48f', 3);
+      ctx.fillStyle = INK; ctx.font = `800 ${Math.round(s * 0.12)}px "Hiragino Sans", sans-serif`; ctx.textAlign = 'center';
+      [...g.who.name].slice(0, 4).forEach((ch, i) => ctx.fillText(ch, X(0), Y(0.92 - i * 0.13)));
+      // 湯のみと湯気・ぼんさい
+      box(0.38, 0.42, 0.52, 0.57, '#7fae8a', 3);
+      ctx.save(); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.85)'; const tt = g.t * 2;
+      ctx.beginPath(); ctx.moveTo(X(0.44), Y(0.61)); ctx.bezierCurveTo(X(0.39 + Math.sin(tt) * 0.04), Y(0.71), X(0.52), Y(0.77), X(0.46 + Math.sin(tt + 1) * 0.04), Y(0.87)); ctx.stroke(); ctx.restore();
+      poly([[0.72, 0.42], [0.92, 0.42], [0.89, 0.54], [0.75, 0.54]], '#4e6fa0'); // 縁側の上のぼんさい
+      line(0.82, 0.54, 0.85, 0.7, 4, '#6b4a2a'); line(0.85, 0.7, 0.74, 0.8, 3, '#6b4a2a');
+      dot(0.75, 0.84, 0.09, '#4f9e3a'); dot(0.93, 0.76, 0.08, '#4f9e3a'); dot(0.85, 0.9, 0.07, '#5fb444');
+      drawWaiter(X(-1.32), g.gy, g.who, g.face);
+    },
+    // ねこのタマ：ダンボール箱。中からのぞいている。えさ皿と毛糸玉
+    cat(g) {
+      const { X, Y, box, poly, line, dot } = H0(g);
+      const c1 = '#d9a46a', c2 = '#b98450', c3 = '#7a5230';
+      // 箱のうしろ（中の暗いところ）とうしろのふた
+      poly([[-1.0, 0.9], [0.45, 0.9], [0.75, 1.12], [-0.7, 1.12]], c3);
+      poly([[-0.7, 1.12], [0.75, 1.12], [0.95, 1.55], [-0.5, 1.55]], c2);
+      // ねこ（箱の中にすわっている）
+      drawWaiter(X(-0.25), Y(0.48), g.who, g.face);
+      // 箱の前と横
+      poly([[0.45, 0], [0.75, 0.22], [0.75, 1.12], [0.45, 0.9]], c2);
+      box(-1.0, 0, 0.45, 0.9, c1);
+      line(-1.0, 0.45, 0.45, 0.45, 5, 'rgba(255,255,255,.35)'); // ガムテープのあと
+      // 前のふた（手前にたれている）と左のふた
+      poly([[-1.0, 0.9], [0.45, 0.9], [0.35, 0.62], [-0.9, 0.62]], c2);
+      poly([[-1.0, 0.9], [-0.7, 1.12], [-1.25, 1.4], [-1.42, 1.1]], c1);
+      // 箱の落書き（足あとと魚の骨）
+      ctx.save(); ctx.globalAlpha = 0.55;
+      for (const [x, y] of [[-0.75, 0.25], [-0.55, 0.35]]) { dot(x, y, 0.05, INK); for (const [dx, dy] of [[-0.06, 0.07], [0, 0.09], [0.06, 0.07]]) dot(x + dx, y + dy, 0.022, INK); }
+      line(-0.15, 0.25, 0.25, 0.25, 3); for (const x of [-0.05, 0.05, 0.15]) line(x, 0.17, x, 0.33, 2.5); poly([[0.25, 0.25], [0.33, 0.33], [0.33, 0.17]]); dot(-0.18, 0.25, 0.04, INK);
+      ctx.restore();
+      // えさ皿と毛糸玉
+      poly([[0.9, 0], [1.4, 0], [1.33, 0.14], [0.97, 0.14]], '#e8574f');
+      ctx.fillStyle = '#c9d4de'; ctx.beginPath(); ctx.ellipse(X(1.15), Y(0.16), 0.17 * g.s, 0.06 * g.s, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      dot(1.75, 0.16, 0.16, '#ff8fb1');
+      ctx.save(); ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(59,42,30,.55)'; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(X(1.75), Y(0.16), (0.06 + i * 0.03) * g.s, 0.3 + i, 2.4 + i); ctx.stroke(); } ctx.restore();
+      line(1.6, 0.06, 1.45, 0.02, 2, '#ff8fb1');
+    },
+    // 王さま：お城。旗がゆれる・門・赤いじゅうたん
+    king(g) {
+      const { X, Y, box, poly, line } = H0(g), t = g.t;
+      const st = '#ddd6c6', sd = '#c2b9a5', rf = '#c0392b', win = g.night ? '#ffd56b' : '#3b4a6b';
+      const bricks = (x0, y0, x1, y1) => { ctx.save(); ctx.beginPath(); ctx.rect(X(x0), Y(y1), (x1 - x0) * g.s, (y1 - y0) * g.s); ctx.clip(); for (let r = 0; r * 0.22 < y1 - y0; r++) { line(x0, y0 + r * 0.22, x1, y0 + r * 0.22, 1.5, 'rgba(59,42,30,.22)'); for (let c = 0; c * 0.4 < x1 - x0 + 0.4; c++) { const x = x0 + c * 0.4 + (r % 2) * 0.2; line(x, y0 + r * 0.22, x, y0 + (r + 1) * 0.22, 1.5, 'rgba(59,42,30,.22)'); } } ctx.restore(); };
+      const crenel = (x0, x1, y) => { const n = Math.round((x1 - x0) / 0.22); for (let i = 0; i < n; i += 2) box(x0 + i * (x1 - x0) / n, y, x0 + (i + 1) * (x1 - x0) / n, y + 0.18, st); };
+      const tower = (x0, x1, h) => {
+        box(x0, 0, x1, h, sd); bricks(x0, 0, x1, h); ctx.strokeRect(X(x0), Y(h), (x1 - x0) * g.s, h * g.s);
+        poly([[x0 - 0.08, h], [x1 + 0.08, h], [(x0 + x1) / 2, h + 0.9]], rf);
+        const fx = (x0 + x1) / 2, fy = h + 0.9; line(fx, fy, fx, fy + 0.45, 3);
+        const w = Math.sin(t * 5 + x0) * 0.05;
+        poly([[fx, fy + 0.45], [fx + 0.38, fy + 0.36 + w], [fx, fy + 0.27]], '#ffd23a');
+        box((x0 + x1) / 2 - 0.1, h - 0.75, (x0 + x1) / 2 + 0.1, h - 0.4, win, 6);
+      };
+      tower(-1.05, -0.4, 2.55); tower(1.2, 1.85, 2.55);
+      box(-0.4, 0, 1.2, 1.95, st); bricks(-0.4, 0, 1.2, 1.95); ctx.strokeRect(X(-0.4), Y(1.95), 1.6 * g.s, 1.95 * g.s);
+      crenel(-0.4, 1.2, 1.95);
+      // 門（アーチ）
+      ctx.fillStyle = '#6b4226'; ctx.beginPath(); ctx.moveTo(X(0.08), Y(0)); ctx.lineTo(X(0.08), Y(0.75)); ctx.arc(X(0.4), Y(0.75), 0.32 * g.s, Math.PI, 0); ctx.lineTo(X(0.72), Y(0)); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.save(); ctx.clip(); for (let i = 1; i < 4; i++) line(0.08 + i * 0.16, 0, 0.08 + i * 0.16, 1.1, 2.5, 'rgba(0,0,0,.35)'); ctx.restore();
+      for (const x of [-0.05, 0.85]) box(x - 0.1, 1.2, x + 0.1, 1.55, win, 6);
+      // 王さまのしるし（盾）
+      poly([[0.28, 1.25], [0.52, 1.25], [0.52, 1.5], [0.4, 1.62], [0.28, 1.5]].map(([x, y]) => [x, y + 0.08]), '#2f6fd6');
+      // 赤いじゅうたん（門から王さまの足もとまで）
+      ctx.fillStyle = '#d63a3a'; ctx.beginPath(); ctx.moveTo(X(0.12), Y(0)); ctx.lineTo(X(0.68), Y(0)); ctx.lineTo(X(-1.0), Y(-0.08)); ctx.lineTo(X(-1.6), Y(-0.08)); ctx.closePath(); ctx.fill();
+      drawWaiter(X(-1.32), g.gy, g.who, g.face);
+    },
+  };
   function drawHouse(hx, who, face, n) {
     const [gx, gy] = W2S(hx, game.groundHeightAt(hx)); const s = scale;
+    if (HOUSES[who.id]) {
+      ctx.save(); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      HOUSES[who.id]({ gx, gy, s, who, face, night: themeOf(level).night > 0.3, t: performance.now() / 1000 });
+      ctx.restore(); return;
+    }
     const roof = ROOFS[n % ROOFS.length];
     ctx.save(); ctx.lineWidth = 3; ctx.strokeStyle = '#3b2a1e'; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     // えんとつ（屋根のうしろ）
