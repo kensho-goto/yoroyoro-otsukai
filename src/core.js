@@ -48,6 +48,16 @@
     drivePerStep: 0.45, // 1秒に1歩ふえるごとの目標の速さ（m/秒）
     driveMin: 1.0, // 目標の速さのいちばん下とうえ
     driveMax: 3.2,
+    // タップ操作（自動で歩く）：歩く間かく（コマ）・タップのジャンプの強さ（0〜1）・2段めのジャンプ
+    autoPeriod: 20,
+    tapJump: 0.6,
+    jump2Vy: 3.6, jump2Vx: 1.8,
+    jumpBuffer: 8, // 着地の少し前のタップも受けつける（コマ）
+    autoBalance: 2.5, // 自動で歩くときの、体を起こす手助けの倍率（歩きでは転びにくく）
+    autoSteadyFloor: 0.8,
+    autoComboMax: 0.2, // 自動で歩くときは、速くなりすぎない
+    autoWalkAcc: 0.5, // 歩いているときのプリンの揺れの効き（小さめ）
+    autoJumpAcc: 0.8, // ジャンプ・着地のときのプリンの揺れの効き（ジャンプしすぎると落とす）
     driveCombo: 0.04, // リズムが1歩続くごとに足す速さ
     driveComboMax: 0.8,
     driveGain: 5, // 目標の速さへ近づける強さ
@@ -181,8 +191,10 @@
   function create(planck, opts) {
     opts = opts || {};
     const { World, Vec2, Box, Circle, Polygon, Chain, RevoluteJoint } = planck;
-    const stage = makeLevel(opts.level || 1, opts.seed || 0);
+    // タップ操作は歩くのが自動なので、しかけを2軒早く出す（1軒目からじゃまな物）
+    const stage = makeLevel((opts.level || 1) + (opts.auto ? 2 : 0), opts.seed || 0);
     const T = Object.assign({}, TUNING, stage.tuning, opts.tuning || {});
+    if (opts.auto) { T.balance *= T.autoBalance; T.steadyFloor = Math.max(T.steadyFloor, T.autoSteadyFloor); T.driveComboMax = T.autoComboMax; T.jumpAccScale = T.autoJumpAcc; }
     const world = new World({ gravity: Vec2(0, -10) });
 
     const ground = world.createBody();
@@ -208,6 +220,7 @@
       events: [], // 音を鳴らす合図（画面側が取り出す）
       feet: { L: 0, R: 0 }, // 足が地面についている数
       wind: 0, // 横からの風の力（＋は追い風）
+      auto: !!opts.auto, autoT: 0, jumpReq: 0, // タップ操作：自動で歩く・ジャンプのタップ待ち
     };
     const emit = (type, v) => { if (state.events.length < 100) state.events.push({ type, v }); };
 
@@ -386,7 +399,8 @@
         R.sinceStep = 0;
         if (other) { R.lastSide = null; continue; } // 両足（ジャンプのため）は数えない
         let bad = 0, why = '';
-        if (R.lastSide === side) { bad = T.sameFootKick; why = 'same'; }
+        if (state.auto) { /* 自動で歩くときは、リズムのずれは数えない */ }
+        else if (R.lastSide === side) { bad = T.sameFootKick; why = 'same'; }
         else if (R.lastSide && interval < 7) { bad = 0.7; why = 'fast'; }
         else if (R.lastSide && R.lastInterval > 0) {
           const ratio = Math.abs(Math.log(interval / R.lastInterval));
@@ -445,6 +459,22 @@
       emit('jump', p);
     }
 
+    // タップのジャンプ：地面なら ふつうのジャンプ、空中なら1回だけ もう1段
+    function tapJump(onGround) {
+      const c = state.char, J = state.jump;
+      if (J.phase !== 'air' && onGround) { J.crouch = T.jumpMinFrames + T.tapJump * (T.jumpFullFrames - T.jumpMinFrames); launch(); J.extra = 0; return true; }
+      if (J.phase === 'air' && !(J.extra > 0) && J.air > 3) {
+        for (const b of [c.torso, c.tray, c.head, c.L.thigh, c.L.shin, c.R.thigh, c.R.shin]) {
+          const v = b.getLinearVelocity();
+          b.setLinearVelocity(Vec2(Math.max(v.x, T.jump2Vx), T.jump2Vy));
+        }
+        J.extra = 1; J.air = 1;
+        emit('jump2');
+        return true;
+      }
+      return false;
+    }
+
     function charX() {
       return state.char ? state.char.torso.getPosition().x : 0;
     }
@@ -458,6 +488,15 @@
         if (state.status === 'play') {
           J.ground = grounded() ? 0 : (J.ground || 0) + 1; // 足が地面からはなれてからのコマ数
           const onGround = J.ground < 8;
+          if (state.auto) { // タップ操作：足は自動で交互に。空中では足を止める
+            if (J.phase === 'air') { state.input.left = state.input.right = false; state.autoT = 0; }
+            else {
+              const P = T.autoPeriod, t = state.autoT++;
+              const side = Math.floor(t / P) % 2, on = t % P < P * 0.55;
+              state.input.left = on && side === 0; state.input.right = on && side === 1;
+            }
+            if (state.jumpReq > 0) { if (tapJump(onGround)) state.jumpReq = 0; else state.jumpReq--; }
+          }
           if (J.phase === 'none' && both && onGround) { J.phase = 'crouch'; J.crouch = 0; }
           if (J.phase === 'crouch') {
             if (both) J.crouch++;
@@ -537,7 +576,7 @@
         const tilt = Math.abs(c.tray.getAngle());
         const spin = Math.abs(c.torso.getAngularVelocity()); // 体のぐらつき
         if (state.settle <= 0) {
-          const js = state.jump.phase !== 'none' || state.jump.grace > 0 ? T.jumpAccScale : 1;
+          const js = state.jump.phase !== 'none' || state.jump.grace > 0 ? T.jumpAccScale : state.auto ? T.autoWalkAcc : 1;
           state.danger += Math.max(0, acc - T.accSafe) * T.accGain * js + Math.max(0, spin - T.spinSafe) * T.spinGain * js
             + Math.max(0, tilt - T.tiltSafe) * T.tiltGain;
           state.danger = Math.max(0, state.danger - T.calm);
@@ -565,7 +604,8 @@
     return {
       state, stage, spawn, step, charX, passedCheckpoint,
       snapshot,
-      setInput(left, right) { state.input.left = !!left; state.input.right = !!right; },
+      setInput(left, right) { if (state.auto) return; state.input.left = !!left; state.input.right = !!right; },
+      jump() { if (state.auto && state.status === 'play') state.jumpReq = T.jumpBuffer; }, // タップ操作のジャンプ
       groundHeightAt: (x) => groundHeightAt(stage, x),
     };
   }

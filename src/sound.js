@@ -61,6 +61,11 @@
       tone(320, t, 0.22 + p * 0.1, { type: 'square', vol: 0.12, to: 760 + p * 300 });
       tone(640, t + 0.02, 0.18, { type: 'triangle', vol: 0.1, to: 1300 });
     },
+    jump2() { // 2段ジャンプ：ピョピョン
+      const t = ctx.currentTime;
+      tone(520, t, 0.16, { type: 'square', vol: 0.1, to: 1100 });
+      tone(780, t + 0.07, 0.16, { type: 'triangle', vol: 0.1, to: 1600 });
+    },
     land() { // ドスン
       const t = ctx.currentTime;
       tone(110, t, 0.18, { type: 'sine', vol: 0.5, to: 50 });
