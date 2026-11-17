@@ -23,9 +23,13 @@
   const ZK = window.YoroZukan || { mark: () => false, has: () => false, count: () => ({ got: 0, total: 0 }), pickTreasure: () => null, rareOf: () => false, render() {}, FALLS: [], MOOD_NAMES: {} };
   const pickOne = (a) => a[Math.floor(Math.random() * a.length)];
   // この回で起きたこと（ずかんに新しく入ったもの・拾ったおたから・金のプリンの日・テスト用の強制）
-  let runNew = [], runTreasure = 0, goldDay = false, boxes = [];
+  let runNew = [], runTreasure = 0, runMedals = 0, goldDay = false, boxes = [];
   const force = {}; // テスト用：{ rare, wind, gold }
   const CL = window.YoroCloset, DY = window.YoroDays;
+  const GA = window.YoroGacha || { COST: 5, medals: 0, addMedals() {}, canPull: () => false, worn: () => ({}), effects: () => ({ jump: 1, wind: 1, speed: 0, balance: 1, pudding: 1 }), ITEMS: [], RARITY: {}, SLOTS: {}, count: () => ({ got: 0, total: 0 }), has: () => false, renderEquip() {} };
+  let wear = GA.worn(); // ガチャで出て、身につけているもの（くつ・ぼうし・おぼん・すがた）
+  // おたからのメダル：めずらしいほど多い
+  const medalOf = (t) => (t.w >= 12 ? 1 : t.w >= 5 ? 2 : t.w >= 2 ? 3 : 5);
   const CLIP = window.YoroClip || { capture() {}, reset() {}, stopAfter() {}, ready: () => false, make: async () => null };
   let mode = 'free', look = null, curBest = 0, unlockAtStart = []; // free＝いつものコース／daily＝今日のコース・見た目・この回のベスト・はじめに使えたもの
   const ctxNow = () => { const st = CL.stats(); return { total: st.total, runs: st.runs, best: bestRun, zukan: ZK.count().got, streak: DY.streak().n, has: ZK.has }; };
@@ -47,6 +51,11 @@
     game = YoroCore.create(planck, { level: n, seed: mode === 'daily' ? DY.seed() : 0 });
     const R = mode === 'daily' ? DY.rng(n) : Math.random; // 今日のコースは、風・お客さん・箱の場所もみんな同じ
     S = game.state; stage = game.stage;
+    { // ガチャで出たものの効き目（ほんの少し）
+      const fx = GA.effects(), T = S.tuning;
+      T.jumpVy = T.jumpVy.map((v) => v * fx.jump); T.balance *= fx.balance; T.accGain *= fx.pudding; T.driveMax += fx.speed;
+      S.fx = fx;
+    }
     if (old) { cam.x -= old.goal; cam.y -= old.gy; worldOff += old.goal; for (const q of prints) q.x -= old.goal; }
     else { cam.x = 0; cam.y = 1; worldOff = 0; delivered = null; prints.length = 0; } // 前の道の続きに見えるように
     ui.meterLabel.textContent = `${n}軒目`;
@@ -56,7 +65,7 @@
     waiter = rare ? WT.RARE[Math.floor(R() * WT.RARE.length)] : WT.forLevel(n); faceNow = 'wait';
     // たまに風がふく（3軒目から）
     const windy = n >= 3 && (force.wind != null ? force.wind !== 0 : R() < 0.15);
-    S.wind = windy ? (force.wind || (R() < 0.5 ? -4 : 4)) : 0;
+    S.wind = (windy ? (force.wind || (R() < 0.5 ? -4 : 4)) : 0) * S.fx.wind;
     makeBoxes(R);
     let msg = n === 1 ? `${waiter.name}に プリンを とどけよう！<br>光った足を、バーが緑のときに押そう！<br>速く押すほど 速く走れるよ`
       : n === 3 ? `つぎは ${waiter.name}の家<br>じゃまな物は ジャンプで こえよう！`
@@ -99,7 +108,10 @@
       const t = ZK.pickTreasure(); if (!t) continue;
       b.taken = performance.now(); b.item = t; runTreasure++;
       const isNew = noteNew(ZK.mark('treasure', t.id), `おたから「${t.name}」`);
-      pop(`${t.icon} ${t.name}${isNew ? ' NEW！' : ''}`, isNew ? '#d48a00' : '#7a4ad6');
+      const m = medalOf(t), could = GA.canPull(); GA.addMedals(m); runMedals += m;
+      pop(`${t.icon} ${t.name} 🪙+${m}${isNew ? ' NEW！' : ''}`, isNew ? '#d48a00' : '#7a4ad6');
+      if (!could && GA.canPull()) setTimeout(() => pop('🎰 ガチャが回せる！', '#e8a600'), 450);
+      paintMedal(true);
       snd.play('treasure', ZK.rareOf(t));
     }
   }
@@ -147,7 +159,8 @@
     if (LK.includes(e.code)) keys.left = true;
     else if (RK.includes(e.code)) keys.right = true;
     else if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
-      if (zukanEl.classList.contains('show')) closeZukan();
+      if (gachaEl.classList.contains('show')) closeGacha();
+      else if (zukanEl.classList.contains('show')) closeZukan();
       else if (closetEl.classList.contains('show')) closeCloset();
       else if (ui.title.classList.contains('show')) start();
       else if (ui.fail.classList.contains('show') && !ui.retry.disabled) restart();
@@ -178,7 +191,7 @@
   let passedBest = false, nextMile = 50, lastShare = ''; // この回で自己ベストをこえたか・次の節目のきょり・送る文
   function restart(m) {
     if (m === 'free' || m === 'daily') mode = m;
-    runNew = []; runTreasure = 0;
+    runNew = []; runTreasure = 0; runMedals = 0; wear = GA.worn(); paintMedal();
     const cx = ctxNow(); look = CL.current(cx); unlockAtStart = CL.unlockedIds(cx);
     curBest = mode === 'daily' ? DY.daily().best : bestRun;
     CLIP.reset();
@@ -228,11 +241,68 @@
   };
   // きせかえ
   const closetEl = $('closet');
-  function openCloset() { CL.render($('closetBody'), ctxNow(), () => { look = CL.current(ctxNow()); snd.play('tap'); }); closetEl.classList.add('show'); closetEl.querySelector('.card').scrollTop = 0; snd.play('tap'); }
-  function closeCloset() { closetEl.classList.remove('show'); look = CL.current(ctxNow()); }
+  function openCloset() {
+    CL.render($('closetBody'), ctxNow(), () => { look = CL.current(ctxNow()); snd.play('tap'); });
+    GA.renderEquip($('closetGacha'), () => { wear = GA.worn(); snd.play('tap'); });
+    closetEl.classList.add('show'); closetEl.querySelector('.card').scrollTop = 0; snd.play('tap'); }
+  function closeCloset() { closetEl.classList.remove('show'); look = CL.current(ctxNow()); wear = GA.worn(); }
   $('closetBtn').onclick = openCloset;
   $('closetClose').onclick = closeCloset;
   closetEl.addEventListener('click', (e) => { if (e.target === closetEl) closeCloset(); });
+  // ガチャ：おたからのメダル🪙を5枚つかって1回。くつ・ぼうし・おぼん・すがたが出る
+  const gachaEl = $('gacha'), gPull = $('gPull'), gMachine = $('gMachine');
+  let gBusy = false;
+  function paintGacha() {
+    const c = GA.count();
+    $('gMedals').textContent = `🪙 メダル ${GA.medals}枚${GA.canPull() ? '' : `（ガチャまで あと ${GA.COST - GA.medals}枚）`}`;
+    gPull.disabled = gBusy || !GA.canPull();
+    gPull.textContent = GA.canPull() || gBusy ? `🎰 回す（🪙${GA.COST}）` : '🪙 メダルが たりない';
+    $('gCount').textContent = `あつめた ${c.got} / ${c.total}（？はまだ出ていないもの）`;
+    $('gAll').innerHTML = GA.ITEMS.map((i) => (GA.has(i.id) ? `<span title="${i.name}">${i.icon}</span>` : '<span class="no">？</span>')).join('');
+    paintMedal();
+  }
+  function openGacha() { $('gResult').innerHTML = ''; gMachine.className = 'gm'; paintGacha(); gachaEl.classList.add('show'); gachaEl.querySelector('.card').scrollTop = 0; snd.play('tap'); }
+  function closeGacha() { if (gBusy) return; gachaEl.classList.remove('show'); wear = GA.worn(); refreshTitle(); paintFailGacha(); }
+  gPull.onclick = () => {
+    if (gBusy || !GA.canPull()) return;
+    const res = GA.pull(); if (!res) return;
+    gBusy = true; paintGacha(); $('gResult').innerHTML = '';
+    const it = res.item, rr = GA.RARITY[it.r];
+    $('gCap').style.background = `linear-gradient(${rr.color} 0 50%, #fff 50% 100%)`;
+    gMachine.className = 'gm spin'; snd.play('event');
+    setTimeout(() => { gMachine.className = 'gm spin drop'; snd.play('tap'); }, 900);
+    setTimeout(() => {
+      gBusy = false; gMachine.className = 'gm';
+      $('gResult').innerHTML = `<div class="gres${it.r === 'SSR' ? ' ssr' : ''}"><span class="rr" style="color:${rr.color}">★ ${rr.name} ★</span><b>${it.icon}</b>`
+        + `<span class="nm">${it.name}</span>（${GA.SLOTS[it.slot]}）<br>${it.say ? `<span class="fx">✨ ${it.say}</span><br>` : ''}`
+        + (res.isNew ? '<span class="nw">NEW！ さっそく身につけたよ</span>' : `ダブり… 🪙${res.back}枚 もどってきた`) + '</div>';
+      if (res.isNew) noteNew(true, `ガチャ「${it.name}」`);
+      snd.play('treasure', it.r === 'SR' || it.r === 'SSR');
+      if (navigator.vibrate) navigator.vibrate(it.r === 'SSR' ? [60, 40, 60, 40, 120] : 40);
+      wear = GA.worn(); paintGacha();
+    }, 1600);
+  };
+  $('gClose').onclick = closeGacha;
+  $('gCloset').onclick = () => { if (gBusy) return; gachaEl.classList.remove('show'); wear = GA.worn(); openCloset(); };
+  gachaEl.addEventListener('click', (e) => { if (e.target === gachaEl) closeGacha(); });
+  $('titleGachaBtn').onclick = openGacha;
+  $('failGachaBtn').onclick = openGacha;
+  // メダルの数（左上）。ガチャが回せるときは黄色
+  const medalChip = $('medalChip');
+  function paintMedal(bump) {
+    const n = GA.medals, ok = GA.canPull();
+    medalChip.hidden = false;
+    medalChip.innerHTML = `🪙 ${n}<small>${ok ? 'ガチャOK！' : `ガチャまで${GA.COST - n}`}</small>`;
+    medalChip.classList.toggle('ready', ok);
+    if (bump) { medalChip.classList.remove('bump'); void medalChip.offsetWidth; medalChip.classList.add('bump'); }
+  }
+  function paintFailGacha() {
+    const b = $('failGachaBtn'), n = GA.medals;
+    b.hidden = !GA.canPull();
+    b.textContent = `🎰 ガチャを回す（🪙${n}枚 → ${Math.floor(n / GA.COST)}回）`;
+    $('failMedal').innerHTML = runMedals ? `🪙 この回 メダル +${runMedals}枚（いま ${n}枚）${GA.canPull() ? '' : `<br><small>ガチャまで あと ${GA.COST - n}枚。？の箱をとろう</small>`}`
+      : `🪙 いま ${n}枚${GA.canPull() ? '' : `・ガチャまで あと ${GA.COST - n}枚`}<br><small>道の ？の箱をとると メダルがもらえるよ</small>`;
+  }
   // ずかん
   const zukanEl = $('zukan');
   function openZukan() { ZK.render($('zukanBody')); zukanEl.classList.add('show'); zukanEl.querySelector('.card').scrollTop = 0; snd.play('tap'); }
@@ -274,6 +344,9 @@
     const sk = DY.streak(), dd = DY.daily();
     $('streak').innerHTML = sk.n > 0 ? `🔥 <b>${sk.n}日</b> れんぞくで遊んでいます${sk.playedToday ? '' : '（きょうも遊ぶと ' + (sk.n + 1) + '日！）'}` : '🔥 毎日遊ぶと「れんぞく日数」がふえるよ';
     $('dailyBtn').innerHTML = `📅 今日のコース（${DY.label()}）<small>${dd.tries ? `今日のベスト ${dd.best.toFixed(1)}m・${dd.tries}回` : 'きょうだけのコース。みんな同じ'}</small>`;
+    const c = GA.count();
+    $('titleGachaBtn').innerHTML = `🎰 ガチャ（🪙${GA.medals}枚）<small>${GA.canPull() ? '回せるよ！' : 'おたから🪙を5枚あつめると1回'}・あつめた ${c.got}/${c.total}</small>`;
+    paintMedal();
     showTitleRank();
   }
   // タイトルに、じぶんの記録の上位を出す
@@ -335,6 +408,7 @@
       nb.innerHTML = `📖 ずかん ${zc.got}/${zc.total}${rest.length ? `<br>まだ見ていない ころび方：「${pickOne(rest).hint}」` : ''}`;
     }
     nb.hidden = false;
+    paintFailGacha();
     showTitleRank();
     showOnly(ui.fail);
     if (navigator.vibrate) navigator.vibrate(80);
@@ -590,11 +664,13 @@
 
   const shade = (hex, k) => { const n = parseInt(hex.slice(1), 16); const f = (v) => Math.max(0, Math.min(255, Math.round(v * k))); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; };
   const OUT = () => (look ? look.outfit : CL.OUTFITS[0]);
+  const SKIN0 = { face: '#f7d3ae', arm: '#f2c9a0', hair: '#3b2a1e' };
+  const SK = () => (wear.skin && wear.skin.skin) || SKIN0; // すがた（ガチャ）
   // 足：ひだり足はいつも奥（青）、みぎ足はいつも手前（ピンク）。ボタンと同じ色の帯で、どっちの足か見て分かるように
   const LEGCOL = { L: '#4aa3ff', R: '#ff6b8b' };
   function drawLeg(lg, side) {
     const back = side === 'L', o = OUT(), k = back ? 0.8 : 1;
-    const pants = shade(o.pants, k), shoe = shade(o.shoe, k), band = LEGCOL[side];
+    const pants = shade(o.pants, k), shoe = shade(wear.shoe ? wear.shoe.color : o.shoe, k), band = LEGCOL[side];
     const on = S.status === 'play' && (side === 'L' ? S.input.left : S.input.right);
     const glow = (fn) => { if (!on) return; ctx.save(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 9 / scale; fn(); ctx.stroke(); ctx.restore(); };
     withBody(lg.thigh, () => { glow(() => rr(0, 0, 0.08, 0.23, 0.06)); ctx.fillStyle = pants; rr(0, 0, 0.08, 0.23, 0.06); ctx.fill(); ctx.stroke(); });
@@ -603,6 +679,10 @@
       ctx.fillStyle = pants; rr(0, 0.02, 0.065, 0.2, 0.05); ctx.fill(); ctx.stroke();
       ctx.fillStyle = band; rr(0, -0.08, 0.068, 0.11, 0.03); ctx.fill(); ctx.stroke(); // 色のくつした（ボタンと同じ色）
       ctx.fillStyle = shoe; rr(0.07, -0.245, 0.16, 0.05, 0.04); ctx.fill(); ctx.stroke();
+      const sid = wear.shoe && wear.shoe.id;
+      if (sid === 'spring') { ctx.beginPath(); for (let i = 0; i <= 6; i++) ctx.lineTo(0.07 + (i % 2 ? 0.05 : -0.05), 0.295 + i * 0.012); ctx.stroke(); } // バネ
+      else if (sid === 'rocket' && on) { ctx.fillStyle = '#ff9a1a'; ctx.beginPath(); ctx.moveTo(-0.09, 0.23); ctx.lineTo(-0.2 - Math.random() * 0.08, 0.245); ctx.lineTo(-0.09, 0.26); ctx.closePath(); ctx.fill(); } // ほのお
+      else if (sid === 'goldshoe' && Math.sin(performance.now() / 150 + (back ? 1 : 0)) > 0.6) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0.16, 0.25, 0.018, 0, Math.PI * 2); ctx.fill(); }
     });
   }
   // 足あと（地面についた足。青＝ひだり・ピンク＝みぎ。交互にならんでいればいいリズム）
@@ -638,7 +718,7 @@
       ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = scale * 0.1;
       ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(ex, ey); ctx.lineTo(hxS, hyS); ctx.stroke();
-      ctx.strokeStyle = '#f2c9a0'; ctx.lineWidth = scale * 0.065;
+      ctx.strokeStyle = SK().arm; ctx.lineWidth = scale * 0.065;
       ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(ex, ey); ctx.lineTo(hxS, hyS); ctx.stroke();
     };
     const sh = c.torso.getWorldPoint(planck.Vec2(0.0, 0.2));
@@ -653,7 +733,7 @@
     });
     // おぼん
     withBody(c.tray, () => {
-      ctx.fillStyle = '#b07a4a'; rr(0, 0, 0.34, 0.03, 0.02); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = wear.tray ? wear.tray.color : '#b07a4a'; rr(0, 0, 0.34, 0.03, 0.02); ctx.fill(); ctx.stroke();
       rr(-0.325, 0.05, 0.022, 0.05, 0.01); ctx.fill(); ctx.stroke();
       rr(0.325, 0.05, 0.022, 0.05, 0.01); ctx.fill(); ctx.stroke();
       if (!c.pudding) drawPudding(0, 0.125, true);
@@ -665,9 +745,15 @@
     const tilt = c.torso.getAngle();
     const panic = Math.min(1, Math.abs(c.torso.getAngularVelocity()) * 0.6 + Math.abs(tilt) * 1.5);
     withBody(c.head, () => {
-      ctx.fillStyle = '#f7d3ae'; ctx.beginPath(); ctx.arc(0, 0, 0.21, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#3b2a1e'; // かみ
+      const sk = SK();
+      if (sk.extra === 'ears') for (const ex of [-0.15, 0.1]) { ctx.fillStyle = sk.hair; ctx.beginPath(); ctx.arc(ex, -0.17, 0.07, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); } // くまの耳
+      ctx.fillStyle = sk.face; ctx.beginPath(); ctx.arc(0, 0, 0.21, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = sk.hair; // かみ
       ctx.beginPath(); ctx.arc(-0.02, -0.04, 0.215, Math.PI * 1.02, Math.PI * 1.98); ctx.closePath(); ctx.fill();
+      if (sk.extra === 'antenna') { ctx.beginPath(); ctx.moveTo(0, -0.2); ctx.lineTo(0.02, -0.33); ctx.stroke(); ctx.fillStyle = '#e8303a'; ctx.beginPath(); ctx.arc(0.02, -0.34, 0.035, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = sk.hair; }
+      if (sk.extra === 'beak') { ctx.fillStyle = '#ffa31a'; ctx.beginPath(); ctx.moveTo(0.16, 0.03); ctx.lineTo(0.27, 0.06); ctx.lineTo(0.16, 0.09); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+      if (sk.extra === 'shine') { const k = (Math.sin(performance.now() / 180) + 1) / 2; ctx.fillStyle = `rgba(255,255,255,${0.3 + k * 0.7})`; ctx.beginPath(); for (let i = 0; i < 8; i++) { const r = i % 2 ? 0.015 : 0.05, a = i * Math.PI / 4; ctx.lineTo(-0.13 + Math.cos(a) * r, 0.05 + Math.sin(a) * r); } ctx.closePath(); ctx.fill(); }
+      ctx.fillStyle = '#3b2a1e';
       ctx.lineWidth = 0.025;
       if (down) { // ×の目
         for (const ex of [0.05, 0.14]) {
@@ -683,7 +769,7 @@
       if (down || panic > 0.5) { ctx.ellipse(0.1, 0.1, 0.03, 0.04, 0, 0, Math.PI * 2); ctx.stroke(); }
       else { ctx.arc(0.1, 0.07, 0.04, 0.2, Math.PI - 0.2); ctx.stroke(); }
       ctx.fillStyle = 'rgba(255,120,120,.45)'; ctx.beginPath(); ctx.arc(0.0, 0.07, 0.035, 0, Math.PI * 2); ctx.fill();
-      drawHat(o.hat);
+      drawHat(wear.hat ? wear.hat.id : o.hat);
     });
     if (c.pudding) withBody(c.pudding, () => drawPudding(0, 0, false));
   }
@@ -703,6 +789,22 @@
       ctx.fillStyle = '#39405a'; ctx.fillRect(-0.21, -0.12, 0.42, 0.06); ctx.strokeRect(-0.21, -0.12, 0.42, 0.06);
       ctx.beginPath(); ctx.moveTo(-0.2, -0.1); ctx.lineTo(-0.36, -0.02 + Math.sin(performance.now() / 120) * 0.03); ctx.lineTo(-0.2, -0.07); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#c9ced8'; ctx.fillRect(0.03, -0.115, 0.08, 0.05);
+    } else if (hat === 'straw') {
+      ctx.fillStyle = '#f2d27a'; ctx.beginPath(); ctx.ellipse(-0.01, -0.16, 0.34, 0.06, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(-0.01, -0.17, 0.17, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#e8303a'; ctx.fillRect(-0.17, -0.22, 0.34, 0.04);
+    } else if (hat === 'catears') {
+      for (const ex of [-0.12, 0.08]) { ctx.fillStyle = '#3b2a1e'; ctx.beginPath(); ctx.moveTo(ex - 0.07, -0.15); ctx.lineTo(ex, -0.32); ctx.lineTo(ex + 0.07, -0.15); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#ff9ec7'; ctx.beginPath(); ctx.moveTo(ex - 0.035, -0.17); ctx.lineTo(ex, -0.26); ctx.lineTo(ex + 0.035, -0.17); ctx.closePath(); ctx.fill(); }
+    } else if (hat === 'helmet') {
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(-0.01, -0.05, 0.24, Math.PI * 1.0, Math.PI * 2.0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#e8303a'; ctx.fillRect(-0.04, -0.27, 0.06, 0.14); ctx.fillRect(-0.08, -0.23, 0.14, 0.06);
+    } else if (hat === 'propeller') {
+      ctx.fillStyle = '#4aa3ff'; ctx.beginPath(); ctx.arc(-0.01, -0.1, 0.18, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-0.01, -0.28); ctx.lineTo(-0.01, -0.36); ctx.stroke();
+      const sp = Math.cos(performance.now() / (S.jump && S.jump.phase === 'air' ? 30 : 90)); ctx.fillStyle = '#ffd23a';
+      ctx.beginPath(); ctx.ellipse(-0.01, -0.37, 0.2 * Math.abs(sp) + 0.02, 0.03, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    } else if (hat === 'halo') {
+      ctx.strokeStyle = '#ffc61a'; ctx.lineWidth = 0.04; ctx.beginPath(); ctx.ellipse(-0.01, -0.36 + Math.sin(performance.now() / 300) * 0.02, 0.16, 0.045, 0, 0, Math.PI * 2); ctx.stroke(); ctx.strokeStyle = '#3b2a1e';
     } else if (hat === 'chef') {
       ctx.fillStyle = '#fff'; ctx.fillRect(-0.14, -0.27, 0.27, 0.12); ctx.strokeRect(-0.14, -0.27, 0.27, 0.12);
       for (const [dx, r] of [[-0.1, 0.08], [0, 0.1], [0.1, 0.08]]) { ctx.beginPath(); ctx.arc(dx, -0.32, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
@@ -929,5 +1031,5 @@
   requestAnimationFrame(frame);
 
   // テスト用（自動操作で動作確認するため）
-  window.__yoro = { get game() { return game; }, get boxes() { return boxes; }, get mode() { return mode; }, force, openCloset, closeCloset, start, retry, restart, next, loadLevel, pause, resume, openZukan, closeZukan };
+  window.__yoro = { get game() { return game; }, get boxes() { return boxes; }, get mode() { return mode; }, force, openCloset, closeCloset, openGacha, closeGacha, GA, start, retry, restart, next, loadLevel, pause, resume, openZukan, closeZukan };
 })();

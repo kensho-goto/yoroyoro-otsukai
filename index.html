@@ -180,6 +180,43 @@
     color: var(--ink); text-shadow: 0 2px 0 #fff, 0 -2px 0 #fff, 2px 0 0 #fff, -2px 0 0 #fff; pointer-events: none;
     transition: opacity .6s;
   }
+  .medal {
+    position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 128px); left: 12px; z-index: 5; pointer-events: none;
+    padding: 4px 10px; border-radius: 999px; border: 3px solid var(--ink); background: rgba(255, 247, 230, .92);
+    box-shadow: 0 3px 0 var(--ink); font-weight: 900; font-size: 15px;
+  }
+  .medal small { font-size: 11px; font-weight: 800; opacity: .75; margin-left: 4px; }
+  .medal.ready { background: #ffe066; }
+  .medal.bump { animation: bump .45s; }
+  @keyframes bump { 40% { transform: scale(1.35); } }
+  .btn.gacha { background: #e8a600; font-size: 17px; padding: 10px; }
+  .btn.gacha:disabled { background: #cdbf9e; box-shadow: 0 3px 0 var(--ink); }
+  .mline { margin: 4px 0 !important; font-size: 15px !important; font-weight: 900; }
+  #gacha { z-index: 9; }
+  #gacha .ghow { font-size: 13px; text-align: left; background: #fff8d6; border: 3px dashed #c48a00; border-radius: 12px; padding: 6px 10px; margin: 6px 0; font-weight: 700; }
+  .gm { position: relative; height: 170px; margin: 6px auto; width: 190px; }
+  .gm .glass { position: absolute; left: 25px; top: 0; width: 140px; height: 120px; border: 4px solid var(--ink); border-radius: 70px 70px 16px 16px; background: rgba(200,235,255,.6); overflow: hidden; }
+  .gm .glass i { position: absolute; width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--ink); }
+  .gm .base { position: absolute; left: 15px; top: 112px; width: 160px; height: 54px; border: 4px solid var(--ink); border-radius: 10px; background: #e8303a; }
+  .gm .knob { position: absolute; left: 76px; top: 122px; width: 38px; height: 38px; border-radius: 50%; border: 4px solid var(--ink); background: #ffd23a; }
+  .gm.spin .glass i { animation: tumble .25s linear infinite; }
+  .gm.spin .knob { animation: turn .5s linear 2; }
+  @keyframes tumble { 50% { transform: translate(4px, -8px) rotate(30deg); } }
+  @keyframes turn { to { transform: rotate(360deg); } }
+  .cap { position: absolute; left: 70px; top: 60px; width: 50px; height: 50px; border-radius: 50%; border: 4px solid var(--ink); opacity: 0; }
+  .gm.drop .cap { animation: drop .6s ease-in forwards; }
+  @keyframes drop { 0% { opacity: 1; transform: translateY(40px) scale(.6); } 70% { transform: translateY(110px) scale(1); } 100% { opacity: 1; transform: translateY(96px) scale(1.1); } }
+  .gres { border: 4px solid var(--ink); border-radius: 16px; padding: 8px; margin: 6px 0; background: #fff; animation: popin .4s; }
+  .gres b { display: block; font-size: 54px; line-height: 1.1; }
+  .gres .rr { font-weight: 900; font-size: 15px; }
+  .gres .nm { font-weight: 900; font-size: 20px; }
+  .gres .fx { font-size: 13px; font-weight: 800; color: #3f7a3a; }
+  .gres .nw { color: #d9531a; font-weight: 900; }
+  .gres.ssr { background: radial-gradient(circle, #fff6c4, #ffd84d); }
+  @keyframes popin { 0% { transform: scale(.3); opacity: 0; } 70% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
+  .gall { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin: 6px 0; }
+  .gall span { border: 2px solid var(--ink); border-radius: 8px; font-size: 20px; background: #fff; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; }
+  .gall span.no { background: #efe6d6; color: #8a7a62; font-size: 14px; font-weight: 900; border-style: dashed; }
 </style>
 </head>
 <body>
@@ -196,6 +233,8 @@
 <div class="meter m2" id="meter2"><span>バランス</span><div class="bar"><div class="fill" id="balFill"></div></div><span class="spd" id="spd">0.0m/秒</span></div>
 
 <div class="guide" id="guide" hidden><div id="guideLabel">左・右、どちらからでも</div><div class="gbar"><div class="gzone" id="gZone"></div><div class="gdot" id="gDot"></div></div></div>
+
+<div class="medal" id="medalChip" hidden></div>
 
 <button class="snd" id="sndBtn" type="button" aria-label="音をけす">🔊</button>
 
@@ -231,6 +270,7 @@
     <button class="btn" id="startBtn">はじめる</button>
     <button class="btn daily" id="dailyBtn" type="button">📅 今日のコース</button>
     <p class="streak" id="streak"></p>
+    <button class="btn gacha" id="titleGachaBtn" type="button">🎰 ガチャ</button>
     <div class="row2"><button class="btn sub" id="titleZukanBtn" type="button">📖 ずかん</button><button class="btn sub" id="closetBtn" type="button">👕 きせかえ</button></div>
     <p class="tip" id="bestRun" hidden></p>
     <div class="rank" id="titleRank" hidden></div>
@@ -254,7 +294,9 @@
     <p class="near" id="failNear"></p>
     <p class="tip" id="failDist" style="white-space:pre-line"></p>
     <div class="newbox" id="failNew" hidden></div>
+    <p class="mline" id="failMedal"></p>
     <button class="btn" id="retryBtn">もう一回</button>
+    <button class="btn gacha" id="failGachaBtn" type="button" hidden>🎰 ガチャを回す</button>
     <button class="btn vid" id="vidBtn" type="button">🎬 転んだところを動画にする</button>
     <div class="rank" id="failRank" hidden></div>
     <div class="row2"><button class="btn sub" id="failZukanBtn" type="button">📖 ずかん</button><button class="btn sub" id="shareBtn" type="button">記録を送る</button></div>
@@ -272,9 +314,24 @@
 <div class="overlay" id="closet">
   <div class="card">
     <h2>👕 きせかえ</h2>
-    <p class="tip">遊ぶほど、運ぶものと服がふえます。</p>
+    <p class="tip">遊ぶほど、運ぶものと服がふえます。くつ・ぼうし・おぼん・すがたは 🎰ガチャで出ます。</p>
     <div id="closetBody"></div>
+    <div id="closetGacha"></div>
     <button class="btn" id="closetClose" type="button">とじる</button>
+  </div>
+</div>
+
+<div class="overlay" id="gacha">
+  <div class="card">
+    <h2>🎰 ガチャ</h2>
+    <p class="ghow">道の <b>？の箱</b>（おたから）をとると <b>メダル🪙</b> がもらえる。めずらしいおたからほど たくさん。<br><b>🪙5枚でガチャ1回</b>。くつ・ぼうし・おぼん・すがた が出て、見た目が変わる。ちょっとだけ 有利になるものも！</p>
+    <div class="gm" id="gMachine"><div class="glass"><i style="left:12px;top:70px;background:#ff6b8b"></i><i style="left:50px;top:78px;background:#4aa3ff"></i><i style="left:88px;top:68px;background:#ffd23a"></i><i style="left:30px;top:44px;background:#7ad36b"></i><i style="left:70px;top:40px;background:#b46cf0"></i></div><div class="base"></div><div class="knob"></div><div class="cap" id="gCap"></div></div>
+    <div id="gResult"></div>
+    <p class="mline" id="gMedals"></p>
+    <button class="btn gacha" id="gPull" type="button">🎰 回す（🪙5）</button>
+    <p class="tip" id="gCount"></p>
+    <div class="gall" id="gAll"></div>
+    <div class="row2"><button class="btn sub" id="gCloset" type="button">👕 きせかえで えらぶ</button><button class="btn sub" id="gClose" type="button">とじる</button></div>
   </div>
 </div>
 
@@ -286,6 +343,7 @@
 <script src="src/rank.js"></script>
 <script src="src/zukan.js"></script>
 <script src="src/closet.js"></script>
+<script src="src/gacha.js"></script>
 <script src="src/days.js"></script>
 <script src="src/clip.js"></script>
 <script src="src/main.js"></script>
