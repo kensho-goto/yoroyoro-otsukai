@@ -7,15 +7,16 @@ function run(level, P, sd, jitter) {
   let s = sd, side = 0, next = P; const jr = () => ((s = (s * 48271) % 2147483647) / 2147483647);
   const g = Core.create(planck, { level }); g.spawn(0);
   const obs = g.stage.hazards.map((h) => h.x); // 障害物の左はし・穴のふち（ジャンプ台の穴は台にまかせる）
-  let f = 0, crouch = 0, done = new Set();
+  let f = 0, crouch = 0, gap = 0, done = new Set();
   for (; f < 60 * 90; f++) {
     const x = g.charX();
     const J = g.state.jump;
-    if (JUMP && crouch === 0 && J.phase === 'none') {
+    if (JUMP && crouch === 0 && gap === 0 && J.phase === 'none') {
       const i = obs.findIndex((ox, k) => !done.has(k) && ox - x > 0.4 && ox - x < 0.4 + 0.5 * jr() + 0.3);
-      if (i >= 0) { done.add(i); crouch = Math.round(14 + 10 * jr()); }
+      if (i >= 0) { done.add(i); gap = 3; crouch = Math.round(14 + 10 * jr()); } // 両方はなしてから同時に押す
     }
-    if (crouch > 0) { g.setInput(true, true); crouch--; if (crouch === 0) next = f + 40; }
+    if (gap > 0) { g.setInput(false, false); gap--; }
+    else if (crouch > 0) { g.setInput(true, true); crouch--; if (crouch === 0) next = f + 40; }
     else if (J.phase !== 'none') g.setInput(false, false);
     else {
       if (f >= next) { side = 1 - side; next = f + Math.round(P * (1 - jitter + 2 * jitter * jr())); }

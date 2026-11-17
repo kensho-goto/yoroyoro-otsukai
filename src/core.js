@@ -39,7 +39,10 @@
     sameFootKick: 1.0, // 同じ足を続けて出したときの重さ（くずれ量）
     crouchHip: 0.75, // 両足を押している：しゃがむ
     crouchKnee: -1.35,
-    jumpMinFrames: 6, // これ以上ためるとジャンプ
+    jumpMinFrames: 6, // ここまでは いちばん低いジャンプ（すばやい同時タップでも飛べる）
+    jumpPair: 6, // 左右をこのコマ数以内に押すと「同時」＝ジャンプ（ふつうの歩きと区別する）
+    jumpRelease: 8, // ためたあと、片方をはなしてから もう片方をはなすまで待つコマ数
+    jump2Vy: 3.6, jump2Vx: 1.8, // 空中でもう1回 同時タップ：2段ジャンプ
     jumpFullFrames: 24, // これだけためると一番高く飛ぶ
     jumpVx: [1.0, 2.6], // ジャンプの前向きの速さ（ためなし〜ためきり）
     jumpVy: [2.6, 4.3], // ジャンプの上向きの速さ
@@ -48,6 +51,7 @@
     drivePerStep: 0.45, // 1秒に1歩ふえるごとの目標の速さ（m/秒）
     driveMin: 1.0, // 目標の速さのいちばん下とうえ
     driveMax: 3.2,
+    minLift: 32, // すばやいタップでも、反対の足を押すまで足を上げておく最長のコマ数
     driveCombo: 0.04, // リズムが1歩続くごとに足す速さ
     driveComboMax: 0.8,
     driveGain: 5, // 目標の速さへ近づける強さ
@@ -150,11 +154,12 @@
       hazards: [...obstacles.map((o) => ({ x: o.x - o.w / 2, kind: 'ob' })), ...pits.filter((p) => !p.bySpring).map((p) => ({ x: p.x0, kind: 'pit' }))].sort((a, b) => a.x - b.x),
       tuning: {
         // むずかしさは途中で頭打ちにして、上のレベルもずっと遊べるようにする（変化は障害物・道で出す）
-        balance: Math.max(12.5, lerp(27, 16.5, 1 - Math.exp(-(n - 1) / 8)) - 0.6 * e), // 体を起こす手助けがだんだん弱く
+        balance: Math.max(9, (lerp(27, 16.5, 1 - Math.exp(-(n - 1) / 8)) - 0.6 * e) * lerp(0.85, 0.7, d)), // 体を起こす手助けがだんだん弱く（リズムをゆるめた分、少し弱め）
+        accGain: 0.004 * lerp(1.15, 1.4, d), // プリンのぐらぐらのたまり方（リズムをゆるめた分、少し多め）
         accSafe: Math.max(11, 13.5 + 6.5 * Math.exp(-(n - 1) / 3) - 0.5 * e), // プリンが揺れにだんだん敏感に（少しの差で大きく効くので、ゆっくり）
         spinSafe: lerp(2.3, 1.4, d),
         calm: lerp(0.013, 0.007, d),
-        rhythmFree: Math.max(1.06, lerp(1.55, 1.16, d) - 0.03 * e), // リズムのずれの許し：だんだんきびしく
+        rhythmFree: Math.max(1.25, lerp(1.6, 1.32, d) - 0.02 * e), // リズムのずれの許し（前の1歩より3割くらい速く・おそくしてもOK＝押す速さで走る速さを変えられる）
         rhythmKick: lerp(4, 7, d) + 0.35 * e,
         // 体を保つ力：はじめはゆっくりへり、レベルが上がるほど早くへる（何も押さないとすぐ転ぶのは同じ）
         steadyDecay: lerp(0.003, 0.007, d2),
@@ -208,6 +213,7 @@
       events: [], // 音を鳴らす合図（画面側が取り出す）
       feet: { L: 0, R: 0 }, // 足が地面についている数
       wind: 0, // 横からの風の力（＋は追い風）
+      pressAt: { L: -99, R: -99 }, inPrev: { left: false, right: false }, // 足を押した時刻（同時押し＝ジャンプを見分ける）
     };
     const emit = (type, v) => { if (state.events.length < 100) state.events.push({ type, v }); };
 
@@ -374,50 +380,58 @@
     }
 
     // リズム：足を出す（押す）たびに、前の足・前の間かくとくらべる
+    // 押してすぐには決めず jumpPair コマ待つ（もう片方もすぐ押したら「同時タップ＝ジャンプ」なので1歩に数えない）
     function rhythm(c, J) {
       const R = state.rhythm, inp = state.input, prev = R.prev;
       const pressedL = inp.left && !prev.left, pressedR = inp.right && !prev.right;
       R.prev = { left: inp.left, right: inp.right };
-      if (J.phase === 'air') { R.lastSide = null; R.lastInterval = 0; R.sinceStep = 0; return; } // ジャンプ中は数えない
+      if (J.phase === 'air') { R.lastSide = null; R.lastInterval = 0; R.sinceStep = 0; R.pend = null; return; } // ジャンプ中は数えない
       for (const [pressed, side, other] of [[pressedL, 'L', inp.right], [pressedR, 'R', inp.left]]) {
         if (!pressed) continue;
         R.first = false;
-        const interval = R.sinceStep;
+        if (R.pend && R.pend.side !== side && state.frame - R.pend.f <= T.jumpPair) { R.pend = null; R.lastSide = null; R.lastInterval = 0; R.sinceStep = 0; continue; } // 同時タップ
+        if (R.pend) judge(c, R.pend); // 前の1歩を先に決める
+        R.pend = { side, interval: R.sinceStep, other, f: state.frame };
         R.sinceStep = 0;
-        if (other) { R.lastSide = null; continue; } // 両足（ジャンプのため）は数えない
-        let bad = 0, why = '';
-        if (R.lastSide === side) { bad = T.sameFootKick; why = 'same'; }
-        else if (R.lastSide && interval < 7) { bad = 0.7; why = 'fast'; }
-        else if (R.lastSide && R.lastInterval > 0) {
-          const ratio = Math.abs(Math.log(interval / R.lastInterval));
-          bad = Math.max(0, ratio - Math.log(T.rhythmFree)) * 1.6;
-          why = interval > R.lastInterval ? 'slow' : 'fast';
-        }
-        if (bad <= 0.08) { // よい1歩：体を保つ力がたまり、リズムの連続が1つふえる
-          state.steady = Math.min(1, state.steady + T.steadyStep * (R.lastSide ? 1 : 0.5));
-          if (R.lastSide && state.settle <= 0 && ++state.combo % 10 === 0) emit('combo', state.combo);
-          if (R.lastSide) { // 前へ押す（速く押すほど・リズムが続くほど速い）
-            const sps = 60 / Math.max(7, interval);
-            state.vTarget = Math.min(T.driveMax, Math.max(T.driveMin, T.drivePerStep * sps)) + Math.min(T.driveComboMax, state.combo * T.driveCombo);
-            state.drive = 1; state.driveLen = Math.max(12, interval * 1.6);
-          }
-          emit('good', side);
-        } else state.drive = 0;
-        if (bad > 0.08 && state.settle <= 0) { // 出てすぐの落ち着くまでは数えない
-          state.stumble += bad;
-          state.steady = Math.max(0, state.steady - 0.35 * Math.min(1.5, bad));
-          state.combo = 0;
-          const dir = why === 'slow' ? -1 : why === 'fast' ? 1 : (side === 'L' ? 1 : -1); // おそすぎ→前へ、早すぎ→うしろへ
-          c.torso.applyAngularImpulse(-dir * T.rhythmKick * Math.min(1.5, bad) * c.torso.getInertia());
-          state.lastStumble = state.frame;
-          emit('stumble', { bad, why });
-        }
-        R.lastInterval = R.lastSide && R.lastSide !== side ? interval : 0; // 最初の1歩・ジャンプのあとは、くらべる相手なし
-        R.lastSide = side;
       }
+      if (J.phase === 'crouch') R.pend = null; // ジャンプのため（1歩に数えない）
+      if (R.pend && state.frame - R.pend.f >= T.jumpPair) { judge(c, R.pend); R.pend = null; }
       R.sinceStep++;
       const limit = R.first ? T.firstStopLimit : T.stopLimit;
       if (J.phase === 'none' && R.sinceStep > limit && state.topple === 0) { state.topple = 0.01; emit('stop'); }
+    }
+    function judge(c, { side, interval, other }) {
+      const R = state.rhythm;
+      if (other) { R.lastSide = null; return; } // もう片方を押したまま（ためている途中など）は数えない
+      let bad = 0, why = '';
+      if (R.lastSide === side) { bad = T.sameFootKick; why = 'same'; }
+      else if (R.lastSide && interval < 7) { bad = 0.7; why = 'fast'; }
+      else if (R.lastSide && R.lastInterval > 0) {
+        const ratio = Math.abs(Math.log(interval / R.lastInterval));
+        bad = Math.max(0, ratio - Math.log(T.rhythmFree)) * 1.6;
+        why = interval > R.lastInterval ? 'slow' : 'fast';
+      }
+      if (bad <= 0.08) { // よい1歩：体を保つ力がたまり、リズムの連続が1つふえる
+        state.steady = Math.min(1, state.steady + T.steadyStep * (R.lastSide ? 1 : 0.5));
+        if (R.lastSide && state.settle <= 0 && ++state.combo % 10 === 0) emit('combo', state.combo);
+        if (R.lastSide) { // 前へ押す（速く押すほど・リズムが続くほど速い）
+          const sps = 60 / Math.max(7, interval);
+          state.vTarget = Math.min(T.driveMax, Math.max(T.driveMin, T.drivePerStep * sps)) + Math.min(T.driveComboMax, state.combo * T.driveCombo);
+          state.drive = 1; state.driveLen = Math.max(12, interval * 1.6);
+        }
+        emit('good', side);
+      } else state.drive = 0;
+      if (bad > 0.08 && state.settle <= 0) { // 出てすぐの落ち着くまでは数えない
+        state.stumble += bad;
+        state.steady = Math.max(0, state.steady - 0.35 * Math.min(1.5, bad));
+        state.combo = 0;
+        const dir = why === 'slow' ? -1 : why === 'fast' ? 1 : (side === 'L' ? 1 : -1); // おそすぎ→前へ、早すぎ→うしろへ
+        c.torso.applyAngularImpulse(-dir * T.rhythmKick * Math.min(1.5, bad) * c.torso.getInertia());
+        state.lastStumble = state.frame;
+        emit('stumble', { bad, why });
+      }
+      R.lastInterval = R.lastSide && R.lastSide !== side ? interval : 0; // 最初の1歩・ジャンプのあとは、くらべる相手なし
+      R.lastSide = side;
     }
 
     // ジャンプ台：体ぜんぶを前と上へ飛ばす（ジャンプと同じあつかい）
@@ -427,7 +441,7 @@
         const v = b.getLinearVelocity();
         b.setLinearVelocity(Vec2(v.x * 0.5 + 3.3, 4.9));
       }
-      J.phase = 'air'; J.air = 0; J.crouch = 0;
+      J.phase = 'air'; J.air = 0; J.crouch = 0; J.extra = 0;
       state.rhythm.lastSide = null; state.rhythm.lastInterval = 0;
       emit('boing');
     }
@@ -435,14 +449,24 @@
     // ジャンプ：ためた分だけ高く遠くへ（体ぜんぶに同じ速さを足す）
     function launch() {
       const c = state.char, J = state.jump;
-      const p = Math.min(1, (J.crouch - T.jumpMinFrames) / (T.jumpFullFrames - T.jumpMinFrames));
+      const p = Math.max(0, Math.min(1, (J.crouch - T.jumpMinFrames) / (T.jumpFullFrames - T.jumpMinFrames)));
       const vx = lerp(T.jumpVx[0], T.jumpVx[1], p), vy = lerp(T.jumpVy[0], T.jumpVy[1], p);
       for (const b of [c.torso, c.tray, c.head, c.L.thigh, c.L.shin, c.R.thigh, c.R.shin]) {
         const v = b.getLinearVelocity();
         b.setLinearVelocity(Vec2(v.x * 0.5 + vx, Math.max(0, v.y) + vy));
       }
-      J.phase = 'air'; J.air = 0;
+      J.phase = 'air'; J.air = 0; J.extra = 0;
       emit('jump', p);
+    }
+    // 2段ジャンプ（空中で1回だけ）
+    function jump2() {
+      const c = state.char, J = state.jump;
+      for (const b of [c.torso, c.tray, c.head, c.L.thigh, c.L.shin, c.R.thigh, c.R.shin]) {
+        const v = b.getLinearVelocity();
+        b.setLinearVelocity(Vec2(Math.max(v.x, T.jump2Vx), T.jump2Vy));
+      }
+      J.extra = 1; J.air = 1;
+      emit('jump2');
     }
 
     function charX() {
@@ -456,15 +480,24 @@
         const J = state.jump;
         const both = state.input.left && state.input.right;
         if (state.status === 'play') {
+          const ip = state.inPrev, inp = state.input;
+          if (inp.left && !ip.left) state.pressAt.L = state.frame;
+          if (inp.right && !ip.right) state.pressAt.R = state.frame;
+          state.inPrev = { left: inp.left, right: inp.right };
           J.ground = grounded() ? 0 : (J.ground || 0) + 1; // 足が地面からはなれてからのコマ数
           const onGround = J.ground < 8;
-          if (J.phase === 'none' && both && onGround) { J.phase = 'crouch'; J.crouch = 0; }
+          // 左右を「同時に」押したか（押した時刻の差が jumpPair 以内）。歩きで足が重なっただけではジャンプしない
+          const P = state.pressAt;
+          // 歩きの小さなはね（足が少しうく）は「地面」とみなす
+          const pairNow = both && (P.L === state.frame || P.R === state.frame) && Math.abs(P.L - P.R) <= T.jumpPair;
+          if (J.phase === 'none' && pairNow && J.ground < 30) { J.phase = 'crouch'; J.crouch = 0; J.rel = 0; emit('crouch'); }
           if (J.phase === 'crouch') {
-            if (both) J.crouch++;
-            else if (!state.input.left && !state.input.right && J.crouch >= T.jumpMinFrames && onGround) launch();
-            else J.phase = 'none'; // 片足だけはなした：ふつうの歩きにもどる
+            if (both) { J.crouch++; J.rel = 0; }
+            else if (!state.input.left && !state.input.right) launch(); // ためはじめは地面の上なので、はなしたら飛ぶ
+            else if (++J.rel > T.jumpRelease) J.phase = 'none'; // 片足だけ長くはなした：ふつうの歩きにもどる
           } else if (J.phase === 'air') {
             J.air++;
+            if (pairNow && !(J.extra > 0) && J.air > 3) jump2(); // 空中でもう1回 同時タップ
             if (J.air > 8 && grounded()) { J.phase = 'none'; J.grace = 25; emit('land'); }
           }
           if (J.grace > 0) J.grace--;
@@ -474,8 +507,13 @@
         state.springHit = false;
         if (state.status === 'play') rhythm(c, J);
         const limp = state.topple > 0; // 止まって転びはじめた：足の力がぬける
-        const idle = !state.input.left && !state.input.right;
-        for (const [lg, on] of [[c.L, state.input.left], [c.R, state.input.right]]) {
+        // すばやいタップでも、足は minLift コマのあいだは上げておく（短い歩はばで体だけ前に出て転ばないように）
+        // 反対の足を押したら、前の足はすぐ下ろす（両足が同時に上がらないように）
+        const PA = state.pressAt;
+        const upL = state.input.left || (PA.L > PA.R && state.frame - PA.L < T.minLift);
+        const upR = state.input.right || (PA.R > PA.L && state.frame - PA.R < T.minLift);
+        const idle = !upL && !upR;
+        for (const [lg, on] of [[c.L, upL], [c.R, upR]]) {
           let hip = on ? T.hipUp : idle ? T.hipIdle : T.hipDown;
           let knee = on ? T.kneeUp : idle ? T.kneeIdle : T.kneeDown;
           if (J.phase === 'crouch') { hip = T.crouchHip; knee = T.crouchKnee; }

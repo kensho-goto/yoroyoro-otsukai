@@ -909,8 +909,8 @@
     ui.gDot.style.left = `${x * 100}%`;
     ui.gDot.style.background = !target ? '#3b2a1e' : inZone ? '#1f7a12' : R.sinceStep > target * rf ? '#e8303a' : '#3b2a1e';
     const late = R.sinceStep > Math.max(limit * 0.6, target * rf);
-    ui.guideLabel.textContent = air ? 'ジャンプ中…着地したら また交互に' : late ? '止まっちゃう！ 早く押して！'
-      : !next ? '左・右、どちらからでも' : !target ? `つぎは ${next === 'L' ? '← ひだり足' : 'みぎ足 →'}（同じ間かくで）`
+    ui.guideLabel.textContent = air ? 'ジャンプ中…もう1回 同時タップで 2段ジャンプ！' : late ? '止まっちゃう！ 早く押して！'
+      : !next ? '左・右、どちらからでも' : !target ? `つぎは ${next === 'L' ? '← ひだり足' : 'みぎ足 →'}`
       : `${next === 'L' ? '← ひだり足' : 'みぎ足 →'}を 緑のところで！`;
     const fl = performance.now() - guideFlashT < 220 ? guideFlash : '';
     ui.guide.classList.toggle('ok', fl === 'ok'); ui.guide.classList.toggle('ng', fl === 'ng');
@@ -971,6 +971,7 @@
           if (ev.type === 'wobble') pop('ふらふら…', '#ff8a00');
           if (ev.type === 'combo') pop(`ナイスリズム ×${ev.v} スピードUP！`, '#2f9e44');
           if (ev.type === 'good') flashGuide('ok');
+          if (ev.type === 'jump2') pop('2だんジャンプ！', '#2f6fd6');
           if (ev.type === 'step') addPrint(ev.v);
           if (ev.type === 'stumble') flashGuide('ng');
         }
@@ -981,11 +982,11 @@
           if (!hinted.has('s' + i) && q.x - x < 2.6 && q.x - x > 0) { hinted.add('s' + i); showBanner('赤い台に乗ると<br>ピョーンと飛ぶよ！'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 2500); }
         });
         stage.pits.forEach((q, i) => {
-          if (!hinted.has('p' + i) && q.x0 - x < 2.8 && q.x0 - x > 0) { hinted.add('p' + i); showBanner('穴だ！ 両方押して…<br>はなしてジャンプ！'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 2500); }
+          if (!hinted.has('p' + i) && q.x0 - x < 2.8 && q.x0 - x > 0) { hinted.add('p' + i); showBanner('穴だ！ 左右を同時にタップ！<br>とどかなければ 空中でもう1回！'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 2500); }
         });
         if (level <= 6) stage.obstacles.forEach((o, i) => {
           if (!hinted.has(i) && o.x - x < 2.6 && o.x - x > 0) {
-            hinted.add(i); showBanner('両方の足を いっしょに押して…<br>はなすと ジャンプ！'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 3000);
+            hinted.add(i); showBanner('左右を 同時にタップで ジャンプ！<br>長く押すと 高く飛ぶよ'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 3000);
           }
         });
       }
