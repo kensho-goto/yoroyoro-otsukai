@@ -6,7 +6,7 @@
   const ui = {
     dist: $('dist'), time: $('time'), timeN: $('timeN'), best: $('best'), hint: $('hint'), prog: $('progFill'), finger: $('finger'),
     padL: $('padL'), padR: $('padR'),
-    title: $('title'), fail: $('fail'), pause: $('pause'), retry: $('retryBtn'),
+    title: $('title'), fail: $('fail'), pause: $('pause'), goal: $('goal'), retry: $('retryBtn'),
     failTitle: $('failTitle'), failLine: $('failLine'), failDist: $('failDist'),
     failTag: $('failTag'), failAct: $('failAct'), failFace: $('failFace'),
     meter: $('meter'), meterFill: $('meterFill'), meterLabel: $('meterLabel'),
@@ -42,7 +42,11 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存できなくても遊べる */ } },
   };
   let runDist = 0; // 届けたおうちまでのきょりの合計（今の道の分は入れない）
-  let bestRun = Math.max(0, parseFloat(store.get('yoro.bestRun')) || 0); // 歩いたきょりの自己ベスト
+  let bestRun = Math.max(0, parseFloat(store.get('yoro.bestRun')) || 0); // 歩いたきょりの自己ベスト（きせかえの条件に使う）
+  // ステージ：おうちに着くと GOAL → 次のステージ。転んだら同じステージから。どこまでも続く
+  let stageNow = Math.max(1, parseInt(store.get('yoro.stage'), 10) || 1);
+  let stageClears = Math.max(0, parseInt(store.get('yoro.clears'), 10) || 0);
+  const dailyStage = () => { const b = DY.daily().best; return Number.isInteger(b) ? b + 1 : 1; }; // 今日のコースは、今日いちばん先にクリアしたステージの次から
   let prevWaiter = null, delivered = null, worldOff = 0; // 前のおうちの人・届けたときのひとこと・背景をつなぐためのずれ
   function loadLevel(n, carry) {
     const old = carry ? { goal: stage.goal, gy: game.groundHeightAt(stage.goal) } : null;
@@ -161,6 +165,7 @@
       if (gachaEl.classList.contains('show')) closeGacha();
       else if (zukanEl.classList.contains('show')) closeZukan();
       else if (closetEl.classList.contains('show')) closeCloset();
+      else if (ui.goal.classList.contains('show')) nextStage();
       else if (ui.title.classList.contains('show')) start();
       else if (ui.fail.classList.contains('show') && !ui.retry.disabled) restart();
       else if (ui.pause.classList.contains('show')) resume();
@@ -183,8 +188,8 @@
     hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 2500);
   }
   function showOnly(el) {
-    for (const o of [ui.title, ui.fail, ui.pause]) o.classList.toggle('show', o === el);
-    document.body.classList.toggle('menu', el === ui.title || el === ui.fail);
+    for (const o of [ui.title, ui.fail, ui.pause, ui.goal]) o.classList.toggle('show', o === el);
+    document.body.classList.toggle('menu', el === ui.title || el === ui.fail || el === ui.goal);
   }
   function start() { restart('free'); }
   // ゲームオーバーのあとは、いつも最初（おかしや）から
@@ -193,28 +198,49 @@
     if (m === 'free' || m === 'daily') mode = m;
     runNew = []; runTreasure = 0; runMedals = 0; wear = GA.worn(); paintMedal();
     const cx = ctxNow(); look = CL.current(cx); unlockAtStart = CL.unlockedIds(cx);
-    curBest = mode === 'daily' ? DY.daily().best : bestRun;
+    curBest = 0; // きょりのベストの旗は出さない（ステージ制）
     CLIP.reset();
     goldDay = force.gold != null ? !!force.gold : (mode === 'daily' ? DY.rng(0)() : Math.random()) < 0.03; // ごくたまに「金のプリンの日」
     if (goldDay) noteNew(ZK.mark('event', 'goldday'), 'できごと「金のプリンの日」');
-    tutSteps = 0; loadLevel(1); pops.length = 0; elapsed = 0; runDist = 0; passedBest = false; nextMile = 50; game.spawn(0); showOnly(null); snd.play(goldDay ? 'event' : 'start'); snd.bgm(true);
+    tutSteps = 0; loadLevel(mode === 'daily' ? dailyStage() : stageNow); pops.length = 0; elapsed = 0; runDist = 0; passedBest = false; nextMile = 50; game.spawn(0); showOnly(null); snd.play(goldDay ? 'event' : 'start'); snd.bgm(true);
   }
   const retry = () => restart();
-  // おうちに着いた：プリンを届けて、止まらずに次のおうちへ
+  // おうちに着いた：GOAL！ タップで次のステージへ
+  let goalSay = '', goalAt = 0;
   function deliver() {
-    const say = WT.happy(waiter, itemName()).say;
+    goalSay = WT.happy(waiter, itemName()).say;
     noteNew(ZK.mark('face', `${waiter.id}.happy`), `${waiter.name}の「にっこり」顔`);
-    snd.play('clear');
+    faceNow = 'happy'; faceT0 = performance.now();
+    snd.play('clear'); snd.bgm(false);
     fails = 0;
     runDist += stage.goal;
-    const snap = game.snapshot();
-    loadLevel(level + 1, snap);
-    game.spawn(0, snap);
-    elapsed = 0; lastTick = 0;
-    delivered = { say, t0: performance.now() };
-    pop('とどけた！ つぎへ！', '#2f9e44');
+    CL.addRun(stage.goal);
+    if (mode === 'daily') DY.addDaily(level);
+    else { stageNow = level + 1; store.set('yoro.stage', String(stageNow)); }
+    stageClears++; store.set('yoro.clears', String(stageClears));
+    $('goalTag').textContent = `ステージ ${level} クリア`;
+    $('goalLine').textContent = goalSay;
+    const gn = $('goalNew'); gn.innerHTML = `<b>NEW</b> ずかん ${ZK.count().got}/${ZK.count().total}`; gn.hidden = !runNew.length;
+    const gm = $('goalMedal'); gm.innerHTML = `<span class="coin"></span>+${runMedals}`; gm.hidden = !runMedals;
+    $('nextBtn').innerHTML = `つぎへ<small>ステージ ${level + 1}</small>`;
+    goalAt = performance.now();
+    refreshTitle();
+    showOnly(ui.goal);
+    if (navigator.vibrate) navigator.vibrate([40, 40, 80]);
   }
-  function next() { loadLevel(level + 1); restart(); }
+  function nextStage() {
+    if (performance.now() - goalAt < 700) return; // 歩いていた指でうっかり押さないように
+    const was = waiter;
+    runNew = []; runMedals = 0;
+    loadLevel(level + 1);
+    prevWaiter = was;
+    game.spawn(0);
+    elapsed = 0; lastTick = 0; pops.length = 0;
+    delivered = { say: goalSay, t0: performance.now() };
+    showOnly(null); snd.play('start'); snd.bgm(true);
+  }
+  $('nextBtn').onclick = nextStage;
+  ui.goal.addEventListener('click', (e) => { if (!e.target.closest('button')) nextStage(); });
   $('startBtn').onclick = () => start();
   $('dailyBtn').onclick = () => restart('daily');
   $('retryBtn').onclick = () => restart();
@@ -338,11 +364,11 @@
   sndBtn.onclick = () => { snd.toggle(); paintSnd(); snd.play('tap'); };
   paintSnd();
   function refreshTitle() {
-    $('bestRun').hidden = bestRun <= 0;
-    $('bestRun').innerHTML = `<svg class="ic"><use href="#i-flag"/></svg> ${bestRun.toFixed(1)}m`;
+    $('bestRun').hidden = true;
+    $('startBtn').innerHTML = `あるく<small>ステージ ${stageNow}</small>`;
     const sk = DY.streak(), dd = DY.daily();
     $('streak').innerHTML = sk.n > 0 ? `<svg class="ic"><use href="#i-flame"/></svg> ${sk.n}日れんぞく` : '';
-    $('dailyBtn').innerHTML = `きょうのコース<small>${DY.label()}${dd.tries ? `・ベスト ${dd.best.toFixed(1)}m` : ''}</small>`;
+    $('dailyBtn').innerHTML = `きょうのコース<small>${DY.label()}・ステージ ${dailyStage()}</small>`;
     $('titleMedal').textContent = GA.medals;
     $('titleGachaBtn').classList.toggle('ready', GA.canPull());
     paintMedal();
@@ -351,9 +377,14 @@
   // きろく・あそびかた（タイトルのすみの絵のボタン）
   for (const [btn, el, cl] of [['rankBtn', 'records', 'recordsClose'], ['howBtn', 'howto', 'howtoClose']]) {
     const o = $(el);
-    $(btn).onclick = () => { o.classList.add('show'); snd.play('tap'); };
+    $(btn).onclick = () => { if (el === 'records') paintRecords(); o.classList.add('show'); snd.play('tap'); };
     $(cl).onclick = () => o.classList.remove('show');
     o.addEventListener('click', (e) => { if (e.target === o) o.classList.remove('show'); });
+  }
+  function paintRecords() {
+    const st = CL.stats();
+    $('recBody').innerHTML = [['いまのステージ', stageNow], ['クリアした回数', `${stageClears}回`], ['歩いたきょり（合計）', `${Math.floor(st.total || 0)}m`], ['きょうのコース', `ステージ ${dailyStage()}`]]
+      .map(([k, v]) => `<div class="rec"><span>${k}</span><b>${v}</b></div>`).join('');
   }
   // タイトルに、じぶんの記録の上位を出す
   function showTitleRank() { RANK.render($('titleRank'), { list: RANK.list(), idx: -1 }); }
@@ -371,10 +402,10 @@
     const daily = mode === 'daily';
     const prevBest = curBest;
     let newBest;
-    if (daily) { newBest = DY.addDaily(total).isBest; }
+    if (daily) { newBest = false; }
     else { newBest = total > bestRun + 0.05; if (newBest) { bestRun = total; store.set('yoro.bestRun', bestRun.toFixed(1)); } }
     // 合計きょり・回数・れんぞく日数 → 新しく使えるようになったもの
-    CL.addRun(total);
+    CL.addRun(Math.min(stage.goal, Math.max(0, S.bestX))); // 届けたぶんは GOAL のときに入れた
     const sk = DY.touch();
     const extra = [];
     if (sk.up && sk.n >= 2) extra.push(`${sk.n}日 れんぞく！`);
@@ -382,31 +413,22 @@
     runNew = extra.concat(runNew);
     refreshTitle();
     ui.failTag.textContent = tr(`${{ pudding: 'プリンを落とした', timeup: '時間切れ', rhythm: 'リズムがくずれた', stop: '止まってころんだ', hole: '穴に落ちた' }[S.fallReason] || 'ころんだ'}`);
-    $('failNum').innerHTML = `${total.toFixed(1)}<small>m</small>`;
+    $('failNum').innerHTML = `<small>ステージ</small> ${level}`;
     ui.failTitle.textContent = r.title;
     ui.failLine.textContent = r.say;
     ui.failAct.textContent = r.action;
     ui.failDist.textContent = `${daily ? `今日のコース ${DY.daily().tries}回目\n` : ''}${level}軒目・${waiter.name}のおうちまで あと ${left.toFixed(1)}m\n歩いたきょり ${total.toFixed(1)}m${newBest ? '' : `（${daily ? '今日の' : ''}ベスト ${curBest.toFixed(1)}m）`}${runTreasure ? `\nこの回のおたから ${runTreasure}こ` : ''}`;
     $('retryBtn').textContent = 'もう一回';
     ui.retry.disabled = true; setTimeout(() => { ui.retry.disabled = false; }, 700); // 歩いていた指でうっかり押さないように
-    lastShare = `ヨロヨロおつかい${daily ? `の今日のコース（${DY.label()}）` : ''}で ${total.toFixed(1)}m 歩いた！${newBest ? (daily ? '（今日のベスト！）' : '（自己ベスト！）') : ''} ${level}軒目の${waiter.name}に「${r.say}」と言われた…`;
-    clipInfo = { dist: `${total.toFixed(1)}m`, title: r.title, say: r.say, tag: ui.failTag.textContent };
+    lastShare = `ヨロヨロおつかい${daily ? `の今日のコース（${DY.label()}）` : ''} ステージ${level}で${waiter.name}に「${r.say}」と言われた…`;
+    clipInfo = { dist: `ステージ${level}`, title: r.title, say: r.say, tag: ui.failTag.textContent };
     resetVid();
     // 歩いたきょりを、じぶんの記録ランキングに入れて上位を出す（このスマホの中だけ。今日のコースは入れない）
     const rk = daily ? { list: [], idx: -1 } : total >= 0.5 ? RANK.add(total) : { list: RANK.list(), idx: -1 };
     RANK.render($('failRank'), rk);
     // あとちょっと：すぐ上の記録まで何mだったか
-    const near = $('failNear'); near.classList.toggle('best', newBest);
-    const bestWord = daily ? '今日のベスト' : '自己ベスト';
-    if (newBest) near.textContent = prevBest > 0 ? `${bestWord}更新！ +${(total - prevBest).toFixed(1)}m` : 'はじめての記録！';
-    else if (daily) { const gap = curBest - total; near.textContent = `今日のベストまで あと ${gap.toFixed(1)}m${gap < 5 ? '！ おしい！' : '！'}`; }
-    else {
-      const above = rk.list.filter((x) => x.d > total + 0.05).pop(); // すぐ上の記録
-      const pos = above ? rk.list.indexOf(above) + 1 : 0;
-      const gap = bestRun - total;
-      near.innerHTML = !above ? '' : pos === 1 ? `ベストまで あと ${gap.toFixed(1)}m${gap < 5 ? '！ おしい！' : '！'}`
-        : `${pos}位まで あと ${(above.d - total).toFixed(1)}m！<small>ベストまで ${gap.toFixed(1)}m</small>`;
-    }
+    const near = $('failNear'); near.classList.remove('best');
+    near.textContent = `おうちまで あと ${left.toFixed(1)}m${left < 3 ? '！ おしい！' : ''}`;
     // ずかん：この回で新しく入ったもの（なければ、まだ見ていないころび方のヒント）
     const zc = ZK.count(), nb = $('failNew');
     nb.innerHTML = `<b>NEW</b> ずかん ${zc.got}/${zc.total}`;
@@ -914,7 +936,8 @@
     ui.spd.textContent = `⚡${spdShown.toFixed(1)}m/秒`;
     ui.spd.classList.toggle('fast', spdShown > 2.3);
     const x = Math.max(0, game.charX());
-    ui.dist.innerHTML = `${(runDist + Math.min(stage.goal, S.status === 'play' ? x : S.bestX)).toFixed(1)}<small>m</small>`; // ここまで歩いたきょり
+    $('stgNow').textContent = level; $('stgNext').textContent = level + 1;
+    ui.dist.innerHTML = `<svg class="ic"><use href="#i-house"/></svg>あと${Math.ceil(Math.max(0, stage.goal - x))}m`; // おうちまで
     ui.prog.style.width = `${Math.round(Math.min(1, x / stage.goal) * 100)}%`; // おうちまでの線
     ui.finger.classList.toggle('show', !tutDone && level === 1 && S.status === 'play' && tutSteps < 6 && !ui.title.classList.contains('show') && !ui.pause.classList.contains('show'));
     const tl = Math.max(0, stage.timeLimit - elapsed);
@@ -925,8 +948,7 @@
     ui.meterFill.style.width = `${Math.round(d * 100)}%`;
     ui.meterFill.style.background = d > 0.7 ? '#ff4d4d' : d > 0.4 ? '#ffb020' : '#5cc96b';
     ui.meter.classList.toggle('danger', d > 0.7 && S.status === 'play');
-    const now = S.status === 'play' ? runDist + Math.min(stage.goal, x) : 0; // ベストをこえたら、ベストの数字も一緒にふえる
-    const bb = Math.floor(Math.max(curBest, now)); ui.best.innerHTML = bb > 0 ? `<svg class="ic"><use href="#i-flag"/></svg> ${bb}m` : '';
+
   }
 
   // ---- ループ ----
@@ -938,7 +960,7 @@
   game.spawn(0);
   function frame(now) {
     let dt = Math.min(0.1, (now - last) / 1000); last = now;
-    const paused = ui.title.classList.contains('show') || ui.pause.classList.contains('show');
+    const paused = ui.title.classList.contains('show') || ui.pause.classList.contains('show') || ui.goal.classList.contains('show');
     if (!paused) {
       // 転んだ直後はスローモーション
       const slow = S.status === 'fallen' && S.frame - S.fallFrame < 20 ? 0.35 : 1;
@@ -1007,7 +1029,7 @@
       const tp = S.char.torso.getPosition(); const [px, py] = W2S(tp.x, tp.y);
       CLIP.capture(canvas, px, py, W, H, DPR, now);
     }
-    const shownFace = ui.fail.classList.contains('show') ? ui.failFace : null;
+    const shownFace = ui.fail.classList.contains('show') ? ui.failFace : ui.goal.classList.contains('show') ? $('goalFace') : null;
     if (shownFace) {
       const fc = shownFace.getContext('2d'); fc.clearRect(0, 0, 240, 240);
       WT.drawFace(fc, waiter, faceNow, 120, 132, 82, (performance.now() - faceT0) / 1000);
@@ -1017,5 +1039,5 @@
   requestAnimationFrame(frame);
 
   // テスト用（自動操作で動作確認するため）
-  window.__yoro = { get game() { return game; }, get boxes() { return boxes; }, get mode() { return mode; }, force, openCloset, closeCloset, openGacha, closeGacha, GA, start, retry, restart, next, loadLevel, pause, resume, openZukan, closeZukan };
+  window.__yoro = { get game() { return game; }, get boxes() { return boxes; }, get mode() { return mode; }, force, openCloset, closeCloset, openGacha, closeGacha, GA, start, retry, restart, nextStage, loadLevel, pause, resume, openZukan, closeZukan };
 })();

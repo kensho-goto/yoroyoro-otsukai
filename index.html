@@ -31,20 +31,25 @@
   .out { color: #fff; -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill; }
   .hud { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 0; right: 0; pointer-events: none; z-index: 4; }
   .hud .center { display: flex; flex-direction: column; align-items: center; }
-  #dist { font-family: var(--num); font-size: 52px; line-height: 1.05; }
-  #dist small { font-size: 22px; margin-left: 2px; }
+  .stg { display: flex; align-items: center; gap: 8px; width: min(230px, 58vw); margin-top: 4px; }
+  .stg .pbar { height: 12px; border-radius: 6px; }
+  .sn { flex: none; width: 46px; height: 46px; border-radius: 50%; background: var(--pudding); box-shadow: 0 0 0 3px var(--ink); display: flex; align-items: center; justify-content: center; font-family: var(--num); font-size: 22px; color: var(--ink); }
+  .sn.nx { background: #fff; }
+  #dist { font-family: var(--num); font-size: 20px; display: flex; align-items: center; gap: 4px; }
+  #dist svg.ic { font-size: 24px; }
   .prog { display: flex; align-items: center; gap: 6px; width: min(210px, 56vw); margin-top: 2px; }
   .pbar { flex: 1; height: 8px; border-radius: 4px; background: rgba(255,255,255,.55); box-shadow: 0 0 0 2px var(--ink); overflow: hidden; }
   .pfill { height: 100%; width: 0; background: #fff; }
   .prog svg.ic { font-size: 26px; }
   #best { margin-top: 2px; font-family: var(--num); font-size: 15px; -webkit-text-stroke-width: 4px; }
   #best svg.ic { font-size: 18px; -webkit-text-stroke: 0; }
-  .timer { position: absolute; left: 14px; top: 4px; font-family: var(--num); font-size: 26px; display: flex; align-items: center; gap: 4px; }
-  .timer svg.ic { font-size: 26px; }
+  .info { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+  .timer { font-family: var(--num); font-size: 20px; display: flex; align-items: center; gap: 4px; }
+  .timer svg.ic { font-size: 24px; }
   .timer.hurry { color: #ff4d4d; animation: pulse .5s infinite; }
   @keyframes pulse { 50% { transform: scale(1.12); } }
   /* プリンのぐらぐら・体を保つ力：絵＋細いバーだけ */
-  .meters { position: fixed; left: 14px; top: calc(max(8px, env(safe-area-inset-top)) + 42px); pointer-events: none; z-index: 4; display: grid; gap: 6px; }
+  .meters { position: fixed; left: 14px; top: calc(max(8px, env(safe-area-inset-top)) + 96px); pointer-events: none; z-index: 4; display: grid; gap: 6px; }
   .meter { display: flex; align-items: center; gap: 5px; }
   .meter svg.ic { font-size: 24px; }
   .meter .bar { width: 64px; height: 8px; border-radius: 4px; background: rgba(255,255,255,.55); box-shadow: 0 0 0 2px var(--ink); overflow: hidden; }
@@ -226,8 +231,13 @@
   .coin { display: inline-block; width: .9em; height: .9em; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff2a8 0 18%, #ffcf3d 19% 100%); box-shadow: 0 0 0 2px var(--ink); vertical-align: -0.1em; position: relative; }
   .coin::after { content: ''; position: absolute; inset: 22%; border-radius: 50%; border: 2px solid #d99a12; }
   #fail .scr { justify-content: flex-end; }
+  #goal { background: linear-gradient(to bottom, rgba(20,30,45,0) 25%, rgba(20,30,45,.55) 100%); }
+  .goalw { font-family: var(--num); font-size: 96px; line-height: 1; color: var(--pudding); -webkit-text-stroke: 12px var(--ink); paint-order: stroke fill; animation: goalin .5s cubic-bezier(.2,1.6,.4,1) both; margin-bottom: 8px; }
+  @keyframes goalin { from { transform: scale(.2) rotate(-12deg); opacity: 0; } to { transform: none; opacity: 1; } }
   /* タイトル・ゲームオーバーのあいだは、遊ぶときの表示を出さない */
   body.menu .hud, body.menu .meters, body.menu .medal, body.menu .pads, body.menu .hint, body.menu .finger { display: none !important; }
+  .rec { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 6px; border-bottom: 1px solid #eef1f4; font-weight: 800; }
+  .rec b { font-family: var(--num); font-weight: 400; font-size: 24px; }
 </style>
 </head>
 <body class="menu">
@@ -254,11 +264,10 @@
   <symbol id="i-finger" viewBox="0 0 24 24"><path d="M9 13V4.5a1.6 1.6 0 0 1 3.2 0V11l5.2.9c1.4.3 2.3 1.6 2 3l-.9 4.6c-.3 1.4-1.4 2.5-2.9 2.5h-4.2c-1.1 0-2-.5-2.6-1.4L5 15.8c-.6-.8-.4-1.9.4-2.4.7-.5 1.7-.4 2.3.3z" fill="#fff" stroke="#3b2a1e" stroke-width="1.6" stroke-linejoin="round"/></symbol>
 </svg>
 <div class="hud">
-  <div class="timer out" id="time"><svg class="ic"><use href="#i-clock"/></svg><span id="timeN">20</span></div>
   <div class="center">
-    <div class="out" id="dist">0.0<small>m</small></div>
-    <div class="prog"><div class="pbar"><div class="pfill" id="progFill"></div></div><svg class="ic"><use href="#i-house"/></svg></div>
-    <div class="out" id="best"></div>
+    <div class="stg"><span class="sn" id="stgNow">1</span><div class="pbar"><div class="pfill" id="progFill"></div></div><span class="sn nx" id="stgNext">2</span></div>
+    <div class="info"><span class="timer out" id="time"><svg class="ic"><use href="#i-clock"/></svg><span id="timeN">20</span></span><span class="out" id="dist"></span></div>
+    <div id="best" hidden></div>
   </div>
 </div>
 
@@ -314,6 +323,17 @@
   </div>
 </div>
 
+<div class="overlay screen" id="goal">
+  <div class="scr">
+    <div class="grow"></div>
+    <div class="goalw">GOAL!</div>
+    <p class="tag" id="goalTag"></p>
+    <div class="who"><canvas class="face" id="goalFace" width="240" height="240"></canvas><div class="bubble" id="goalLine"></div></div>
+    <div class="pills"><span class="pill" id="goalNew" hidden></span><span class="pill" id="goalMedal" hidden></span></div>
+    <button class="btn" id="nextBtn">つぎへ</button>
+  </div>
+</div>
+
 <div class="overlay screen" id="fail">
   <div class="scr">
     <p class="tag" id="failTag"></p>
@@ -335,7 +355,7 @@
 <div class="overlay" id="records">
   <div class="card">
     <h2>きろく</h2>
-    <div class="rank" id="titleRank"></div>
+    <div class="rank" id="titleRank" hidden></div><div id="recBody"></div>
     <button class="btn sub" id="recordsClose" type="button">とじる</button>
   </div>
 </div>
@@ -343,7 +363,7 @@
 <div class="overlay" id="howto">
   <div class="card">
     <h2>あそびかた</h2>
-    <p class="rule">・左と右の足を、こうごに押して歩く。速く押すほど速い<br>・左右を同時に押すとジャンプ。空中でもう一回で2段ジャンプ<br>・ころぶ・プリンを落とす・時間切れでおしまい<br>・<svg class="ic"><use href="#i-pudding"/></svg> がたまるとプリンが飛ぶ。<svg class="ic"><use href="#i-body"/></svg> がへるとふらふら<br>・？の箱をとるとメダル。5枚でガチャ<br>・パソコンは F と J キー</p>
+    <p class="rule">・左と右の足を、こうごに押して歩く。速く押すほど速い<br>・おうちに着いたら GOAL。ステージはどこまでも続く<br>・左右を同時に押すとジャンプ。空中でもう一回で2段ジャンプ<br>・ころぶ・プリンを落とす・時間切れでおしまい<br>・<svg class="ic"><use href="#i-pudding"/></svg> がたまるとプリンが飛ぶ。<svg class="ic"><use href="#i-body"/></svg> がへるとふらふら<br>・？の箱をとるとメダル。5枚でガチャ<br>・パソコンは F と J キー</p>
     <button class="btn sub" id="howtoClose" type="button">とじる</button>
   </div>
 </div>
