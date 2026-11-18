@@ -601,7 +601,7 @@
     }
 
     return {
-      state, stage, spawn, step, charX, passedCheckpoint,
+      state, stage, spawn, step, charX, passedCheckpoint, fall, // fall はテスト用（すぐ転ばせる）
       snapshot,
       setInput(left, right) { state.input.left = !!left; state.input.right = !!right; },
       groundHeightAt: (x) => groundHeightAt(stage, x),

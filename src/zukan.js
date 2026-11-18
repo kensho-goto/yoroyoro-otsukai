@@ -42,8 +42,8 @@
   function load() {
     try {
       const o = JSON.parse(store.get(KEY) || '{}');
-      return { fall: o.fall || {}, face: o.face || {}, treasure: o.treasure || {}, event: o.event || {} };
-    } catch (e) { return { fall: {}, face: {}, treasure: {}, event: {} }; }
+      return { fall: o.fall || {}, face: o.face || {}, treasure: o.treasure || {}, event: o.event || {}, gag: o.gag || {}, gagv: o.gagv || {} };
+    } catch (e) { return { fall: {}, face: {}, treasure: {}, event: {}, gag: {}, gagv: {} }; }
   }
   let data = load();
   const save = () => store.set(KEY, JSON.stringify(data));
@@ -56,12 +56,18 @@
     return isNew;
   }
   const has = (kind, key) => !!(data[kind] && data[kind][key]);
+  // ころび芸の写真（いちばんおもしろいところ。このスマホの中だけ）
+  const PKEY = 'yoro.gagpic';
+  let pics = null;
+  const loadPics = () => { if (!pics) { try { pics = JSON.parse(store.get(PKEY) || '{}'); } catch (e) { pics = {}; } } return pics; };
+  function gagPic(id, url) { loadPics()[id] = url; store.set(PKEY, JSON.stringify(pics)); }
+  const GAGS = () => (window.YoroGags ? window.YoroGags.LIST : []);
   function people() { const WT = window.YoroWaiter; return WT ? WT.WAITERS.concat(WT.RARE || []) : []; }
   const FACE_KEYS = () => (window.YoroWaiter ? window.YoroWaiter.MOOD_KEYS : []).concat(['happy']);
   function count() {
     const faces = people().length * FACE_KEYS().length;
-    const total = FALLS.length + faces + TREASURES.length + EVENTS.length;
-    const got = FALLS.filter((f) => has('fall', f.id)).length + Object.keys(data.face).length
+    const total = FALLS.length + faces + TREASURES.length + EVENTS.length + GAGS().length;
+    const got = FALLS.filter((f) => has('fall', f.id)).length + Object.keys(data.face).length + GAGS().filter((d) => has('gag', d.id)).length
       + TREASURES.filter((t) => has('treasure', t.id)).length + EVENTS.filter((e) => has('event', e.id)).length;
     return { got, total };
   }
@@ -90,7 +96,11 @@
       const cells = fk.map((m) => `<canvas class="zf" width="72" height="72" data-w="${w.id}" data-m="${m}" title="${MOOD_NAMES[m]}"></canvas>`).join('');
       return `<div class="zrow"><div class="zn">${any || !w.rare ? w.name : '？？？'}</div><div class="zfs">${cells}</div></div>`;
     }).join('');
+    const gs = GAGS(), pc = loadPics();
+    const gcell = (d) => { const ok = has('gag', d.id), nv = d.vs ? d.vs.filter((v) => has('gagv', `${d.id}.${v.id}`)).length : 0;
+      return `<div class="zk zg2${ok ? '' : ' no'}"><b>${ok && pc[d.id] ? `<img src="${pc[d.id]}" alt="">` : ok ? '★' : '？'}</b><span>${ok ? d.name : d.hint}${ok && d.vs ? `<small>${nv}/${d.vs.length}しゅるい</small>` : ''}</span></div>`; };
     el.innerHTML = `<p class="zt">あつめた数 <b>${c.got}</b> / ${c.total}</p>`
+      + sec('ころび芸', gs.filter((d) => has('gag', d.id)).length, gs.length, `<p class="zs">ころぶと、毎回ちがう芸が出るよ。写真は いちばん おもしろいところ</p><div class="zg">${gs.map(gcell).join('')}</div>`)
       + sec('ころび方', FALLS.filter((f) => has('fall', f.id)).length, FALLS.length, `<div class="zg">${falls}</div>`)
       + sec('おたから', TREASURES.filter((t) => has('treasure', t.id)).length, TREASURES.length, `<div class="zg">${trs}</div>`)
       + sec('できごと', EVENTS.filter((e) => has('event', e.id)).length, EVENTS.length, `<div class="zg">${evs}</div>`)
@@ -106,5 +116,5 @@
     });
   }
 
-  window.YoroZukan = { FALLS, TREASURES, EVENTS, MOOD_NAMES, mark, has, count, pickTreasure, rareOf, render };
+  window.YoroZukan = { FALLS, TREASURES, EVENTS, MOOD_NAMES, mark, has, count, pickTreasure, rareOf, render, gagPic };
 })();

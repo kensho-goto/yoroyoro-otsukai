@@ -44,7 +44,7 @@
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     }
     const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
-    s.buffer = noiseBuf; f.type = type; f.frequency.value = freq; f.Q.value = q;
+    s.buffer = noiseBuf; s.loop = true; f.type = type; f.frequency.value = freq; f.Q.value = q;
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     s.connect(f); f.connect(g); g.connect(bus); s.start(t); s.stop(t + dur + 0.02);
   }
@@ -195,6 +195,63 @@
     },
     gust() { const t = ctx.currentTime; noise(t, 0.9, { vol: 0.16, freq: 500, q: 0.7, type: 'bandpass' }); },
     tap() { const t = ctx.currentTime; tone(880, t, 0.06, { type: 'sine', vol: 0.15 }); },
+    g(n) { const f = GAG[n]; if (f) f(ctx.currentTime); }, // ころび芸の音
+  };
+  // ころび芸の音（どれもその場で作る）
+  function wob(t, { type = 'sine', f0, f1, lfo, depth, vol, dur }) { // ゆれる音（たましい・おなら・UFO）
+    const o = ctx.createOscillator(), g = ctx.createGain(), l = ctx.createOscillator(), lg = ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.linearRampToValueAtTime(f1, t + dur);
+    l.frequency.value = lfo; lg.gain.value = depth; l.connect(lg); lg.connect(o.frequency);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.04); g.gain.setValueAtTime(vol, t + dur * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(sfxBus); o.start(t); l.start(t); o.stop(t + dur + 0.05); l.stop(t + dur + 0.05);
+  }
+  const GAG = {
+    clang(t) { [523, 787, 1046, 1410].forEach((f, i) => tone(f, t, 1.4 - i * 0.2, { type: 'sine', vol: 0.16 - i * 0.025 })); tone(900, t, 0.5, { type: 'square', vol: 0.04, to: 870 }); noise(t, 0.08, { vol: 0.3, freq: 3000, type: 'highpass' }); },
+    thud(t) { tone(70, t, 0.45, { type: 'sine', vol: 0.7, to: 30 }); noise(t, 0.3, { vol: 0.5, freq: 260 }); },
+    bonk(t) { tone(900, t, 0.12, { type: 'square', vol: 0.12, to: 300 }); tone(160, t, 0.15, { type: 'sine', vol: 0.4, to: 80 }); },
+    splat(t) { noise(t, 0.25, { vol: 0.5, freq: 900, q: 0.8, type: 'bandpass' }); tone(220, t, 0.18, { type: 'sine', vol: 0.3, to: 90 }); },
+    piano(t) { [36, 43, 48, 52, 55, 61, 66].forEach((m, i) => tone(N(m), t + i * 0.008, 1.6, { type: 'triangle', vol: 0.09 })); noise(t, 0.3, { vol: 0.4, freq: 300 }); },
+    crash(t) { for (let i = 0; i < 7; i++) tone(2000 + Math.random() * 3000, t + i * 0.025, 0.25, { type: 'sine', vol: 0.07 }); noise(t, 0.5, { vol: 0.45, freq: 4000, type: 'highpass' }); },
+    crunch(t) { for (let i = 0; i < 5; i++) noise(t + i * 0.04, 0.05, { vol: 0.35, freq: 1500 + i * 300, q: 2, type: 'bandpass' }); },
+    blocks(t) { for (let i = 0; i < 8; i++) tone(300 + Math.random() * 500, t + i * 0.05, 0.06, { type: 'square', vol: 0.06 }); },
+    stone(t) { noise(t, 0.6, { vol: 0.4, freq: 200, q: 1.5, type: 'bandpass' }); tone(90, t, 0.6, { type: 'sawtooth', vol: 0.06, to: 60 }); },
+    crack(t) { tone(2400, t, 0.08, { type: 'square', vol: 0.06, to: 1800 }); noise(t, 0.06, { vol: 0.3, freq: 3500, type: 'highpass' }); },
+    whoosh(t) { noise(t, 0.6, { vol: 0.3, freq: 1200, q: 0.8, type: 'bandpass' }); tone(300, t, 0.5, { type: 'sine', vol: 0.12, to: 1400 }); },
+    twinkle(t) { [96, 100, 103, 108].forEach((m, i) => tone(N(m), t + i * 0.06, 0.35, { type: 'sine', vol: 0.12 })); },
+    screen(t) { tone(140, t, 0.2, { type: 'sine', vol: 0.5, to: 60 }); noise(t, 0.2, { vol: 0.5, freq: 700 }); tone(1300, t + 0.02, 0.15, { type: 'square', vol: 0.05, to: 1100 }); },
+    squeak(t) { for (let i = 0; i < 4; i++) tone(1500 + i * 90, t + i * 0.18, 0.12, { type: 'sine', vol: 0.06, to: 1900 }); },
+    freeze(t) { for (let i = 0; i < 6; i++) tone(N(88 + i * 3), t + i * 0.04, 0.5, { type: 'sine', vol: 0.06 }); noise(t, 0.4, { vol: 0.15, freq: 6000, type: 'highpass' }); },
+    slide(t) { noise(t, 1.1, { vol: 0.12, freq: 2500, q: 0.6, type: 'bandpass' }); },
+    melt(t) { tone(600, t, 1.2, { type: 'sine', vol: 0.12, to: 120 }); for (let i = 0; i < 4; i++) tone(900 - i * 120, t + 0.3 + i * 0.22, 0.1, { type: 'sine', vol: 0.1, to: 400 }); },
+    soul(t) { wob(t, { f0: 500, f1: 900, lfo: 7, depth: 30, vol: 0.12, dur: 1.3 }); },
+    back(t) { tone(1200, t, 0.18, { type: 'sine', vol: 0.15, to: 200 }); },
+    zap(t) { for (let i = 0; i < 10; i++) tone(80 + Math.random() * 60, t + i * 0.035, 0.04, { type: 'sawtooth', vol: 0.12 }); noise(t, 0.5, { vol: 0.3, freq: 3000, type: 'highpass' }); tone(60, t + 0.35, 0.4, { type: 'sine', vol: 0.5, to: 30 }); },
+    flap(t) { for (let i = 0; i < 4; i++) noise(t + i * 0.16, 0.09, { vol: 0.3, freq: 600, q: 1, type: 'bandpass' }); },
+    kaa(t) { tone(700, t, 0.3, { type: 'sawtooth', vol: 0.08, to: 520 }); tone(700, t + 0.38, 0.3, { type: 'sawtooth', vol: 0.08, to: 520 }); },
+    inflate(t) { tone(200, t, 0.6, { type: 'square', vol: 0.07, to: 700 }); noise(t, 0.6, { vol: 0.12, freq: 2000, type: 'highpass' }); },
+    pfff(t) { tone(900, t, 1.0, { type: 'sawtooth', vol: 0.05, to: 300 }); noise(t, 1.0, { vol: 0.25, freq: 2500, q: 0.5, type: 'bandpass' }); },
+    boing(t) { tone(150, t, 0.35, { type: 'sine', vol: 0.35, to: 600 }); },
+    boing2(t) { tone(220, t, 0.35, { type: 'sine', vol: 0.35, to: 900 }); },
+    boing3(t) { tone(300, t, 0.4, { type: 'sine', vol: 0.35, to: 1300 }); },
+    drill(t) { tone(90, t, 1.2, { type: 'sawtooth', vol: 0.08, to: 140 }); noise(t, 1.2, { vol: 0.2, freq: 400, q: 2, type: 'bandpass' }); },
+    puha(t) { noise(t, 0.12, { vol: 0.3, freq: 1500 }); tone(500, t, 0.15, { type: 'triangle', vol: 0.15, to: 900 }); },
+    boyon(t) { for (let i = 0; i < 4; i++) tone(140 - i * 10, t + i * 0.13, 0.13, { type: 'sine', vol: 0.4 - i * 0.07, to: 90 }); },
+    fart(t) { wob(t, { type: 'sawtooth', f0: 95, f1: 70, lfo: 23, depth: 25, vol: 0.2, dur: 0.65 }); },
+    trap(t) { tone(200, t, 0.15, { type: 'square', vol: 0.08, to: 120 }); tone(1200, t + 0.15, 0.9, { type: 'sine', vol: 0.13, to: 200 }); },
+    shut(t) { tone(160, t, 0.12, { type: 'square', vol: 0.15, to: 90 }); noise(t, 0.1, { vol: 0.3, freq: 800 }); },
+    snore(t) { noise(t, 0.6, { vol: 0.14, freq: 300, q: 2, type: 'bandpass' }); noise(t + 0.8, 0.6, { vol: 0.08, freq: 900, q: 2, type: 'bandpass' }); },
+    pop(t) { tone(1400, t, 0.06, { type: 'square', vol: 0.12, to: 400 }); noise(t, 0.05, { vol: 0.3, freq: 3000, type: 'highpass' }); },
+    ufo(t) { wob(t, { f0: 700, f1: 760, lfo: 9, depth: 200, vol: 0.09, dur: 2 }); },
+    meow(t) { const f = 600 + Math.random() * 300; tone(f, t, 0.3, { type: 'sawtooth', vol: 0.05, to: f * 1.3 }); tone(f * 1.3, t + 0.15, 0.25, { type: 'triangle', vol: 0.08, to: f * 0.8 }); },
+    wind(t) { noise(t, 1.8, { vol: 0.3, freq: 600, q: 0.6, type: 'bandpass' }); tone(200, t, 1.6, { type: 'sine', vol: 0.06, to: 500 }); },
+    bloom(t) { [72, 76, 79, 84, 88].forEach((m, i) => tone(N(m), t + i * 0.07, 0.3, { type: 'triangle', vol: 0.12 })); },
+    shrink(t) { tone(1000, t, 0.55, { type: 'square', vol: 0.06, to: 2400 }); },
+    pip(t) { tone(1900, t, 0.05, { type: 'sine', vol: 0.08 }); },
+    poof(t) { noise(t, 0.45, { vol: 0.45, freq: 900 }); tone(300, t, 0.2, { type: 'triangle', vol: 0.15, to: 150 }); },
+    roll(t) { for (let i = 0; i < 10; i++) tone(70 + (i % 2) * 15, t + i * 0.12, 0.1, { type: 'sine', vol: 0.25 }); },
+    paper(t) { for (let i = 0; i < 3; i++) noise(t + i * 0.07, 0.08, { vol: 0.25, freq: 5000, type: 'highpass' }); },
+    sink(t) { for (let i = 0; i < 6; i++) tone(300 - i * 30, t + i * 0.12, 0.1, { type: 'sine', vol: 0.15, to: 180 - i * 20 }); },
+    snow(t) { noise(t, 1.2, { vol: 0.12, freq: 1800, q: 0.4, type: 'bandpass' }); },
   };
 
   // ---- BGM（のんびりしたオリジナルの曲。2小節×4のくり返し） ----

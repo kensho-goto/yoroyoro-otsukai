@@ -1,7 +1,7 @@
 // ヨロヨロおつかい — 画面の描画と操作
 (function () {
   const canvas = document.getElementById('c');
-  const ctx = canvas.getContext('2d');
+  let ctx = canvas.getContext('2d'); // ころび芸で主人公の写しを取るとき、いっとき別の紙にかく
   const $ = (id) => document.getElementById(id);
   const ui = {
     dist: $('dist'), time: $('time'), timeN: $('timeN'), best: $('best'), hint: $('hint'), prog: $('progFill'), finger: $('finger'),
@@ -126,12 +126,12 @@
   }
 
   // ---- 画面サイズ ----
-  let W = 0, H = 0, DPR = 1, scale = 60;
+  let W = 0, H = 0, DPR = 1, scale = 60, baseScale = 60, zoom = 1; // zoom＝ころび芸のときに寄る
   function resize() {
     DPR = Math.min(window.devicePixelRatio || 1, 2);
     W = window.innerWidth; H = window.innerHeight;
     canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
-    scale = Math.max(48, Math.min(H / 4.4, W / 4.6));
+    baseScale = Math.max(48, Math.min(H / 4.4, W / 4.6)); scale = baseScale * zoom;
   }
   window.addEventListener('resize', resize);
   resize();
@@ -149,6 +149,7 @@
   }
   const playing = () => S.status === 'play' && !ui.title.classList.contains('show') && !ui.pause.classList.contains('show');
   window.addEventListener('pointerdown', (e) => {
+    if (gag && !shownEnd && gag.t > 1.0) gag.skip = true; // ころび芸は、とちゅうでタップすると とばせる
     if (e.target.closest('.overlay.show') || e.target.closest('#sndBtn')) return;
     pointers.set(e.pointerId, e.clientX); updateInput(); e.preventDefault();
   }, { passive: false });
@@ -407,6 +408,8 @@
     faceNow = r.face; faceT0 = performance.now(); speak(waiter, r.mood, r.say);
     const fr = ZK.FALLS.find((f) => f.id === S.fallReason);
     if (fr) noteNew(ZK.mark('fall', fr.id), `ころび方「${fr.name}」`);
+    const gagName = gag && gag.def.name ? GG.nameOf(gag.def, gag.v) : '';
+    if (gag && gag.def.name) { noteNew(ZK.mark('gag', gag.def.id), `ころび芸「${gag.def.name}」`); if (gag.v) ZK.mark('gagv', `${gag.def.id}.${gag.v.id}`); }
     noteNew(ZK.mark('face', `${waiter.id}.${r.mood}`), `${waiter.name}の「${ZK.MOOD_NAMES[r.mood] || r.mood}」顔`);
     const total = runDist + Math.min(stage.goal, Math.max(0, S.bestX)); // ゲームオーバーまでに歩けたきょり
     const daily = mode === 'daily';
@@ -422,7 +425,7 @@
     for (const x of CL.newly(unlockAtStart, ctxNow())) extra.push(`${x.name}が使える！`);
     runNew = extra.concat(runNew);
     refreshTitle();
-    ui.failTag.textContent = tr(`${{ pudding: 'プリンを落とした', timeup: '時間切れ', rhythm: 'リズムがくずれた', stop: '止まってころんだ', hole: '穴に落ちた' }[S.fallReason] || 'ころんだ'}`);
+    ui.failTag.textContent = tr(`${{ pudding: 'プリンを落とした', timeup: '時間切れ', rhythm: 'リズムがくずれた', stop: '止まってころんだ', hole: '穴に落ちた' }[S.fallReason] || 'ころんだ'}${gagName ? ` → ${gagName}` : ''}`);
     $('failNum').innerHTML = `<small>ステージ</small> ${level}`;
     ui.failTitle.textContent = r.title;
     ui.failLine.textContent = r.say;
@@ -430,7 +433,7 @@
     ui.failDist.textContent = `${daily ? `今日のコース ${DY.daily().tries}回目\n` : ''}${level}軒目・${waiter.name}のおうちまで あと ${left.toFixed(1)}m\n歩いたきょり ${total.toFixed(1)}m${newBest ? '' : `（${daily ? '今日の' : ''}ベスト ${curBest.toFixed(1)}m）`}${runTreasure ? `\nこの回のおたから ${runTreasure}こ` : ''}`;
     $('retryBtn').textContent = 'もう一回';
     ui.retry.disabled = true; setTimeout(() => { ui.retry.disabled = false; }, 700); // 歩いていた指でうっかり押さないように
-    lastShare = `ヨロヨロおつかい${daily ? `の今日のコース（${DY.label()}）` : ''} ステージ${level}で${waiter.name}に「${r.say}」と言われた…`;
+    lastShare = `ヨロヨロおつかい${daily ? `の今日のコース（${DY.label()}）` : ''} ステージ${level}で${gagName ? `「${gagName}」になって` : ''}${waiter.name}に「${r.say}」と言われた…`;
     clipInfo = { dist: `ステージ${level}`, title: r.title, say: r.say, tag: ui.failTag.textContent };
     resetVid();
     // 歩いたきょりを、じぶんの記録ランキングに入れて上位を出す（このスマホの中だけ。今日のコースは入れない）
@@ -1287,6 +1290,108 @@
       ctx.lineWidth = 2; ctx.strokeStyle = '#3b2a1e'; star4(px, py, scale * 0.11, '#ffd23a');
     }
   }
+  // ---- ころび芸（転んだあとの、毎回ちがうばかばかしいできごと。gags.js に一覧） ----
+  const GG = window.YoroGags || { LIST: [], pick: () => null, pickV: () => null, nameOf: (d) => d.name, total: () => 0 };
+  let gag = null; // 今やっている芸
+  const GBOX = { l: -1.7, r: 2.0, b: -0.7, t: 2.8 }; // 写しを取る広さ（地面の足もとから、メートル）
+  // 主人公を今の形のまま、別の紙に写す
+  function takeSnap() {
+    const c = S.char; if (!c) return null;
+    const keepS = scale; scale = baseScale * 1.7; // 寄っても ぼやけないよう、大きめに写す
+    const tp = c.torso.getPosition(), ax = tp.x, ay = game.groundHeightAt(tp.x), s = scale;
+    const w = (GBOX.r - GBOX.l) * s, h = (GBOX.t - GBOX.b) * s;
+    const cv = document.createElement('canvas'); cv.width = Math.ceil(w * DPR); cv.height = Math.ceil(h * DPR);
+    const g2 = cv.getContext('2d'), [sx, sy] = W2S(ax, ay);
+    g2.setTransform(DPR, 0, 0, DPR, (-GBOX.l * s - sx) * DPR, (GBOX.t * s - sy) * DPR);
+    const keep = ctx; ctx = g2; try { drawChar(); } finally { ctx = keep; scale = keepS; }
+    let l = 9, r = -9, b = 9, t = -9;
+    for (const bd of [c.head, c.torso, c.tray, c.L.thigh, c.L.shin, c.R.thigh, c.R.shin]) {
+      const p = bd.getPosition(); l = Math.min(l, p.x - ax); r = Math.max(r, p.x - ax); b = Math.min(b, p.y - ay); t = Math.max(t, p.y - ay);
+    }
+    const hp = c.head.getPosition();
+    const bb = { l: Math.max(GBOX.l, l - 0.3), r: Math.min(GBOX.r, r + 0.4), b: Math.max(GBOX.b, b - 0.3), t: Math.min(GBOX.t, t + 0.35) };
+    return { img: cv, ax: -GBOX.l * s, ay: GBOX.t * s, w, h, s, x: ax, y: ay, bb, cx: (bb.l + bb.r) / 2, cy: (bb.b + bb.t) / 2, hx: hp.x - ax, hy: hp.y - ay, ha: c.head.getAngle(), tints: {} };
+  }
+  // 写しをかく。(x, y)＝写しの足もとを置く世界の位置。px/py＝回す中心（足もとからのずれ）、scr＝画面の位置で指定
+  function drawSnap(sn, x, y, o = {}) {
+    if (!sn) return;
+    const px = o.px || 0, py = o.py || 0, k = scale / sn.s;
+    ctx.save();
+    if (o.clipY !== undefined) { const [, cy] = W2S(0, o.clipY); ctx.beginPath(); ctx.rect(-W, -H * 2, W * 3, cy + H * 2); ctx.clip(); }
+    if (o.alpha !== undefined) ctx.globalAlpha *= Math.max(0, o.alpha);
+    const [X, Y] = o.scr ? [x, y] : W2S(x + px, y + py);
+    ctx.translate(X, Y); if (o.rot) ctx.rotate(o.rot); ctx.scale((o.sx ?? 1) * k, (o.sy ?? 1) * k);
+    const ox = -sn.ax - px * sn.s, oy = -sn.ay + py * sn.s;
+    if (o.circle) { const [mx, my, r] = o.circle; ctx.beginPath(); ctx.arc(ox + sn.ax + mx * sn.s, oy + sn.ay - my * sn.s, r * sn.s, 0, Math.PI * 2); ctx.clip(); }
+    ctx.drawImage(sn.img, ox, oy, sn.w, sn.h);
+    ctx.restore();
+  }
+  // 写しの一部（かけら）を、世界の (x, y) を中心に回してかく。rx, ry, rw, rh は足もとからのメートル
+  function drawPiece(sn, rx, ry, rw, rh, x, y, rot) {
+    const k = DPR, [X, Y] = W2S(x, y);
+    ctx.save(); ctx.translate(X, Y); ctx.rotate(rot || 0);
+    const w = rw * scale, h = rh * scale;
+    ctx.drawImage(sn.img, (sn.ax + rx * sn.s) * k, (sn.ay - (ry + rh) * sn.s) * k, rw * sn.s * k, rh * sn.s * k, -w / 2, -h / 2, w, h);
+    ctx.restore();
+  }
+  // 写しに色をかぶせたもの（石・氷・こげ・たましい。iPhone でも動くよう、色を上からぬる方法で）
+  function tintSnap(sn, col, a) {
+    const key = col + a; if (sn.tints[key]) return sn.tints[key];
+    const cv = document.createElement('canvas'); cv.width = sn.img.width; cv.height = sn.img.height;
+    const g2 = cv.getContext('2d'); g2.drawImage(sn.img, 0, 0); g2.globalCompositeOperation = 'source-atop'; g2.globalAlpha = a; g2.fillStyle = col; g2.fillRect(0, 0, cv.width, cv.height);
+    return (sn.tints[key] = { ...sn, img: cv, tints: {} });
+  }
+  // 芸の中から使う道具
+  const GAPI = {
+    get c() { return ctx; }, get s() { return scale; }, get W() { return W; }, get H() { return H; },
+    P: (x, y) => W2S(x, y), gy: (x) => game.groundHeightAt(x),
+    takeSnap, snapNow() { const sn = takeSnap(); if (sn) this.snap = sn; return this.snap; },
+    draw: drawSnap, piece: drawPiece, tint: tintSnap,
+    at(t, key, fn) { if (this.t >= t && !this.fired.has(key)) { this.fired.add(key); fn(); } },
+    puff, sparkle,
+    splat(x, y, col, n = 14) { for (let i = 0; i < n; i++) { const a = -Math.PI * Math.random(), sp = 1.5 + Math.random() * 3; parts.push({ k: 'blob', x, y, vx: Math.cos(a) * sp, vy: -Math.sin(a) * sp, g: 9, life: 0, max: 1.2, r: 0.05 + Math.random() * 0.07, col: col || '#ffd23a' }); } },
+    shake(a) { shakeA = Math.max(shakeA, a); }, buzz(ms) { if (navigator.vibrate) navigator.vibrate(ms); }, sfx(n) { snd.play('g', n); },
+    head() { const p = S.char.head.getPosition(); return [p.x, p.y]; }, headA() { return S.char.head.getAngle(); },
+    torso() { const p = S.char.torso.getPosition(); return [p.x, p.y]; },
+    bodyPt(i) { const c = S.char, b = [c.torso, c.head, c.L.thigh, c.R.shin, c.tray, c.R.thigh][i % 6].getPosition(); return [b.x, b.y]; },
+    shirt: () => OUT().shirt, skin: () => SK().face,
+    // 音のことば（ドーン！など）。from 秒から dur 秒だけ、ポンと出て消える
+    word(str, x, y, from, o = {}) {
+      const a = this.t - from, dur = o.dur || 1.0; if (a < 0 || a > dur) return;
+      const p = a / 0.14 - 1, k = a < 0.14 ? Math.max(0.01, 1 + 2.9 * p ** 3 + 1.9 * p ** 2) : 1, al = a > dur - 0.25 ? (dur - a) / 0.25 : 1;
+      const [X, Y] = o.scr ? [x, y] : W2S(x, y + a * 0.25), size = o.scr ? o.size : (o.size || 0.5) * scale;
+      ctx.save(); ctx.globalAlpha = al; ctx.translate(X, Y); ctx.rotate(o.rot ?? -0.1); ctx.scale(k, k);
+      ctx.font = `${Math.round(size)}px "Dela Gothic One", "Hiragino Sans", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = size * 0.24; ctx.strokeText(str, 0, 0); ctx.fillStyle = o.col || '#fff'; ctx.fillText(str, 0, 0);
+      ctx.restore();
+    },
+  };
+  function startGag() {
+    gag = null;
+    if (!S.char || !GG.LIST.length) return;
+    const cx = { reason: S.fallReason, who: waiter.id, night: themeOf(level).night, level };
+    let pk;
+    if (force.gag) { const d = GG.LIST.find((x) => x.id === force.gag); if (d) pk = { def: d, v: GG.pickV(d, cx, force.gagv) }; }
+    if (!pk) pk = GG.pick(cx, (id) => ZK.has('gag', id));
+    const tp = S.char.torso.getPosition();
+    gag = Object.assign(Object.create(GAPI), { def: pk.def, v: pk.v, t0: performance.now(), t: 0, dt: 0, st: {}, fired: new Set(), hide: false, cam: null, skip: false, pic: false, x: tp.x, y: game.groundHeightAt(tp.x) });
+    gag.snap = takeSnap();
+    gagRun('start');
+  }
+  function gagRun(fn) {
+    if (!gag || !gag.def[fn]) return;
+    try { gag.def[fn](gag); } catch (e) { console.warn('gag', gag.def.id, e); gag.hide = false; gag.def = { id: gag.def.id, name: gag.def.name, dur: 0.6 }; }
+  }
+  // ずかん用に、芸のいちばんおもしろいところを小さな写真で取っておく
+  function gagPhoto() {
+    try {
+      if (!ZK.gagPic) return;
+      const sz = Math.min(W, H) * 0.86, [cx, cy] = gag.def.id === 'screen' ? [W / 2, H * 0.45] : [W * 0.45, H * 0.58];
+      const cv = document.createElement('canvas'); cv.width = cv.height = 132;
+      cv.getContext('2d').drawImage(canvas, (cx - sz / 2) * DPR, (cy - sz / 2) * DPR, sz * DPR, sz * DPR, 0, 0, 132, 132);
+      ZK.gagPic(gag.def.id, cv.toDataURL('image/jpeg', 0.72));
+    } catch (e) { /* 写真が取れなくても遊べる */ }
+  }
   // 足あと（地面についた足。青＝ひだり・ピンク＝みぎ。交互にならんでいればいいリズム）
   const prints = [];
   function addPrint(side) {
@@ -1556,6 +1661,7 @@
             if (ev.type === 'pudding') { const tr = S.char.tray.getPosition(); splat(tr.x, tr.y + 0.1); }
             if (navigator.vibrate) navigator.vibrate(60);
           }
+          startGag();
         }
         else {
           snd.play(ev.type, ev.v);
@@ -1589,15 +1695,18 @@
       }
       if (S.status === 'clear') deliver();
       if (S.status === 'play') pickupBoxes();
-      if (S.status === 'fallen' && S.frame - S.fallFrame > 36) {
+      if (gag) { const t = (now - gag.t0) / 1000; gag.dt = Math.min(0.05, Math.max(0, t - gag.t)); gag.t = t; if (!gag.pic && gag.t >= (gag.def.peak || 1)) { gag.pic = true; gag.wantPic = true; } }
+      if (S.status === 'fallen' && (gag ? gag.t >= gag.def.dur || gag.skip : S.frame - S.fallFrame > 36)) {
         if (!shownEnd) { shownEnd = true; onFall(); }
-      } else if (S.status === 'play') shownEnd = false;
+      } else if (S.status === 'play') { shownEnd = false; gag = null; }
     }
     const onTitle = ui.title.classList.contains('show');
+    zoom += ((gag ? gag.def.zoom || 1.3 : 1) - zoom) * 0.07; if (Math.abs(zoom - 1) < 0.002) zoom = 1; scale = baseScale * zoom;
     if (S.char) {
       const p = S.char.torso.getPosition();
-      cam.x += (p.x + (onTitle ? 1.0 : 0.6) - cam.x) * 0.08; // タイトルでは家が見えるよう少し左に寄せる
-      cam.y += (game.groundHeightAt(p.x) + (onTitle ? 0.2 : 0.9) - cam.y) * 0.05; // ボタンにかくれないよう地面を上げる
+      const gc = gag && gag.cam; // ころび芸のあいだは、芸が見やすい所を見る
+      cam.x += ((gc ? gc[0] : p.x + (onTitle ? 1.0 : 0.6)) - cam.x) * 0.08; // タイトルでは家が見えるよう少し左に寄せる
+      cam.y += ((gc ? gc[1] - 0.1 : game.groundHeightAt(p.x) + (onTitle ? 0.2 : 0.9)) - cam.y) * 0.05; // ボタンにかくれないよう地面を上げる
     }
     shakeA *= 0.86; if (shakeA < 0.3) shakeA = 0;
     const shx = shakeA ? (Math.random() - 0.5) * 2 * shakeA : 0, shy = shakeA ? (Math.random() - 0.5) * 2 * shakeA : 0;
@@ -1612,16 +1721,19 @@
       const [fx, fy] = W2S(game.charX(), game.groundHeightAt(game.charX())), tt = performance.now() / 1000;
       ctx.save(); ctx.translate(fx, fy); ctx.rotate(Math.sin(tt * 2.3) * 0.07 + Math.sin(tt * 5.1) * 0.015); ctx.translate(-fx, -fy);
       drawChar(); ctx.restore();
-    } else drawChar();
+    } else if (!(gag && gag.hide)) drawChar();
+    gagRun('draw');
     drawParts(false);
-    drawDizzy();
+    if (!gag) drawDizzy();
     drawCharge();
     drawPops();
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    gagRun('screen');
+    if (gag && gag.wantPic) { gag.wantPic = false; gagPhoto(); }
     drawParts(true);
     updateHud();
     if (S.char && !ui.title.classList.contains('show')) {
-      if (S.status === 'fallen') CLIP.stopAfter(1400, now); // 転んだあと少しだけ取って止める
+      if (S.status === 'fallen') CLIP.stopAfter(gag ? gag.def.dur * 1000 + 300 : 1400, now); // 転んだあと（ころび芸がおわるまで）取って止める
       const tp = S.char.torso.getPosition(); const [px, py] = W2S(tp.x, tp.y);
       CLIP.capture(canvas, px, py, W, H, DPR, now);
     }
