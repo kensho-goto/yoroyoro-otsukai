@@ -27,6 +27,9 @@
   const force = {}; // テスト用：{ rare, wind, gold }
   const CL = window.YoroCloset, DY = window.YoroDays;
   const GA = window.YoroGacha || { COST: 5, medals: 0, addMedals() {}, canPull: () => false, worn: () => ({}), effects: () => ({ jump: 1, wind: 1, speed: 0, balance: 1, pudding: 1 }), ITEMS: [], RARITY: {}, SLOTS: {}, count: () => ({ got: 0, total: 0 }), has: () => false, renderEquip() {} };
+  // ミッション（ステージごとの小さなお題）。mis＝このステージのお題・mst＝この道で数えたもの
+  const MI = window.YoroMissions || { pick: () => [], update: () => [], finish: () => 0, progress: () => '', done: () => 0, kinds: () => ({ seen: 0, total: 0 }) };
+  let mis = [], mst = {};
   let wear = GA.worn(); // ガチャで出て、身につけているもの（くつ・ぼうし・おぼん・すがた）
   // おたからのメダル：めずらしいほど多い
   const medalOf = (t) => (t.w >= 12 ? 1 : t.w >= 5 ? 2 : t.w >= 2 ? 3 : 5);
@@ -75,6 +78,9 @@
     const windy = n >= 3 && (force.wind != null ? force.wind !== 0 : R() < 0.15);
     S.wind = (windy ? (force.wind || (R() < 0.5 ? -4 : 4)) : 0) * S.fx.wind;
     makeBoxes(R);
+    mst = { boxes: 0, high: 0, jumps: 0, jump2: 0, boing: 0, combo: 0, stumble: 0, wobble: 0, stop: 0, shaky: 0, fast: 0, oops: 0, time: 0 };
+    mis = MI.pick(misCtx());
+    paintMis();
     let msg = YL.en
       ? (n === 1 ? `Deliver the pudding<br>to ${waiter.name}!`
         : n === 3 ? `Next: ${poss(waiter.name)} house<br>Tap both sides to jump`
@@ -86,6 +92,7 @@
     if (S.wind) { const head = S.wind < 0; msg = `${head ? jaen('向かい風だ！', 'Headwind!') : jaen('追い風だ！', 'Tailwind!')}<br>${msg.split('<br>')[0]}`; noteNew(ZK.mark('event', head ? 'headwind' : 'tailwind'), jaen(`できごと「${head ? '向かい風' : '追い風'}」`, `Event: ${head ? 'Headwind' : 'Tailwind'}`)); }
     if (n === 1 && goldDay) msg = jaen('きょうは<br><b>金のプリンの日！</b>', "It's<br><b>Golden Pudding Day!</b>");
     if (n === 1 && mode === 'daily') msg = jaen(`きょうのコース<br>${DY.label()}`, `Daily Course<br>${DY.label()}`);
+    if (mis.length) msg += `<small class="hm">${mis.some((m) => m.isNew) ? '<i>NEW</i> ' : ''}${jaen('ミッション', 'Mission')}：${mis.map((m) => m.text).join(jaen('・', ' · '))}</small>`;
     showBanner(tr(msg));
     if (n > 1 && (rare || S.wind)) { snd.play(S.wind ? 'gust' : 'event'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 3000); }
   }
@@ -119,6 +126,7 @@
       if (d > 0.5) continue;
       const t = ZK.pickTreasure(); if (!t) continue;
       b.taken = performance.now(); b.item = t; runTreasure++; sparkle(b.x, b.y, 12);
+      mst.boxes++; if (b.high) mst.high++;
       const isNew = noteNew(ZK.mark('treasure', t.id), jaen(`おたから「${t.name}」`, `Treasure: ${t.name}`));
       const m = medalOf(t), could = GA.canPull(); GA.addMedals(m); runMedals += m;
       pop(`${t.name} +${m}${isNew ? jaen(' NEW！', ' NEW!') : ''}`, isNew ? '#d48a00' : '#7a4ad6');
@@ -126,6 +134,27 @@
       paintMedal(true);
       snd.play('treasure', ZK.rareOf(t));
     }
+  }
+  // ---- ミッション ----
+  function misCtx() { return { level, boxes: boxes.length, high: boxes.filter((b) => b.high).length, springs: stage.springs.length, timeLimit: stage.timeLimit, seed: mode === 'daily' ? DY.seed() : 0 }; }
+  function paintMis() {
+    const el = $('mis'); if (!el) return;
+    document.body.dataset.mis = mis.length; // 札が多いときは、左のメーターを下へずらす
+    el.innerHTML = mis.map((m) => {
+      const pr = m.state === 'go' ? MI.progress(m, mst) : '';
+      return `<span class="mi ${m.state}"><b>${m.state === 'ok' ? '✓' : m.state === 'ng' ? '✕' : ''}</b>${tr(m.text)}${pr ? ` <em>${pr}</em>` : ''}</span>`;
+    }).join('');
+  }
+  let misShown = '';
+  function tickMis() {
+    if (!mis.length || S.status !== 'play') return;
+    mst.time = elapsed; mst.oops = mst.stumble + mst.wobble + mst.stop;
+    for (const m of MI.update(mis, mst, misCtx())) {
+      if (m.state === 'ok') { pop(jaen(`ミッション達成！ +${m.medal}`, `Mission done! +${m.medal}`), '#d48a00'); snd.play('best'); }
+      else pop(jaen('ミッション しっぱい…', 'Mission failed…'), '#7a8796');
+    }
+    const key = mis.map((m) => m.state + MI.progress(m, mst)).join();
+    if (key !== misShown) { misShown = key; paintMis(); }
   }
   function showBanner(html) {
     ui.hint.innerHTML = html; ui.hint.style.opacity = 1;
@@ -240,6 +269,10 @@
     faceNow = 'happy'; faceT0 = performance.now();
     snd.play('clear'); snd.bgm(false); confetti(); speak(waiter, 'happy', goalSay, 1.1); // ファンファーレのあとに よろこぶ声
     fails = 0;
+    const misMedal = MI.finish(mis); paintMis();
+    if (misMedal) { GA.addMedals(misMedal); runMedals += misMedal; paintMedal(true); }
+    const gmi = $('goalMis');
+    if (gmi) { gmi.hidden = !mis.length; gmi.innerHTML = mis.map((m) => `<span class="mi ${m.state}"><b>${m.state === 'ok' ? '✓' : '✕'}</b>${tr(m.text)}${m.state === 'ok' ? ` <i>+${m.medal}</i>` : ''}</span>`).join(''); }
     runDist += stage.goal;
     CL.addRun(stage.goal);
     if (mode === 'daily') DY.addDaily(level);
@@ -416,8 +449,8 @@
   function paintRecords() {
     const st = CL.stats();
     $('recBody').innerHTML = (YL.en
-      ? [['Current stage', stageNow], ['Stages cleared', `${stageClears}`], ['Total distance walked', `${Math.floor(st.total || 0)}m`], ['Daily Course', `Stage ${dailyStage()}`]]
-      : [['いまのステージ', stageNow], ['クリアした回数', `${stageClears}回`], ['歩いたきょり（合計）', `${Math.floor(st.total || 0)}m`], ['きょうのコース', `ステージ ${dailyStage()}`]])
+      ? [['Current stage', stageNow], ['Stages cleared', `${stageClears}`], ['Missions done', `${MI.done()}`], ['Total distance walked', `${Math.floor(st.total || 0)}m`], ['Daily Course', `Stage ${dailyStage()}`]]
+      : [['いまのステージ', stageNow], ['クリアした回数', `${stageClears}回`], ['ミッション達成', `${MI.done()}回`], ['歩いたきょり（合計）', `${Math.floor(st.total || 0)}m`], ['きょうのコース', `ステージ ${dailyStage()}`]])
       .map(([k, v]) => `<div class="rec"><span>${k}</span><b>${v}</b></div>`).join('');
   }
   // タイトルに、じぶんの記録の上位を出す
@@ -1698,6 +1731,9 @@
           startGag();
         }
         else {
+          if (ev.type in mst && ev.type !== 'combo') mst[ev.type]++;
+          if (ev.type === 'jump') mst.jumps++;
+          if (ev.type === 'combo') mst.combo++;
           snd.play(ev.type, ev.v);
           if ((ev.type === 'land' || ev.type === 'boing') && S.char) { const tp = S.char.torso.getPosition(); puff(tp.x, game.groundHeightAt(tp.x), 8, true); shakeA = Math.max(shakeA, ev.type === 'land' ? 4 : 3); }
           if (ev.type === 'stumble') pop((YL.en ? { same: 'Same foot!', fast: 'Too fast!', slow: 'Too slow!' } : { same: '同じ足！', fast: 'あせりすぎ！', slow: 'もたもた！' })[ev.v.why] || jaen('おっと！', 'Whoops!'), ev.v.bad > 0.6 ? '#e8303a' : '#ff8a00');
@@ -1727,8 +1763,10 @@
         if (!passedBest && curBest > 0 && tot > curBest) { passedBest = true; pop(mode === 'daily' ? jaen('今日のベスト こえた！', "Beat today's best!") : jaen('自己ベスト こえた！', 'New personal best!'), '#d48a00'); snd.play('best'); }
         if (tot >= nextMile) { pop(jaen(`${nextMile}m とっぱ！`, `${nextMile}m reached!`), '#2f6fd6'); snd.play('checkpoint'); nextMile += 50; }
       }
-      if (S.status === 'clear') deliver();
+      if (S.status === 'play') { if ((S.danger || 0) > 0.7) mst.shaky++; if (spdShown >= 2.3) mst.fast++; }
       if (S.status === 'play') pickupBoxes();
+      tickMis();
+      if (S.status === 'clear') deliver();
       if (gag) { const t = (now - gag.t0) / 1000; gag.dt = Math.min(0.05, Math.max(0, t - gag.t)); gag.t = t; if (!gag.pic && gag.t >= (gag.def.peak || 1)) { gag.pic = true; gag.wantPic = true; } }
       if (S.status === 'fallen' && (gag ? gag.t >= gag.def.dur || gag.skip : S.frame - S.fallFrame > 36)) {
         if (!shownEnd) { shownEnd = true; onFall(); }
@@ -1793,5 +1831,5 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVersion(); });
   if (window.YP) YP.ready.then(() => YP.loaded()); // ゲームサイトに「読みこみ終わり」を知らせる
   // テスト用（自動操作で動作確認するため）
-  window.__yoro = { get game() { return game; }, get boxes() { return boxes; }, get mode() { return mode; }, force, openCloset, closeCloset, openGacha, closeGacha, GA, start, retry, restart, nextStage, loadLevel, pause, resume, openZukan, closeZukan };
+  window.__yoro = { get game() { return game; }, get boxes() { return boxes; }, get mode() { return mode; }, force, openCloset, closeCloset, openGacha, closeGacha, GA, start, retry, restart, nextStage, loadLevel, pause, resume, openZukan, closeZukan, get mis() { return mis; }, get mst() { return mst; } };
 })();

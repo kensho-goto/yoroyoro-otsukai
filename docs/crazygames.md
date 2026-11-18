@@ -25,7 +25,8 @@ python3 tools/build-portal.py
   Deliver a wobbly pudding on a tray — one step at a time. Tap your left and right feet in rhythm to walk, tap both to jump,
   and don't stop, rush, or trip. Every fall turns into a ridiculous wipeout: crushed by a piano, frozen solid, carried off by birds,
   abducted by a UFO… there are 29 kinds to collect. The people waiting at home will cry, sulk, or get really mad.
-  Collect medals from ? boxes, spin the Gacha for new outfits, and see how far you can go. Stages never end.
+  Every stage brings a little mission — grab the high box, never stop, hit top speed — and new kinds keep appearing as you go.
+  Collect medals from ? boxes and missions, spin the Gacha for new outfits, and see how far you can go. Stages never end.
 - **Controls**: Mobile — tap the left / right half of the screen. Keyboard — F (left foot) and J (right foot). Tap both at once to jump.
 - **Tags（候補）**: ragdoll, physics, funny, walking, casual, one-button(×), difficult, 2 player(×)
 - **Age rating**: PEGI 12 相当（サイトの決まり）。暴力・血の表現なし（ころぶのはギャグ表現）。
