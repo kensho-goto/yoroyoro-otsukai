@@ -26,7 +26,7 @@
       try { localStorage.setItem(KEY, HASH); } catch (e) { /* 保存できなくても入れる */ }
       gate.hidden = true;
     } else {
-      msg.textContent = '合言葉がちがいます';
+      msg.textContent = jaen('合言葉がちがいます', 'Wrong passcode. Try again!');
       input.select();
     }
   }

@@ -5,7 +5,16 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存できなくても遊べる */ } },
   };
   // 使えるようになる条件：total=合計で歩いたきょり・best=自己ベスト・runs=遊んだ回数・zukan=ずかんの数・streak=れんぞく日数・treasure=おたから
-  const CARRY = [
+  // 英語の運ぶもの名は文の中に入る（「プリン」の代わり）ので小文字の名詞。最初は必ず 'pudding'
+  const CARRY = YL.en ? [
+    { id: 'pudding', name: 'pudding', icon: 'c.pudding' },
+    { id: 'dango', name: 'dango', icon: 'c.dango', need: { total: 100 } },
+    { id: 'cake', name: 'shortcake', icon: 'c.cake', need: { best: 40 } },
+    { id: 'egg', name: 'fried egg', icon: 'c.egg', need: { zukan: 25 } },
+    { id: 'suika', name: 'watermelon', icon: 'c.suika', need: { total: 500 } },
+    { id: 'goldfish', name: 'goldfish bowl', icon: 'c.goldfish', need: { best: 120 } },
+    { id: 'goldpudding', name: 'golden pudding', icon: 'c.goldpudding', need: { treasure: 'goldpudding' } },
+  ] : [
     { id: 'pudding', name: 'プリン', icon: 'c.pudding' },
     { id: 'dango', name: 'おだんご', icon: 'c.dango', need: { total: 100 } },
     { id: 'cake', name: 'ショートケーキ', icon: 'c.cake', need: { best: 40 } },
@@ -14,7 +23,15 @@
     { id: 'goldfish', name: '金魚ばち', icon: 'c.goldfish', need: { best: 120 } },
     { id: 'goldpudding', name: '金のプリン', icon: 'c.goldpudding', need: { treasure: 'goldpudding' } },
   ];
-  const OUTFITS = [
+  const OUTFITS = YL.en ? [
+    { id: 'normal', name: 'Usual', shirt: '#ff9f43', apron: '#fff', pants: '#3f639a', shoe: '#d4493a' },
+    { id: 'jersey', name: 'Red Tracksuit', shirt: '#e8303a', apron: null, pants: '#e8303a', shoe: '#ffffff', stripe: '#fff', need: { runs: 10 } },
+    { id: 'rain', name: 'Yellow Raincoat', shirt: '#ffd23a', apron: null, pants: '#3f639a', shoe: '#ffd23a', hat: 'hood', need: { total: 250 } },
+    { id: 'pajama', name: 'Pajamas', shirt: '#8ec5ff', apron: null, pants: '#8ec5ff', shoe: '#ff9ec7', hat: 'nightcap', dots: true, need: { streak: 3 } },
+    { id: 'ninja', name: 'Ninja', shirt: '#39405a', apron: null, pants: '#39405a', shoe: '#22222a', hat: 'band', need: { best: 80 } },
+    { id: 'chef', name: 'Chef', shirt: '#ffffff', apron: '#ffffff', pants: '#3b3b3b', shoe: '#3b3b3b', hat: 'chef', need: { zukan: 50 } },
+    { id: 'prince', name: 'Prince', shirt: '#7a5af8', apron: null, pants: '#ffffff', shoe: '#7a5af8', hat: 'crown', need: { treasure: 'crown' } },
+  ] : [
     { id: 'normal', name: 'いつもの', shirt: '#ff9f43', apron: '#fff', pants: '#3f639a', shoe: '#d4493a' },
     { id: 'jersey', name: '赤ジャージ', shirt: '#e8303a', apron: null, pants: '#e8303a', shoe: '#ffffff', stripe: '#fff', need: { runs: 10 } },
     { id: 'rain', name: '黄色カッパ', shirt: '#ffd23a', apron: null, pants: '#3f639a', shoe: '#ffd23a', hat: 'hood', need: { total: 250 } },
@@ -23,7 +40,7 @@
     { id: 'chef', name: 'コックさん', shirt: '#ffffff', apron: '#ffffff', pants: '#3b3b3b', shoe: '#3b3b3b', hat: 'chef', need: { zukan: 50 } },
     { id: 'prince', name: '王子さま', shirt: '#7a5af8', apron: null, pants: '#ffffff', shoe: '#7a5af8', hat: 'crown', need: { treasure: 'crown' } },
   ];
-  const TREASURE_NAME = { goldpudding: '金のプリン', crown: '王かん' };
+  const TREASURE_NAME = YL.en ? { goldpudding: 'Golden Pudding', crown: 'Crown' } : { goldpudding: '金のプリン', crown: '王かん' };
 
   // 遊んだ記録（合計きょり・回数）
   function stats() {
@@ -34,6 +51,15 @@
   // 条件の文と、あとどれくらいか
   function needText(n, ctx) {
     if (!n) return '';
+    if (YL.en) {
+      if (n.total != null) return `Walk ${n.total}m total (${Math.max(0, n.total - ctx.total).toFixed(0)}m to go)`;
+      if (n.best != null) return `Walk ${n.best}m in one run (best ${ctx.best.toFixed(1)}m)`;
+      if (n.runs != null) return `Play ${n.runs} times (${Math.max(0, n.runs - ctx.runs)} to go)`;
+      if (n.zukan != null) return `Collect ${n.zukan} in the Album (now ${ctx.zukan})`;
+      if (n.streak != null) return `Get a ${n.streak}-day streak (now ${ctx.streak})`;
+      if (n.treasure) return `Find the ${TREASURE_NAME[n.treasure] || '?'} treasure`;
+      return '';
+    }
     if (n.total != null) return `合計 ${n.total}m 歩く（あと ${Math.max(0, n.total - ctx.total).toFixed(0)}m）`;
     if (n.best != null) return `1回で ${n.best}m 歩く（ベスト ${ctx.best.toFixed(1)}m）`;
     if (n.runs != null) return `${n.runs}回 遊ぶ（あと ${Math.max(0, n.runs - ctx.runs)}回）`;
@@ -77,11 +103,11 @@
     const card = (kind, x, icon) => {
       const can = ok(x, ctx), on = (kind === 'carry' ? cur.carry : cur.outfit).id === x.id;
       return `<button type="button" class="cl${on ? ' on' : ''}${can ? '' : ' no'}" data-k="${kind}" data-id="${x.id}" ${can ? '' : 'disabled'}>`
-        + `<b>${can ? icon : window.YoroIcon.html('x.lock', 'dim')}</b><span>${x.name}</span>${can ? (on ? '<i>つかっている</i>' : '') : `<i>${needText(x.need, ctx)}</i>`}</button>`;
+        + `<b>${can ? icon : window.YoroIcon.html('x.lock', 'dim')}</b><span>${x.name}</span>${can ? (on ? `<i>${jaen('つかっている', 'Selected')}</i>` : '') : `<i>${needText(x.need, ctx)}</i>`}</button>`;
     };
     const sw = (o) => `<span class="sw" style="background:linear-gradient(${o.shirt} 0 55%, ${o.pants} 55% 100%)"></span>`;
-    el.innerHTML = `<h3>運ぶもの</h3><div class="clg">${CARRY.map((x) => card('carry', x, window.YoroIcon.html(x.icon))).join('')}</div>`
-      + `<h3>服</h3><div class="clg">${OUTFITS.map((x) => card('outfit', x, sw(x))).join('')}</div>`;
+    el.innerHTML = `<h3>${jaen('運ぶもの', 'Carry')}</h3><div class="clg">${CARRY.map((x) => card('carry', x, window.YoroIcon.html(x.icon))).join('')}</div>`
+      + `<h3>${jaen('服', 'Clothes')}</h3><div class="clg">${OUTFITS.map((x) => card('outfit', x, sw(x))).join('')}</div>`;
     el.querySelectorAll('button.cl').forEach((b) => { b.onclick = () => { choose(b.dataset.k, b.dataset.id); render(el, ctx, onPick); if (onPick) onPick(); }; });
   }
 

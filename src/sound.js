@@ -6,6 +6,7 @@
   };
   let ctx = null, master = null, sfxBus = null, bgmBus = null, comp = null;
   let on = store.get('yoro.sound') !== 'off';
+  let held = false; // 広告のあいだ・ゲームサイトの「音を消す」のとき、音を出さない（音ボタンの設定は変えない）
   let bgmWanted = false, bgmTimer = null, bgmStep = 0, bgmNext = 0;
 
   function ensure() {
@@ -13,7 +14,7 @@
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return false;
     ctx = new AC();
-    master = ctx.createGain(); master.gain.value = on ? 0.9 : 0;
+    master = ctx.createGain(); master.gain.value = on && !held ? 0.9 : 0;
     comp = ctx.createDynamicsCompressor(); // たくさん重なっても音が割れないように
     comp.threshold.value = -12; comp.knee.value = 8; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.2;
     master.connect(comp); comp.connect(ctx.destination);
@@ -313,8 +314,12 @@
     sleep(s) { if (ctx) { if (s) ctx.suspend(); else ctx.resume(); } }, // アプリを離れたら音を止める
     toggle() {
       on = !on; store.set('yoro.sound', on ? 'on' : 'off');
-      if (ensure()) master.gain.setTargetAtTime(on ? 0.9 : 0, ctx.currentTime, 0.02);
+      if (ensure()) master.gain.setTargetAtTime(on && !held ? 0.9 : 0, ctx.currentTime, 0.02);
       return on;
+    },
+    hold(h) {
+      held = !!h;
+      if (master && ctx) master.gain.setTargetAtTime(on && !held ? 0.9 : 0, ctx.currentTime, 0.02);
     },
   };
 })();

@@ -148,6 +148,9 @@
   .logo .w { font-size: 64px; display: inline-block; animation: yoro 1.6s ease-in-out infinite; }
   .logo .w:nth-child(2) { animation-delay: -.4s; } .logo .w:nth-child(3) { animation-delay: -.8s; } .logo .w:nth-child(4) { animation-delay: -1.2s; }
   .logo .sub2 { display: block; font-size: 44px; color: #fff; margin-top: 4px; }
+  /* 英語のとき：ロゴは横に長いので小さめ・下げて「How to」と重ならないように。文字は英語向けの書体を先に */
+  html[lang=en] .logo { margin-top: 12vh; } html[lang=en] .logo .w { font-size: 52px; } html[lang=en] .logo .sub2 { font-size: 40px; }
+  html[lang=en] body, html[lang=en] .btn small { font-family: "Helvetica Neue", Arial, "Hiragino Sans", system-ui, sans-serif; }
   @keyframes yoro { 0%,100% { transform: rotate(-7deg) translateY(0); } 50% { transform: rotate(6deg) translateY(4px); } }
   .tbest { margin: 10px 0 0 !important; font-family: var(--num); font-size: 18px; }
   .tbest svg.ic { font-size: 22px; }
@@ -298,7 +301,7 @@
 
 <div class="medal out" id="medalChip" hidden></div>
 
-<button class="snd" id="sndBtn" type="button" aria-label="音をけす"><svg class="ic"><use href="#i-snd"/></svg></button>
+<button class="snd" id="sndBtn" type="button" aria-label="音をけす" data-en-aria="Mute"><svg class="ic"><use href="#i-snd"/></svg></button>
 
 <div class="hint" id="hint"></div>
 
@@ -311,35 +314,35 @@
 <div class="overlay show" id="gate" hidden>
   <div class="card">
     <h1>ヨロヨロおつかい</h1>
-    <p>合言葉を入れてね</p>
-    <input id="gateInput" class="field" type="text" inputmode="text" autocomplete="off" autocapitalize="off" placeholder="合言葉">
+    <p data-en="Enter the passcode">合言葉を入れてね</p>
+    <input id="gateInput" class="field" type="text" inputmode="text" autocomplete="off" autocapitalize="off" placeholder="合言葉" data-en-ph="passcode">
     <p class="tip" id="gateMsg">&nbsp;</p>
-    <button class="btn" id="gateBtn">はいる</button>
+    <button class="btn" id="gateBtn" data-en="Enter">はいる</button>
   </div>
 </div>
 
 <div class="overlay screen show" id="title">
   <div class="scr">
-    <button class="ib qbtn" id="howBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-q"/></svg></span><b>あそびかた</b></button>
-    <div class="logo"><span class="w">ヨ</span><span class="w">ロ</span><span class="w">ヨ</span><span class="w">ロ</span><span class="sub2">おつかい</span></div>
+    <button class="ib qbtn" id="howBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-q"/></svg></span><b data-en="How to">あそびかた</b></button>
+    <div class="logo" data-en='<span class="w">Yo</span><span class="w">ro</span><span class="w">yo</span><span class="w">ro</span><span class="sub2">Errand</span>'><span class="w">ヨ</span><span class="w">ロ</span><span class="w">ヨ</span><span class="w">ロ</span><span class="sub2">おつかい</span></div>
     <p class="tbest out" id="bestRun" hidden></p>
     <div class="grow"></div>
-    <button class="btn" id="startBtn">あるく</button>
-    <button class="btn sub" id="dailyBtn" type="button">きょうのコース</button>
+    <button class="btn" id="startBtn" data-en="Walk">あるく</button>
+    <button class="btn sub" id="dailyBtn" type="button" data-en="Daily Course">きょうのコース</button>
     <p class="streak out" id="streak"></p>
     <div class="icons">
-      <button class="ib" id="titleGachaBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-capsule"/></svg></span><b>ガチャ</b><i class="badge" id="titleMedal">0</i></button>
-      <button class="ib" id="titleZukanBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-book"/></svg></span><b>ずかん</b></button>
-      <button class="ib" id="closetBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-shirt"/></svg></span><b>きせかえ</b></button>
-      <button class="ib" id="rankBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-trophy"/></svg></span><b>きろく</b></button>
+      <button class="ib" id="titleGachaBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-capsule"/></svg></span><b data-en="Gacha">ガチャ</b><i class="badge" id="titleMedal">0</i></button>
+      <button class="ib" id="titleZukanBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-book"/></svg></span><b data-en="Album">ずかん</b></button>
+      <button class="ib" id="closetBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-shirt"/></svg></span><b data-en="Outfits">きせかえ</b></button>
+      <button class="ib" id="rankBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-trophy"/></svg></span><b data-en="Records">きろく</b></button>
     </div>
   </div>
 </div>
 
 <div class="overlay" id="pause">
   <div class="card">
-    <h2>ひと休み</h2>
-    <button class="btn" id="resumeBtn">つづける</button>
+    <h2 data-en="Paused">ひと休み</h2>
+    <button class="btn" id="resumeBtn" data-en="Resume">つづける</button>
   </div>
 </div>
 
@@ -350,7 +353,7 @@
     <p class="tag" id="goalTag"></p>
     <div class="who"><canvas class="face" id="goalFace" width="240" height="240"></canvas><div class="bubble" id="goalLine"></div></div>
     <div class="pills"><span class="pill" id="goalNew" hidden></span><span class="pill" id="goalMedal" hidden></span></div>
-    <button class="btn" id="nextBtn">つぎへ</button>
+    <button class="btn" id="nextBtn" data-en="Next">つぎへ</button>
   </div>
 </div>
 
@@ -361,12 +364,12 @@
     <p class="near" id="failNear"></p>
     <div class="who"><canvas class="face" id="failFace" width="240" height="240"></canvas><div class="bubble" id="failLine"></div></div>
     <div class="pills"><span class="pill" id="failNew" hidden></span><span class="pill" id="failMedal" hidden></span></div>
-    <button class="btn" id="retryBtn">もう一回</button>
+    <button class="btn" id="retryBtn" data-en="Try again">もう一回</button>
     <div class="icons">
-      <button class="ib" id="vidBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-cam"/></svg></span><b>動画</b></button>
-      <button class="ib" id="shareBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-share"/></svg></span><b>送る</b></button>
-      <button class="ib" id="failZukanBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-book"/></svg></span><b>ずかん</b></button>
-      <button class="ib" id="failGachaBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-capsule"/></svg></span><b>ガチャ</b></button>
+      <button class="ib" id="vidBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-cam"/></svg></span><b data-en="Video">動画</b></button>
+      <button class="ib" id="shareBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-share"/></svg></span><b data-en="Share">送る</b></button>
+      <button class="ib" id="failZukanBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-book"/></svg></span><b data-en="Album">ずかん</b></button>
+      <button class="ib" id="failGachaBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-capsule"/></svg></span><b data-en="Gacha">ガチャ</b></button>
     </div>
     <div hidden><h2 id="failTitle"></h2><p id="failAct"></p><p id="failDist"></p><div class="rank" id="failRank"></div></div>
   </div>
@@ -374,54 +377,55 @@
 
 <div class="overlay" id="records">
   <div class="card">
-    <h2>きろく</h2>
+    <h2 data-en="Records">きろく</h2>
     <div class="rank" id="titleRank" hidden></div><div id="recBody"></div>
-    <button class="btn sub" id="recordsClose" type="button">とじる</button>
+    <button class="btn sub" id="recordsClose" type="button" data-en="Close">とじる</button>
   </div>
 </div>
 
 <div class="overlay" id="howto">
   <div class="card">
-    <h2>あそびかた</h2>
-    <p class="rule">・左と右の足を、こうごに押して歩く。速く押すほど速い<br>・おうちに着いたら GOAL。ステージはどこまでも続く<br>・左右を同時に押すとジャンプ。空中でもう一回で2段ジャンプ<br>・ころぶ・プリンを落とす・時間切れでおしまい<br>・<svg class="ic"><use href="#i-pudding"/></svg> がたまるとプリンが飛ぶ。<svg class="ic"><use href="#i-body"/></svg> がへるとふらふら<br>・？の箱をとるとメダル。5枚でガチャ<br>・パソコンは F と J キー</p>
-    <button class="btn sub" id="howtoClose" type="button">とじる</button>
+    <h2 data-en="How to Play">あそびかた</h2>
+    <p class="rule" data-en="• Tap the left and right feet one after the other to walk. Faster taps, faster steps<br>• Reach the house for a GOAL. The stages go on forever<br>• Tap both at once to jump. Tap both again in the air to double jump<br>• Falling over, dropping the pudding, or running out of time ends the run<br>• When <svg class=&quot;ic&quot;><use href=&quot;#i-pudding&quot;/></svg> fills up, the pudding flies off. When <svg class=&quot;ic&quot;><use href=&quot;#i-body&quot;/></svg> runs low, you wobble<br>• Grab ? boxes for medals. 5 medals = 1 Gacha spin<br>• On a computer, use the F and J keys">・左と右の足を、こうごに押して歩く。速く押すほど速い<br>・おうちに着いたら GOAL。ステージはどこまでも続く<br>・左右を同時に押すとジャンプ。空中でもう一回で2段ジャンプ<br>・ころぶ・プリンを落とす・時間切れでおしまい<br>・<svg class="ic"><use href="#i-pudding"/></svg> がたまるとプリンが飛ぶ。<svg class="ic"><use href="#i-body"/></svg> がへるとふらふら<br>・？の箱をとるとメダル。5枚でガチャ<br>・パソコンは F と J キー</p>
+    <button class="btn sub" id="langBtn" type="button">English</button><button class="btn sub" id="howtoClose" type="button" data-en="Close">とじる</button>
   </div>
 </div>
 
 <div class="overlay" id="zukan">
   <div class="card">
-    <h2>ずかん</h2>
+    <h2 data-en="Album">ずかん</h2>
     <div id="zukanBody"></div>
-    <button class="btn sub" id="zukanClose" type="button">とじる</button>
+    <button class="btn sub" id="zukanClose" type="button" data-en="Close">とじる</button>
   </div>
 </div>
 
 <div class="overlay" id="closet">
   <div class="card">
-    <h2>きせかえ</h2>
-    <p class="tip">遊ぶほど ふえるよ。くつ・ぼうし・おぼん・すがたは ガチャで出る</p>
+    <h2 data-en="Outfits">きせかえ</h2>
+    <p class="tip" data-en="Play more to unlock more. Shoes, hats, trays and looks come from the Gacha.">遊ぶほど ふえるよ。くつ・ぼうし・おぼん・すがたは ガチャで出る</p>
     <div id="closetBody"></div>
     <div id="closetGacha"></div>
-    <button class="btn sub" id="closetClose" type="button">とじる</button>
+    <button class="btn sub" id="closetClose" type="button" data-en="Close">とじる</button>
   </div>
 </div>
 
 <div class="overlay" id="gacha">
   <div class="card">
-    <h2>ガチャ</h2>
-    <p class="tip">？の箱でメダルがもらえる。5枚で1回</p>
+    <h2 data-en="Gacha">ガチャ</h2>
+    <p class="tip" data-en="Grab ? boxes to earn medals. 5 medals = 1 spin.">？の箱でメダルがもらえる。5枚で1回</p>
     <div class="gm" id="gMachine"><div class="glass"><i style="left:12px;top:70px;background:#ff6b8b"></i><i style="left:50px;top:78px;background:#4aa3ff"></i><i style="left:88px;top:68px;background:#ffd23a"></i><i style="left:30px;top:44px;background:#7ad36b"></i><i style="left:70px;top:40px;background:#b46cf0"></i></div><div class="base"></div><div class="knob"></div><div class="cap" id="gCap"></div></div>
     <div id="gResult"></div>
     <p class="tip" id="gMedals"></p>
-    <button class="btn" id="gPull" type="button">回す</button>
+    <button class="btn" id="gPull" type="button" data-en="Spin">回す</button>
     <p class="tip" id="gCount"></p>
     <div class="gall" id="gAll"></div>
-    <button class="btn sub" id="gCloset" type="button">きせかえ</button><button class="btn sub" id="gClose" type="button">とじる</button>
+    <button class="btn sub" id="gCloset" type="button" data-en="Outfits">きせかえ</button><button class="btn sub" id="gClose" type="button" data-en="Close">とじる</button>
   </div>
 </div>
 
 <script>window.BUILD = 'dev';</script>
 <script src="vendor/planck.min.js?v=dev"></script>
+<script src="src/i18n.js?v=dev"></script>
 <script src="src/icons.js?v=dev"></script>
 <script src="src/core.js?v=dev"></script>
 <script src="src/sound.js?v=dev"></script>

@@ -86,17 +86,17 @@
     ball(c) { circ(c, 0, 0, 0.26); fs(c, '#fff'); c.fillStyle = '#e8303a'; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, 0.26, -0.5, 0.6); c.fill(); c.fillStyle = '#4aa3ff'; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, 0.26, 1.6, 2.7); c.fill(); c.fillStyle = '#ffd23a'; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, 0.26, 3.7, 4.8); c.fill(); circ(c, 0, 0, 0.26); c.stroke(); },
   };
   const DROPS = [ // ぺしゃんこ（flat）か ゴツン（bonk）
-    { id: 'tarai', name: 'タライ', h: 0.36, flat: true, snd: 'clang', word: 'ゴワーン', wob: true, w: 3 },
-    { id: 'kinko', name: '金庫', h: 0.9, flat: true, snd: 'thud', word: 'ズシーン', w: 2 },
-    { id: 'weight', name: '10tのおもり', h: 0.8, flat: true, snd: 'thud', word: 'ドスーン', w: 2 },
-    { id: 'piano', name: 'ピアノ', h: 0.9, flat: true, snd: 'piano', word: 'ジャーン', w: 0.6, who: { teacher: 14 } },
-    { id: 'suika', name: 'スイカ', h: 0.76, snd: 'splat', word: 'グシャッ', splat: '#ff4d5e', w: 1.5 },
-    { id: 'pot', name: '植木ばち', h: 0.6, snd: 'crash', word: 'ガシャン', hat: 'plant', w: 1.5 },
-    { id: 'tofu', name: 'とうふ', h: 0.6, snd: 'boyon', word: 'ぷるん', soft: true, w: 1.2 },
-    { id: 'daikon', name: '大根', h: 1.0, snd: 'bonk', word: 'ポコッ', w: 0.5, who: { grandpa: 14 } },
-    { id: 'ramen', name: 'ラーメン', h: 0.5, snd: 'splat', word: 'ザバッ', splat: '#f2c45a', hat: 'noodle', w: 0.5, who: { uncle: 14 } },
-    { id: 'cake', name: 'ケーキ', h: 0.5, snd: 'splat', word: 'ベチャ', splat: '#fff7ea', hat: 'cream', w: 0.5, who: { sister: 14 } },
-    { id: 'ball', name: 'ボール', h: 0.52, snd: 'bonk', word: 'ボコッ', w: 0.6, who: { friend: 14, brother: 5 } },
+    { id: 'tarai', name: jaen('タライ', 'Washtub'), h: 0.36, flat: true, snd: 'clang', word: jaen('ゴワーン', 'BWANG'), wob: true, w: 3 },
+    { id: 'kinko', name: jaen('金庫', 'Safe'), h: 0.9, flat: true, snd: 'thud', word: jaen('ズシーン', 'THOOM'), w: 2 },
+    { id: 'weight', name: jaen('10tのおもり', '10-Ton Weight'), h: 0.8, flat: true, snd: 'thud', word: jaen('ドスーン', 'WHUMP'), w: 2 },
+    { id: 'piano', name: jaen('ピアノ', 'Piano'), h: 0.9, flat: true, snd: 'piano', word: jaen('ジャーン', 'KRANNG'), w: 0.6, who: { teacher: 14 } },
+    { id: 'suika', name: jaen('スイカ', 'Watermelon'), h: 0.76, snd: 'splat', word: jaen('グシャッ', 'SPLAT'), splat: '#ff4d5e', w: 1.5 },
+    { id: 'pot', name: jaen('植木ばち', 'Flowerpot'), h: 0.6, snd: 'crash', word: jaen('ガシャン', 'CRASH'), hat: 'plant', w: 1.5 },
+    { id: 'tofu', name: jaen('とうふ', 'Tofu'), h: 0.6, snd: 'boyon', word: jaen('ぷるん', 'JIGGLE'), soft: true, w: 1.2 },
+    { id: 'daikon', name: jaen('大根', 'Radish'), h: 1.0, snd: 'bonk', word: jaen('ポコッ', 'BONK'), w: 0.5, who: { grandpa: 14 } },
+    { id: 'ramen', name: jaen('ラーメン', 'Ramen'), h: 0.5, snd: 'splat', word: jaen('ザバッ', 'SPLOOSH'), splat: '#f2c45a', hat: 'noodle', w: 0.5, who: { uncle: 14 } },
+    { id: 'cake', name: jaen('ケーキ', 'Cake'), h: 0.5, snd: 'splat', word: jaen('ベチャ', 'SQUISH'), splat: '#fff7ea', hat: 'cream', w: 0.5, who: { sister: 14 } },
+    { id: 'ball', name: jaen('ボール', 'Ball'), h: 0.52, snd: 'bonk', word: jaen('ボコッ', 'BOP'), w: 0.6, who: { friend: 14, brother: 5 } },
   ];
 
   // ---- 生きもの・のりもの ----
@@ -149,7 +149,7 @@
   // ---- ころび芸の一覧 ----
   // w(cx)＝出やすさ（cx.reason＝転び方、cx.who＝届け先、cx.night＝夜っぽさ）。vs＝ちがう形（同じ芸の別バージョン）
   const LIST = [
-    { id: 'crush', name: 'ぺしゃんこ', hint: '空から何かが…', dur: 2.3, peak: 1.0, w: () => 3,
+    { id: 'crush', name: jaen('ぺしゃんこ', 'Squashed'), hint: jaen('空から何かが…', 'Something\'s falling from the sky…'), dur: 2.3, peak: 1.0, w: () => 3,
       vs: DROPS,
       start(g) { g.cam = [g.x + 0.3, g.y + 1.2]; },
       draw(g) {
@@ -178,7 +178,7 @@
           const a = g.t - tHit, y = sn.y + sn.bb.t * 0.18 + v.h / 2 + Math.abs(Math.sin(a * 9)) * 0.5 * Math.exp(-a * 5);
           const rot = v.wob ? Math.sin(a * 22) * 0.25 * Math.exp(-a * 1.6) : 0;
           at(g, st.tx, y, (c) => OBJ[v.id](c), rot);
-          if (v.wob) g.word('ゴワン ゴワン', st.tx + 0.4, y + 0.6, tHit + 0.5, { size: 0.32, col: '#e4eaf0' });
+          if (v.wob) g.word(jaen('ゴワン ゴワン', 'WONG WONG'), st.tx + 0.4, y + 0.6, tHit + 0.5, { size: 0.32, col: '#e4eaf0' });
         } else { // はねかえって飛んでいく
           if (v.id !== 'suika' && v.id !== 'pot' && v.id !== 'cake' && v.id !== 'ramen') {
             st.vy -= 12 * g.dt; st.ox += st.vx * g.dt; st.oy += st.vy * g.dt; st.oa += 8 * g.dt;
@@ -190,11 +190,11 @@
           if (v.hat === 'noodle') at(g, h[0], h[1], (c) => { c.strokeStyle = '#f2c45a'; c.lineWidth = 0.035; for (let i = 0; i < 7; i++) { c.beginPath(); c.moveTo(-0.22 + i * 0.07, -0.2); for (let k = 1; k < 6; k++) c.lineTo(-0.22 + i * 0.07 + Math.sin(k * 2 + i + g.t * 3) * 0.03, -0.2 + k * 0.09); c.stroke(); } });
           if (v.hat === 'cream') at(g, h[0], h[1] + 0.1, (c) => { cloud(c, 7, 0.28, '#fff7ea', 1); circ(c, 0.05, -0.2, 0.08); fs(c, '#e8303a'); });
         }
-        g.word(v.word + '!', st.tx + 0.2, (st.ty || g.y + 1) + 0.6, tHit, { size: 0.5, col: v.flat ? '#ffd23a' : '#fff' });
+        g.word(v.word + '!', st.tx + 0.2, (st.ty || g.y + 1) + 0.6, tHit, { size: YL.en ? 0.42 : 0.5, col: v.flat ? '#ffd23a' : '#fff' });
       } },
 
-    { id: 'shatter', name: 'こなごな', hint: 'カチーンと かたまって…', dur: 2.6, peak: 1.0, w: () => 2,
-      vs: [{ id: 'glass', name: 'ガラス', tint: ['#bfe6ff', 0.45], snd: 'crash', word: 'パリーン' }, { id: 'blocks', name: 'つみき', tint: null, snd: 'blocks', word: 'ガラガラ', blocks: true }, { id: 'cookie', name: 'クッキー', tint: ['#c98a4b', 0.55], snd: 'crunch', word: 'サクッ' }],
+    { id: 'shatter', name: jaen('こなごな', 'Shattered'), hint: jaen('カチーンと かたまって…', 'Frozen stiff with a clink…'), dur: 2.6, peak: 1.0, w: () => 2,
+      vs: [{ id: 'glass', name: jaen('ガラス', 'Glass'), tint: ['#bfe6ff', 0.45], snd: 'crash', word: jaen('パリーン', 'SMASH') }, { id: 'blocks', name: jaen('つみき', 'Blocks'), tint: null, snd: 'blocks', word: jaen('ガラガラ', 'CLATTER'), blocks: true }, { id: 'cookie', name: jaen('クッキー', 'Cookie'), tint: ['#c98a4b', 0.55], snd: 'crunch', word: jaen('サクッ', 'CRUNCH') }],
       draw(g) {
         const v = g.v, st = g.st;
         g.at(0.45, 'snap', () => { g.snapNow(); g.hide = true; g.sfx('crack'); });
@@ -205,7 +205,7 @@
           g.draw(sn, sn.x + rnd(-j, j), sn.y);
           if (v.tint) g.draw(g.tint(sn, ...v.tint), sn.x, sn.y, { alpha: seg(g.t, 0.45, 0.7) });
           cracks(g, sn, 3, 7, seg(g.t, 0.5, 0.9));
-          g.word('ピキッ', sn.x + sn.cx, sn.y + sn.bb.t + 0.2, 0.5, { size: 0.35, dur: 0.45 });
+          g.word(jaen('ピキッ', 'krik'), sn.x + sn.cx, sn.y + sn.bb.t + 0.2, 0.5, { size: 0.35, dur: 0.45 });
           return;
         }
         g.at(0.95, 'burst', () => { st.ps = makePieces(sn, 5, 6, 1.5, 4); g.sfx(v.snd); g.shake(10); g.sparkle(sn.x + sn.cx, sn.y + sn.cy, 14, v.tint ? '#fff' : '#ffd23a'); });
@@ -215,10 +215,10 @@
           g.piece(img, p.rx, p.ry, p.w, p.h, p.x, p.y, p.a);
           if (v.blocks) at(g, p.x, p.y, (c) => { c.lineWidth = 0.03; c.strokeStyle = ['#ff6b8b', '#4aa3ff', '#ffd23a', '#5fc96b'][Math.floor((p.rx + p.ry) * 7) & 3]; c.strokeRect(-p.w / 2, -p.h / 2, p.w, p.h); }, p.a);
         }
-        g.word(v.word + '!', sn.x + sn.cx, sn.y + sn.bb.t + 0.4, 0.95, { size: 0.5 });
+        g.word(v.word + '!', sn.x + sn.cx, sn.y + sn.bb.t + 0.4, 0.95, { size: YL.en ? 0.42 : 0.5 });
       } },
 
-    { id: 'stuck', name: 'さかさまに ささる', hint: 'ポーンと とんで…', dur: 2.5, peak: 1.4, w: (cx) => (cx.reason === 'head' ? 6 : 2),
+    { id: 'stuck', name: jaen('さかさまに ささる', 'Stuck Head-First'), hint: jaen('ポーンと とんで…', 'Up, up and away…'), dur: 2.5, peak: 1.4, w: (cx) => (cx.reason === 'head' ? 6 : 2),
       start(g) { g.hide = true; g.cam = [g.x + 0.7, g.y + 1.4]; g.sfx('whoosh'); },
       draw(g) {
         const sn = g.snap, p = seg(g.t, 0, 0.62), X0 = sn.x + sn.cx, x = X0 + 0.7 * p, gy = g.gy(x);
@@ -229,13 +229,13 @@
         up(g, sn, x, y, rot, { clipY: gy });
         if (g.t > 0.62) {
           at(g, x, g.gy(x), (c) => { ell(c, 0, 0.02, 0.45, 0.08); fs(c, '#8a5a32'); for (let i = 0; i < 5; i++) { circ(c, -0.4 + i * 0.2, -0.02, 0.06); fs(c, '#a8743f'); } });
-          g.word('ズボッ!', x + 0.5, g.y + 1.6, 0.62, { size: 0.5 });
-          g.word('ジタバタ', x - 0.6, g.y + 2.2, 1.3, { size: 0.32, dur: 1 });
+          g.word(jaen('ズボッ!', 'THUNK!'), x + 0.5, g.y + 1.6, 0.62, { size: 0.5 });
+          g.word(jaen('ジタバタ', 'flail flail'), x - 0.6, g.y + 2.2, 1.3, { size: 0.32, dur: 1 });
         }
       } },
 
-    { id: 'bury', name: 'うまる', hint: '地面が やわらかいと…', dur: 2.5, peak: 1.2, w: (cx) => (cx.reason === 'hole' ? 7 : 1.5),
-      vs: [{ id: 'neck', name: '首まで' }, { id: 'all', name: 'すっぽり' }],
+    { id: 'bury', name: jaen('うまる', 'Buried'), hint: jaen('地面が やわらかいと…', 'When the ground is soft…'), dur: 2.5, peak: 1.2, w: (cx) => (cx.reason === 'hole' ? 7 : 1.5),
+      vs: [{ id: 'neck', name: jaen('首まで', 'Neck-Deep') }, { id: 'all', name: jaen('すっぽり', 'All the Way') }],
       start(g) { g.hide = true; g.sfx('sink'); },
       draw(g) {
         const sn = g.snap, all = g.v.id === 'all', X = sn.x + sn.cx, gy = g.gy(X), dh = headD(sn);
@@ -247,17 +247,17 @@
           for (let i = 0; i < 3; i++) { const a = (g.t * 1.2 + i * 0.33) % 1; if (g.t > 1.3) at(g, X + (i - 1) * 0.2, gy + a * 0.7, (c) => { circ(c, 0, 0, 0.05 + a * 0.05); c.fillStyle = 'rgba(255,255,255,.7)'; c.fill(); c.stroke(); }); }
           g.at(1.8, 'sprout', () => g.sfx('pop'));
           if (g.t > 1.8) at(g, X, gy, (c) => { const k = back(seg(g.t, 1.8, 2.1)); c.scale(k, k); c.lineWidth = 0.04; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -0.3); c.stroke(); for (const s of [-1, 1]) { ell(c, s * 0.1, -0.32, 0.1, 0.05, s * 0.4); fs(c, '#5fc96b'); } });
-          g.word('ポコポコ…', sn.x + 0.8, g.y + 0.8, 1.3, { size: 0.32 });
+          g.word(jaen('ポコポコ…', 'blub blub…'), sn.x + 0.8, g.y + 0.8, 1.3, { size: 0.32 });
         }
-        g.word('ズブズブ…', sn.x + 0.9, g.y + 1.4, 0.2, { size: 0.4 });
+        g.word(jaen('ズブズブ…', 'squelch…'), sn.x + 0.9, g.y + 1.4, 0.2, { size: 0.4 });
       } },
 
-    { id: 'star', name: 'お星さまになる', hint: 'いきおいよく とぶと…', dur: 2.4, peak: 1.5, w: () => 1.6,
+    { id: 'star', name: jaen('お星さまになる', 'Shooting Star'), hint: jaen('いきおいよく とぶと…', 'Fly off way too fast…'), dur: 2.4, peak: 1.5, w: () => 1.6,
       start(g) { g.hide = true; g.sfx('whoosh'); g.cam = [g.x, g.y + 1]; },
       draw(g) {
         const sn = g.snap, p = seg(g.t, 0, 1.1), e = p * p;
         if (p < 1) g.draw(sn, sn.x + 5 * e, sn.y + 0.8 + 8 * e, { py: 0.8, rot: 14 * e, sx: 1 - 0.75 * p, sy: 1 - 0.75 * p });
-        g.word('ポーン!', sn.x + 0.4, sn.y + 1.8, 0.05, { size: 0.45, dur: 0.7 });
+        g.word(jaen('ポーン!', 'FWOOP!'), sn.x + 0.4, sn.y + 1.8, 0.05, { size: 0.45, dur: 0.7 });
       },
       screen(g) {
         g.at(1.1, 'tw', () => g.sfx('twinkle'));
@@ -265,10 +265,10 @@
         const c = g.c, a = g.t - 1.1, X = g.W * 0.8, Y = g.H * 0.16, r = 26 * back(cl(a / 0.25)) * (1 + 0.15 * Math.sin(a * 12));
         c.save(); c.translate(X, Y); c.rotate(a * 2); c.fillStyle = '#fff6b0'; c.strokeStyle = INK; c.lineWidth = 3;
         c.beginPath(); for (let i = 0; i < 8; i++) { const rr = i % 2 ? r * 0.3 : r; const an = i * Math.PI / 4; c.lineTo(Math.cos(an) * rr, Math.sin(an) * rr); } c.closePath(); c.fill(); c.stroke(); c.restore();
-        g.word('キラーン☆', X - 30, Y + 46, 1.1, { scr: true, size: 26, dur: 1.3, col: '#ffd23a' });
+        g.word(jaen('キラーン☆', 'TING☆'), X - 30, Y + 46, 1.1, { scr: true, size: 26, dur: 1.3, col: '#ffd23a' });
       } },
 
-    { id: 'screen', name: 'がめんに ベチャッ', hint: 'こっちに とんでくると…', dur: 2.7, peak: 1.0, w: () => 1.8,
+    { id: 'screen', name: jaen('がめんに ベチャッ', 'Splat on Screen'), hint: jaen('こっちに とんでくると…', 'Flying right at you…'), dur: 2.7, peak: 1.0, w: () => 1.8,
       start(g) { g.hide = true; g.sfx('whoosh'); const [X, Y] = g.P(g.snap.x, g.snap.y + 1.0); g.st.X0 = X; g.st.Y0 = Y; },
       screen(g) {
         const sn = g.snap, st = g.st, c = g.c, p = seg(g.t, 0, 0.45), e = p * p;
@@ -285,13 +285,13 @@
           for (let i = 0; i < 9; i++) { const an = i / 9 * TAU + 0.3; let x = 0, y = 0; c.beginPath(); c.moveTo(0, 0); for (let j = 0; j < 5; j++) { x += Math.cos(an + Math.sin(i * 7 + j) * 0.5) * g.W * 0.09; y += Math.sin(an + Math.sin(i * 3 + j) * 0.5) * g.W * 0.09; c.lineTo(x, y); }
             c.strokeStyle = 'rgba(40,40,60,.55)'; c.lineWidth = 3.5; c.stroke(); c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = 1.6; c.stroke(); }
           c.restore();
-          g.word('ベチャッ!', g.W * 0.5, g.H * 0.18, 0.45, { scr: true, size: 44, col: '#ff6b8b' });
+          g.word(jaen('ベチャッ!', 'SPLAT!'), g.W * 0.5, g.H * 0.18, 0.45, { scr: true, size: 44, col: '#ff6b8b' });
           g.at(1.0, 'sq', () => g.sfx('squeak'));
-          g.word('キュキュ〜', g.W * 0.72, g.H * 0.7, 1.05, { scr: true, size: 24, dur: 1.4 });
+          g.word(jaen('キュキュ〜', 'squeak~'), g.W * 0.72, g.H * 0.7, 1.05, { scr: true, size: 24, dur: 1.4 });
         }
       } },
 
-    { id: 'stone', name: 'いしになる', hint: 'かたまって うごけないと…', dur: 2.9, peak: 1.3, w: (cx) => (cx.reason === 'stop' || cx.reason === 'timeup' ? 5 : 1.2),
+    { id: 'stone', name: jaen('いしになる', 'Turned to Stone'), hint: jaen('かたまって うごけないと…', 'Stand still too long…'), dur: 2.9, peak: 1.3, w: (cx) => (cx.reason === 'stop' || cx.reason === 'timeup' ? 5 : 1.2),
       draw(g) {
         const st = g.st;
         g.at(0.35, 'snap', () => { g.snapNow(); g.hide = true; g.sfx('stone'); });
@@ -299,17 +299,17 @@
         const sn = g.snap, stone = g.tint(sn, '#9a9a9a', 0.82);
         if (g.t < 1.6) {
           g.draw(sn, sn.x, sn.y); g.draw(stone, sn.x, sn.y, { alpha: seg(g.t, 0.35, 0.8) });
-          g.word('ピキーン', sn.x + sn.cx, sn.y + sn.bb.t + 0.3, 0.75, { size: 0.4, col: '#cfd3d8', dur: 0.8 });
+          g.word(jaen('ピキーン', 'KRRAK'), sn.x + sn.cx, sn.y + sn.bb.t + 0.3, 0.75, { size: 0.4, col: '#cfd3d8', dur: 0.8 });
           if (g.t > 1.15) { g.at(1.15, 'cr', () => g.sfx('crack')); cracks(g, sn, 5, 6, seg(g.t, 1.15, 1.55)); }
           return;
         }
         g.at(1.6, 'fall', () => { st.ps = makePieces(sn, 6, 7, 0.35, 0.6); g.sfx('stone'); g.shake(8); g.puff(sn.x + sn.cx, g.gy(sn.x), 14, true); });
         stepPieces(g, st.ps);
         for (const p of st.ps) g.piece(stone, p.rx, p.ry, p.w, p.h, p.x, p.y, p.a);
-        g.word('ガラガラ…', sn.x + sn.cx + 0.4, sn.y + 1.4, 1.6, { size: 0.42 });
+        g.word(jaen('ガラガラ…', 'crumble…'), sn.x + sn.cx + 0.4, sn.y + 1.4, 1.6, { size: 0.42 });
       } },
 
-    { id: 'freeze', name: 'カチコチ', hint: 'さむい日は…', dur: 2.7, peak: 1.0, w: (cx) => 1.2 + cx.night * 2,
+    { id: 'freeze', name: jaen('カチコチ', 'Frozen Solid'), hint: jaen('さむい日は…', 'On a cold day…'), dur: 2.7, peak: 1.0, w: (cx) => 1.2 + cx.night * 2,
       draw(g) {
         g.at(0.3, 'snap', () => { g.snapNow(); g.hide = true; g.sfx('freeze'); });
         if (g.t < 0.3) return;
@@ -323,11 +323,11 @@
           c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 0.06; c.beginPath(); c.moveTo(-w + 0.15, -h + 0.35); c.lineTo(-w + 0.35, -h + 0.15); c.moveTo(-w + 0.15, -h + 0.65); c.lineTo(-w + 0.65, -h + 0.15); c.stroke();
         });
         if (a > 0 && Math.random() < 0.5) g.sparkle(x + bb.l, g.gy(x) + 0.05, 1, '#fff');
-        g.word('カチーン', sn.x + sn.cx, sn.y + bb.t + 0.3, 0.35, { size: 0.45, col: '#bfe8ff', dur: 0.8 });
-        g.word('ツルーッ', x + bb.r + 0.2, sn.y + 1.0, 1.15, { size: 0.42, dur: 1.4 });
+        g.word(jaen('カチーン', 'CLINK'), sn.x + sn.cx, sn.y + bb.t + 0.3, 0.35, { size: 0.45, col: '#bfe8ff', dur: 0.8 });
+        g.word(jaen('ツルーッ', 'sliiide~'), x + bb.r + 0.2, sn.y + 1.0, 1.15, { size: 0.42, dur: 1.4 });
       } },
 
-    { id: 'melt', name: 'とろける', hint: 'あつい日は…', dur: 2.6, peak: 1.7, w: (cx) => (cx.reason === 'pudding' ? 4 : 1.3),
+    { id: 'melt', name: jaen('とろける', 'Total Meltdown'), hint: jaen('あつい日は…', 'On a hot day…'), dur: 2.6, peak: 1.7, w: (cx) => (cx.reason === 'pudding' ? 4 : 1.3),
       draw(g) {
         g.at(0.3, 'snap', () => { g.snapNow(); g.hide = true; g.sfx('melt'); });
         if (g.t < 0.3) return;
@@ -336,11 +336,11 @@
         at(g, px, gy, (c) => { ell(c, 0, -0.03, 0.3 + 1.0 * out3(p), 0.06 + 0.07 * p); fs(c, g.shirt()); if (p > 0.85) { c.lineWidth = 0.03; for (const ex of [-0.12, 0.12]) { c.beginPath(); c.moveTo(ex - 0.04, -0.09); c.lineTo(ex + 0.04, -0.01); c.moveTo(ex + 0.04, -0.09); c.lineTo(ex - 0.04, -0.01); c.stroke(); } } });
         if (al > 0) g.draw(sn, sn.x, sn.y, { sy: 1 - 0.85 * p, sx: 1 + 0.5 * p, alpha: al });
         if (p > 0 && p < 1 && Math.random() < 0.3) g.splat(px + rnd(-0.4, 0.4), gy + 0.4 * (1 - p) + 0.1, g.shirt(), 1);
-        g.word('とろ〜り', px + 0.6, gy + 1.4, 0.5, { size: 0.42, col: '#ffd23a', dur: 1.5 });
+        g.word(jaen('とろ〜り', 'gooey~'), px + 0.6, gy + 1.4, 0.5, { size: 0.42, col: '#ffd23a', dur: 1.5 });
       } },
 
-    { id: 'soul', name: 'たましいが ぬける', hint: 'ころんだ ショックで…', dur: 2.5, peak: 1.3, w: () => 1.8,
-      vs: [{ id: 'back', name: 'もどる' }, { id: 'away', name: 'とんでいく' }],
+    { id: 'soul', name: jaen('たましいが ぬける', 'Soul Pops Out'), hint: jaen('ころんだ ショックで…', 'The shock of falling…'), dur: 2.5, peak: 1.3, w: () => 1.8,
+      vs: [{ id: 'back', name: jaen('もどる', 'Comes Back') }, { id: 'away', name: jaen('とんでいく', 'Floats Off') }],
       draw(g) {
         g.at(0.4, 'snap', () => { g.st.sn = g.takeSnap(); g.sfx('soul'); });
         const sn = g.st.sn; if (!sn) return;
@@ -348,11 +348,11 @@
         if (g.v.id === 'back' && g.t > 1.75) { up *= 1 - seg(g.t, 1.75, 1.9); g.at(1.75, 'bk', () => g.sfx('back')); g.at(1.9, 'bump', () => g.shake(6)); }
         if (g.v.id === 'away') up += Math.max(0, g.t - 1.5) * 3;
         if (up > 0.02) g.draw(g.tint(sn, '#ffffff', 0.85), sn.x + Math.sin(g.t * 5) * 0.15, sn.y + up, { alpha: 0.6, sx: 1 + Math.sin(g.t * 9) * 0.06, py: 0.8 });
-        g.word('ふわ〜', sn.x + 0.9, sn.y + 2.2, 0.5, { size: 0.4, col: '#eef4ff', dur: 1.2 });
-        if (g.v.id === 'back') g.word('シュポッ!', sn.x + 0.6, sn.y + 1.5, 1.85, { size: 0.42, dur: 0.6 });
+        g.word(jaen('ふわ〜', 'whoooo~'), sn.x + 0.9, sn.y + 2.2, 0.5, { size: 0.4, col: '#eef4ff', dur: 1.2 });
+        if (g.v.id === 'back') g.word(jaen('シュポッ!', 'SHLOOP!'), sn.x + 0.6, sn.y + 1.5, 1.85, { size: 0.42, dur: 0.6 });
       } },
 
-    { id: 'zap', name: 'まっくろこげ', hint: 'ゴロゴロ…ピカッ', dur: 2.6, peak: 1.2, w: (cx) => 1.3 + cx.night,
+    { id: 'zap', name: jaen('まっくろこげ', 'Burnt to a Crisp'), hint: jaen('ゴロゴロ…ピカッ', 'Rumble, rumble… FLASH!'), dur: 2.6, peak: 1.2, w: (cx) => 1.3 + cx.night,
       draw(g) {
         g.at(0.3, 'snap', () => { g.snapNow(); g.hide = true; g.sfx('zap'); g.shake(14); g.buzz(120); });
         if (g.t < 0.3) return;
@@ -362,8 +362,8 @@
           g.at(0.7, 'boff', () => { g.sfx('poof'); g.puff(sn.x + sn.hx, sn.y + sn.hy, 10, true); });
           at(g, sn.x + sn.hx, sn.y + sn.hy, (c) => { const k = back(seg(g.t, 0.7, 0.9)); c.scale(k, k); afro(c, '#2a1a10'); }, -sn.ha);
           for (let i = 0; i < 3; i++) { const a = (g.t * 0.7 + i / 3) % 1; at(g, sn.x + sn.hx + Math.sin(a * 6 + i) * 0.2, sn.y + sn.hy + 0.4 + a * 1.2, (c) => { c.globalAlpha = 1 - a; cloud(c, 5, 0.12 + a * 0.15, '#8d8d94', i); }); }
-          g.word('ボフッ', sn.x + sn.hx + 0.5, sn.y + sn.hy + 0.6, 0.7, { size: 0.4, dur: 0.8 });
-          g.word('ケホッ', sn.x + sn.hx + 0.5, sn.y + sn.hy + 0.3, 1.7, { size: 0.32, dur: 0.8 });
+          g.word(jaen('ボフッ', 'POOF'), sn.x + sn.hx + 0.5, sn.y + sn.hy + 0.6, 0.7, { size: 0.4, dur: 0.8 });
+          g.word(jaen('ケホッ', 'cough'), sn.x + sn.hx + 0.5, sn.y + sn.hy + 0.3, 1.7, { size: 0.32, dur: 0.8 });
         }
       },
       screen(g) {
@@ -372,11 +372,11 @@
         c.save(); c.globalAlpha = 0.6 * (1 - seg(g.t, 0.3, 0.75)); c.fillStyle = '#fff'; c.fillRect(0, 0, g.W, g.H); c.restore();
         c.save(); c.strokeStyle = '#fff36b'; c.lineWidth = 10; c.lineJoin = 'miter'; c.beginPath(); c.moveTo(X + 40, 0);
         for (let i = 1; i <= 6; i++) c.lineTo(X + 40 - i * 7 + (i % 2 ? 26 : -26), Y * i / 6); c.stroke(); c.strokeStyle = INK; c.lineWidth = 3; c.stroke(); c.restore();
-        g.word('ビリビリ!', X + 70, Y - 90, 0.3, { scr: true, size: 34, col: '#fff36b', dur: 0.5 });
+        g.word(jaen('ビリビリ!', 'BZZZT!'), X + 70, Y - 90, 0.3, { scr: true, size: 34, col: '#fff36b', dur: 0.5 });
       } },
 
-    { id: 'bird', name: 'とりに さらわれる', hint: '空から 大きなかげが…', dur: 2.6, peak: 1.2, w: () => 1.5,
-      vs: [{ id: 'crow', name: 'カラス', snd: 'kaa' }, { id: 'stork', name: 'コウノトリ', snd: 'flap' }, { id: 'parrot', name: 'オウム', snd: 'flap' }],
+    { id: 'bird', name: jaen('とりに さらわれる', 'Bird-Napped'), hint: jaen('空から 大きなかげが…', 'A big shadow overhead…'), dur: 2.6, peak: 1.2, w: () => 1.5,
+      vs: [{ id: 'crow', name: jaen('カラス', 'Crow'), snd: 'kaa' }, { id: 'stork', name: jaen('コウノトリ', 'Stork'), snd: 'flap' }, { id: 'parrot', name: jaen('オウム', 'Parrot'), snd: 'flap' }],
       start(g) { g.sfx('flap'); g.cam = [g.x, g.y + 1.6]; },
       draw(g) {
         const st = g.st, tg = 0.75;
@@ -388,11 +388,11 @@
         const flap = (Math.sin(g.t * 18) + 1) / 2;
         if (st.sn) { const sn = st.sn, sw = Math.sin(g.t * 6) * 0.35; g.draw(sn, bx - sn.hx, by - 0.45 - sn.hy - 0.15, { px: sn.hx, py: sn.hy + 0.15, rot: Math.PI / 2 + Math.atan2(sn.cy - sn.hy, sn.cx - sn.hx) + sw }); }
         at(g, bx, by, (c) => bird(c, g.v.id, flap), 0, -dir * 1.5, 1.5);
-        g.word('バサッ', bx + 0.7, by + 0.8, 0.6, { size: 0.36, dur: 0.8 });
-        if (g.v.id === 'crow') g.word('カー!', bx + 0.9, by + 0.6, 1.2, { size: 0.42, dur: 0.9 });
+        g.word(jaen('バサッ', 'FLAP'), bx + 0.7, by + 0.8, 0.6, { size: 0.36, dur: 0.8 });
+        if (g.v.id === 'crow') g.word(jaen('カー!', 'CAW!'), bx + 0.9, by + 0.6, 1.2, { size: 0.42, dur: 0.9 });
       } },
 
-    { id: 'balloon', name: 'ふうせん', hint: 'ぷくーっと…', dur: 2.7, peak: 1.3, w: () => 1.4,
+    { id: 'balloon', name: jaen('ふうせん', 'Human Balloon'), hint: jaen('ぷくーっと…', 'Puffing up…'), dur: 2.7, peak: 1.3, w: () => 1.4,
       start(g) { g.hide = true; g.sfx('inflate'); g.st.x = g.snap.x; g.st.y = g.snap.y; g.st.a = 1.2; },
       draw(g) {
         const sn = g.snap, st = g.st, inf = back(seg(g.t, 0.05, 0.7));
@@ -404,11 +404,11 @@
           const s = 1 - seg(g.t, 1.45, 2.4) * 0.6; k *= s * 0.7; kx *= s * 0.7;
         }
         g.draw(sn, st.x, st.y, { py: sn.cy, sx: kx, sy: k, rot: g.t > 1.45 ? st.a : 0 });
-        g.word('プクーッ', sn.x + 1.2, sn.y + 2.2, 0.2, { size: 0.42, dur: 1 });
-        g.word('プシューッ', st.x + 0.8, st.y + 1.2, 1.45, { size: 0.42, dur: 1 });
+        g.word(jaen('プクーッ', 'PUFF~'), sn.x + 1.2, sn.y + 2.2, 0.2, { size: 0.42, dur: 1 });
+        g.word(jaen('プシューッ', 'PFFFFT'), st.x + 0.8, st.y + 1.2, 1.45, { size: 0.42, dur: 1 });
       } },
 
-    { id: 'bounce', name: 'スーパーボール', hint: 'はずんで はずんで…', dur: 2.6, peak: 1.0, w: () => 1.4,
+    { id: 'bounce', name: jaen('スーパーボール', 'Bouncy Ball'), hint: jaen('はずんで はずんで…', 'Bounce, bounce, bounce…'), dur: 2.6, peak: 1.0, w: () => 1.4,
       start(g) {
         g.hide = true; const hs = [0.5, 1.1, 2.0, 9], gr = 22, seq = []; let t = 0.1;
         for (const h of hs) { const T = 2 * Math.sqrt(2 * h / gr); seq.push({ t0: t, T, h }); t += T; }
@@ -423,10 +423,10 @@
         g.at(st.seq[1].t0, 'b1', () => g.sfx('boing')); g.at(st.seq[2].t0, 'b2', () => g.sfx('boing2')); g.at(st.seq[3].t0, 'b3', () => g.sfx('boing3'));
         if (a < 0.08 && i > 0) sq = 0.6;
         g.draw(sn, x, y, { py: sn.cy, sx: 2 - sq, sy: sq, rot: g.t * (i + 1) * 2 });
-        g.word('ボヨーン', x + 0.8, sn.y + 1.2, st.seq[2].t0, { size: 0.42 });
+        g.word(jaen('ボヨーン', 'BOING'), x + 0.8, sn.y + 1.2, st.seq[2].t0, { size: 0.42 });
       } },
 
-    { id: 'drill', name: 'ドリルで ちていへ', hint: 'くるくる回って…', dur: 2.7, peak: 0.9, w: () => 1.3,
+    { id: 'drill', name: jaen('ドリルで ちていへ', 'Drill Dive'), hint: jaen('くるくる回って…', 'Spinning round and round…'), dur: 2.7, peak: 0.9, w: () => 1.3,
       start(g) { g.hide = true; g.sfx('drill'); g.cam = [g.x + 1.2, g.y + 1.2]; },
       draw(g) {
         const sn = g.snap, p = seg(g.t, 0, 0.3), d = seg(g.t, 0.3, 1.3), X = sn.x + sn.cx, gy = g.gy(X), dh = headD(sn);
@@ -434,7 +434,7 @@
           const y0 = sn.y + sn.cy + 0.6, y1 = gy - dh * 1.5 - 0.4, y = lerp(sn.y + sn.cy, y0, p) + (y1 - y0) * d * d;
           up(g, sn, X, y, (upRot(sn) + Math.PI) * out3(p), { sx: g.t > 0.3 ? Math.cos(g.t * 40) : 1, clipY: gy });
           if (g.t > 0.5 && Math.random() < 0.6) g.splat(X + rnd(-0.2, 0.2), gy + 0.05, '#8a5a32', 1);
-          g.word('ギュイーン', sn.x + 0.8, sn.y + 1.8, 0.3, { size: 0.4, dur: 1 });
+          g.word(jaen('ギュイーン', 'VRRRRR'), sn.x + 0.8, sn.y + 1.8, 0.3, { size: 0.4, dur: 1 });
         } else if (g.t < 1.75) g.shake(2);
         at(g, X, gy, (c) => { ell(c, 0, 0, 0.3, 0.06); fs(c, '#5a3a1e'); });
         if (g.t > 1.75) { // ちがう所から顔を出す
@@ -442,11 +442,11 @@
           g.at(1.75, 'puha', () => { g.sfx('puha'); g.puff(x2, g2, 10, true); });
           up(g, sn, x2, lerp(g2 - dh * 1.5, g2 + 0.32 - dh, back(seg(g.t, 1.75, 2.0))), upRot(sn), { clipY: g2 });
           at(g, x2, g.gy(x2), (c) => { ell(c, 0, 0, 0.45, 0.08); fs(c, '#8a5a32'); });
-          g.word('ぷはっ', x2 + 0.6, g.gy(x2) + 0.9, 1.8, { size: 0.42 });
+          g.word(jaen('ぷはっ', 'PWAH!'), x2 + 0.6, g.gy(x2) + 0.9, 1.8, { size: 0.42 });
         }
       } },
 
-    { id: 'purin', name: 'プリンに うもれる', hint: '大きな プリンが…', dur: 2.5, peak: 1.0, w: (cx) => (cx.reason === 'pudding' ? 5 : 1) * (cx.who === 'king' ? 4 : 1),
+    { id: 'purin', name: jaen('プリンに うもれる', 'Pudding Avalanche'), hint: jaen('大きな プリンが…', 'A giant pudding…'), dur: 2.5, peak: 1.0, w: (cx) => (cx.reason === 'pudding' ? 5 : 1) * (cx.who === 'king' ? 4 : 1),
       draw(g) {
         g.at(0.45, 'snap', () => { g.snapNow(); g.hide = true; });
         const sn = g.snap, x = (g.t < 0.45 ? g.torso()[0] : sn.x + sn.cx), hit = 0.55;
@@ -455,10 +455,10 @@
         const p = seg(g.t, 0, hit), y = g.gy(x) + 9 * (1 - p * p);
         const a = Math.max(0, g.t - hit), j = Math.sin(a * 18) * 0.2 * Math.exp(-a * 2.5);
         at(g, x, y, (c) => pudding(c, 2.6, 1.9, true), 0, 1 + j, 1 - j);
-        g.word('プルルン!', x + 1.1, g.gy(x) + 2.4, hit, { size: 0.5, col: '#ffd23a' });
+        g.word(jaen('プルルン!', 'WOBBLE!'), x + 1.1, g.gy(x) + 2.4, hit, { size: 0.5, col: '#ffd23a' });
       } },
 
-    { id: 'fart', name: 'おならで ぶっとぶ', hint: 'おなかに 力が入ると…', dur: 2.3, peak: 0.8, w: () => 1.5,
+    { id: 'fart', name: jaen('おならで ぶっとぶ', 'Fart Rocket'), hint: jaen('おなかに 力が入ると…', 'Push too hard and…'), dur: 2.3, peak: 0.8, w: () => 1.5,
       draw(g) {
         const st = g.st;
         g.at(0.25, 'p1', () => { g.sfx('fart'); });
@@ -468,11 +468,11 @@
           if (st.puffs.length < 14 && Math.random() < 0.7) st.puffs.push({ x: st.x + sn.cx - 0.3, y: st.y + sn.cy, t: g.t });
           for (const q of st.puffs) { const a = g.t - q.t; at(g, q.x, q.y, (c) => { c.globalAlpha = Math.max(0, 0.75 - a * 0.4); cloud(c, 5, 0.25 + a * 0.3, '#b9d77a', q.t * 9); }); }
           g.draw(sn, st.x, st.y, { py: sn.cy, rot: st.r });
-          g.word('ブッ!!', sn.x - 0.4, sn.y + 1.0, 0.6, { size: 0.6, col: '#b9d77a' });
-        } else if (g.t > 0.25) { const p = g.torso(); at(g, p[0] - 0.35, p[1] - 0.2, (c) => { c.globalAlpha = 0.7; cloud(c, 5, 0.18, '#b9d77a', 2); }); g.word('ぷっ', p[0] - 0.5, p[1] + 0.2, 0.25, { size: 0.3, dur: 0.4 }); }
+          g.word(jaen('ブッ!!', 'PRRT!!'), sn.x - 0.4, sn.y + 1.0, 0.6, { size: 0.6, col: '#b9d77a' });
+        } else if (g.t > 0.25) { const p = g.torso(); at(g, p[0] - 0.35, p[1] - 0.2, (c) => { c.globalAlpha = 0.7; cloud(c, 5, 0.18, '#b9d77a', 2); }); g.word(jaen('ぷっ', 'pft'), p[0] - 0.5, p[1] + 0.2, 0.25, { size: 0.3, dur: 0.4 }); }
       } },
 
-    { id: 'trap', name: 'おとしあな', hint: '地面が パカッと…', dur: 2.5, peak: 0.7, w: (cx) => (cx.reason === 'hole' ? 4 : 1.2),
+    { id: 'trap', name: jaen('おとしあな', 'Trapdoor!'), hint: jaen('地面が パカッと…', 'The ground pops open…'), dur: 2.5, peak: 0.7, w: (cx) => (cx.reason === 'hole' ? 4 : 1.2),
       draw(g) {
         const st = g.st;
         g.at(0.25, 'open', () => { g.snapNow(); g.hide = true; g.sfx('trap'); });
@@ -488,12 +488,12 @@
         }
         for (const s of [0, 1]) at(g, s ? x1 : x0, gy, (c) => { c.rotate((s ? -1 : 1) * open * 1.45); c.fillStyle = '#9a6a3a'; c.fillRect(s ? -w / 2 : 0, 0, w / 2, 0.1); c.strokeRect(s ? -w / 2 : 0, 0, w / 2, 0.1); });
         g.at(1.25, 'shut', () => { g.sfx('shut'); g.shake(5); });
-        g.word('ヒュ〜〜', sn.x + 0.8, gy + 0.8, 0.4, { size: 0.42, dur: 0.8 });
-        g.word('パタン', sn.x + 0.6, gy + 0.5, 1.25, { size: 0.42 });
+        g.word(jaen('ヒュ〜〜', 'aaah~~'), sn.x + 0.8, gy + 0.8, 0.4, { size: 0.42, dur: 0.8 });
+        g.word(jaen('パタン', 'CLUNK'), sn.x + 0.6, gy + 0.5, 1.25, { size: 0.42 });
         if (g.t > 1.5) at(g, sn.x + sn.cx, gy, (c) => { const k = back(seg(g.t, 1.5, 1.75)); c.scale(k, k); c.lineWidth = 0.04; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -0.6); c.stroke(); poly(c, [[0, -0.6], [0.45, -0.5], [0, -0.38]]); fs(c, '#e8303a'); });
       } },
 
-    { id: 'sleep', name: 'ねちゃう', hint: 'つかれていると…', dur: 2.5, peak: 1.4, w: (cx) => (cx.reason === 'timeup' ? 6 : cx.reason === 'stop' ? 3 : 0.8),
+    { id: 'sleep', name: jaen('ねちゃう', 'Nap Attack'), hint: jaen('つかれていると…', 'When you\'re sleepy…'), dur: 2.5, peak: 1.4, w: (cx) => (cx.reason === 'timeup' ? 6 : cx.reason === 'stop' ? 3 : 0.8),
       start(g) { g.sfx('snore'); },
       draw(g) {
         const h = g.head(), ha = g.headA(), nx = h[0] + Math.cos(ha) * 0.22, ny = h[1] + Math.sin(ha) * 0.22 - 0.02;
@@ -502,11 +502,11 @@
         if (r > 0) at(g, nx + r * 0.6, ny, (c) => { circ(c, 0, 0, r); c.fillStyle = 'rgba(190,230,255,.6)'; c.fill(); c.lineWidth = 0.02; c.stroke(); c.fillStyle = '#fff'; circ(c, -r * 0.35, -r * 0.35, r * 0.18); c.fill(); });
         g.at(pop, 'pop', () => { g.sfx('pop'); g.sparkle(nx + 0.15, ny, 6, '#bfe6ff'); });
         for (let i = 0; i < 3; i++) { const a = (g.t * 0.6 + i / 3) % 1; if (g.t > 0.3) at(g, h[0] + 0.3 + a * 0.6, h[1] + 0.4 + a * 0.9, (c) => { c.globalAlpha = 1 - a; c.font = `900 ${0.22 + a * 0.15}px sans-serif`; c.fillStyle = '#fff'; c.lineWidth = 0.05; c.strokeText('Z', 0, 0); c.fillText('Z', 0, 0); }); }
-        g.word('グーグー', h[0] + 0.9, h[1] + 1.4, 0.3, { size: 0.36, dur: 1.6 });
-        g.word('パチン!', nx + 0.5, ny + 0.5, pop, { size: 0.4 });
+        g.word(jaen('グーグー', 'snore~'), h[0] + 0.9, h[1] + 1.4, 0.3, { size: 0.36, dur: 1.6 });
+        g.word(jaen('パチン!', 'POP!'), nx + 0.5, ny + 0.5, pop, { size: 0.4 });
       } },
 
-    { id: 'ufo', name: 'UFOに さらわれる', hint: '夜空に あやしい光が…', dur: 2.7, peak: 1.3, w: (cx) => (cx.who === 'alien' ? 12 : 0.8) + cx.night,
+    { id: 'ufo', name: jaen('UFOに さらわれる', 'Abducted by UFO'), hint: jaen('夜空に あやしい光が…', 'A strange light in the night sky…'), dur: 2.7, peak: 1.3, w: (cx) => (cx.who === 'alien' ? 12 : 0.8) + cx.night,
       start(g) { g.sfx('ufo'); g.cam = [g.x, g.y + 2]; },
       draw(g) {
         const st = g.st, ux = g.x + 0.2;
@@ -519,11 +519,11 @@
         }
         if (st.sn) { const sn = st.sn, p = seg(g.t, 0.75, 1.8), k = 1 - 0.85 * p; if (p < 1) g.draw(sn, lerp(sn.x, X - sn.cx, p), lerp(sn.y, Y - 0.3 - sn.cy, p * p), { py: sn.cy, sx: k * Math.cos(g.t * 6), sy: k, rot: Math.sin(g.t * 3) * 0.3 }); }
         at(g, X, Y, (c) => ufo(c, g.t), Math.sin(g.t * 3) * 0.06, 1.3, 1.3);
-        g.word('ピコピコ…', X + 1.2, Y + 0.4, 0.6, { size: 0.36, dur: 1.2 });
-        g.word('ピューン', X + 1, Y - 0.6, 2.0, { size: 0.42, dur: 0.6 });
+        g.word(jaen('ピコピコ…', 'beep boop…'), X + 1.2, Y + 0.4, 0.6, { size: 0.36, dur: 1.2 });
+        g.word(jaen('ピューン', 'ZOOM'), X + 1, Y - 0.6, 2.0, { size: 0.42, dur: 0.6 });
       } },
 
-    { id: 'cats', name: 'ねこまみれ', hint: 'ねこが すきな においが…', dur: 2.6, peak: 1.8, w: (cx) => (cx.who === 'cat' ? 12 : cx.who === 'grandma' ? 5 : 0.8),
+    { id: 'cats', name: jaen('ねこまみれ', 'Cat Pileup'), hint: jaen('ねこが すきな においが…', 'Smells like something cats love…'), dur: 2.6, peak: 1.8, w: (cx) => (cx.who === 'cat' ? 12 : cx.who === 'grandma' ? 5 : 0.8),
       start(g) { g.st.cats = []; },
       draw(g) {
         const st = g.st, cols = ['#f0a85a', '#2b2b33', '#fafafa', '#9a9aa4', '#e8c08a', '#f6d7a8'];
@@ -533,10 +533,10 @@
         }
         for (const k of st.cats) { const p = seg(g.t, k.t0, k.t0 + 0.25); at(g, k.x, k.y + 3 * (1 - p) ** 2 + 0.15, (c) => cat(c, k.col, g.t, k.t0 * 9), 0, k.dir, 1); }
         const h = g.head();
-        g.word('にゃーん', h[0] + 0.8, h[1] + 1.6, 0.4, { size: 0.4, dur: 1.4, col: '#ffd0e6' });
+        g.word(jaen('にゃーん', 'meow~'), h[0] + 0.8, h[1] + 1.6, 0.4, { size: 0.4, dur: 1.4, col: '#ffd0e6' });
       } },
 
-    { id: 'tornado', name: 'たつまき', hint: 'つよい風が…', dur: 2.6, peak: 1.2, w: () => 1.2,
+    { id: 'tornado', name: jaen('たつまき', 'Tornado Ride'), hint: jaen('つよい風が…', 'A strong wind blows…'), dur: 2.6, peak: 1.2, w: () => 1.2,
       start(g) { g.sfx('wind'); g.cam = [g.x + 0.5, g.y + 1.6]; },
       draw(g) {
         const st = g.st, inP = out3(seg(g.t, 0, 0.5)), outP = seg(g.t, 1.7, 2.5) ** 2, fx = lerp(g.x + 5, g.x, inP) + outP * 6, gy = g.gy(fx);
@@ -545,10 +545,10 @@
         at(g, fx, gy, (c) => {
           for (let i = 0; i < 9; i++) { const y = -i * 0.45, w = 0.25 + i * 0.16, o = Math.sin(g.t * 6 + i) * 0.12; ell(c, o, y, w, 0.12 + i * 0.02); c.fillStyle = 'rgba(200,205,215,.45)'; c.fill(); c.lineWidth = 0.025; c.strokeStyle = 'rgba(80,80,90,.6)'; c.stroke(); }
         });
-        g.word('ビュオオオ', fx + 1.2, gy + 2.6, 0.2, { size: 0.42, dur: 1.6 });
+        g.word(jaen('ビュオオオ', 'WHOOOSH'), fx + 1.2, gy + 2.6, 0.2, { size: 0.42, dur: 1.6 });
       } },
 
-    { id: 'flower', name: 'お花になる', hint: 'たねみたいに うまると…', dur: 2.6, peak: 2.0, w: () => 1.2,
+    { id: 'flower', name: jaen('お花になる', 'Flower Power'), hint: jaen('たねみたいに うまると…', 'Planted like a seed…'), dur: 2.6, peak: 2.0, w: () => 1.2,
       start(g) { g.hide = true; g.sfx('sink'); g.st.col = ['#ff8ab8', '#ffd23a', '#8ec5ff', '#ffb35c'][Math.floor(Math.random() * 4)]; },
       draw(g) {
         const sn = g.snap, x = sn.x + sn.cx, gy = g.gy(x), dh = headD(sn);
@@ -564,11 +564,11 @@
           const k = back(seg(g.t, 1.4, 1.7)), [fx, fy] = [x + Math.sin(sway) * sh, gy + Math.cos(sway) * sh];
           at(g, fx, fy, (c) => { c.scale(k, k); c.rotate(g.t * 0.5); for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; ell(c, Math.cos(a) * 0.36, Math.sin(a) * 0.36, 0.2, 0.12, a); fs(c, g.st.col); } });
           g.draw(sn, fx - sn.hx, fy - sn.hy, { px: sn.hx, py: sn.hy, sx: k * 0.95, sy: k * 0.95, rot: sway + sn.ha, circle: [sn.hx, sn.hy, 0.27] });
-          g.word('ポンッ', fx + 0.7, fy + 0.5, 1.4, { size: 0.42, col: g.st.col });
+          g.word(jaen('ポンッ', 'POP!'), fx + 0.7, fy + 0.5, 1.4, { size: 0.42, col: g.st.col });
         }
       } },
 
-    { id: 'shrink', name: 'ちっちゃくなる', hint: 'ちぢんで…', dur: 2.6, peak: 1.0, w: () => 1.2,
+    { id: 'shrink', name: jaen('ちっちゃくなる', 'Teeny Tiny'), hint: jaen('ちぢんで…', 'Shrinking…'), dur: 2.6, peak: 1.0, w: () => 1.2,
       start(g) { g.hide = true; g.sfx('shrink'); },
       draw(g) {
         const sn = g.snap, k = 1 - 0.72 * out3(seg(g.t, 0.05, 0.6)), a = Math.max(0, g.t - 0.8), hop = Math.floor(a / 0.24), ph = (a % 0.24) / 0.24;
@@ -576,11 +576,11 @@
         if (a > 0 && ph < 0.12 && hop < 8) g.at(0.8 + hop * 0.24, 'h' + hop, () => g.sfx('pip'));
         g.cam = [x + 0.2, sn.y + 0.8];
         g.draw(sn, x, y, { sx: k, sy: k });
-        g.word('ちぢんだ!', sn.x + 0.4, sn.y + 1.6, 0.4, { size: 0.42 });
-        g.word('ピッピッ', x + 0.3, sn.y + 0.7, 1.0, { size: 0.3, dur: 1.3 });
+        g.word(jaen('ちぢんだ!', 'SHRUNK!'), sn.x + 0.4, sn.y + 1.6, 0.4, { size: 0.42 });
+        g.word(jaen('ピッピッ', 'pip pip'), x + 0.3, sn.y + 0.7, 1.0, { size: 0.3, dur: 1.3 });
       } },
 
-    { id: 'log', name: 'かわりみの術', hint: 'ドロンと…', dur: 2.5, peak: 1.2, w: () => 1.2,
+    { id: 'log', name: jaen('かわりみの術', 'Ninja Log Swap'), hint: jaen('ドロンと…', 'In a puff of smoke…'), dur: 2.5, peak: 1.2, w: () => 1.2,
       draw(g) {
         g.at(0.45, 'doron', () => { const p = g.torso(); g.st.x = p[0]; g.hide = true; g.sfx('poof'); g.shake(6); for (let i = 0; i < 3; i++) g.puff(p[0] + rnd(-0.4, 0.4), g.gy(p[0]) + 0.3 * i, 10, true); });
         if (g.t < 0.45) return;
@@ -590,24 +590,24 @@
         const lf = seg(g.t, 1.0, 2.4); if (lf > 0) at(g, x + Math.sin(lf * 9) * 0.4, gy + 2.4 - lf * 2.1, (c) => { ell(c, 0, 0, 0.1, 0.05, Math.sin(lf * 9)); fs(c, '#5fc96b'); });
         const sn = g.snap, run = seg(g.t, 0.9, 2.4); // ずっと遠くを 小さく にげていく
         if (run > 0) g.draw(sn, x + 1.5 + run * 4, g.gy(x + 1.5 + run * 4) + Math.abs(Math.sin(run * 30)) * 0.12, { sx: 0.3, sy: 0.3 });
-        g.word('ドロン!', x + 0.7, gy + 1.8, 0.45, { size: 0.5 });
+        g.word(jaen('ドロン!', 'POOF!'), x + 0.7, gy + 1.8, 0.45, { size: 0.5 });
       } },
 
-    { id: 'roll', name: 'ころころ ころがる', hint: 'まるくなって…', dur: 2.3, peak: 0.9, w: (cx) => (cx.reason === 'down' || cx.reason === 'torso' ? 3 : 1.2),
+    { id: 'roll', name: jaen('ころころ ころがる', 'Roly-Poly'), hint: jaen('まるくなって…', 'Curl up into a ball…'), dur: 2.3, peak: 0.9, w: (cx) => (cx.reason === 'down' || cx.reason === 'torso' ? 3 : 1.2),
       start(g) { g.hide = true; g.sfx('roll'); },
       draw(g) {
         const sn = g.snap, a = Math.max(0, g.t - 0.1), d = 2.6 * a * a + 0.8 * a, x = sn.x + d, r = 0.7;
         g.cam = [x + 0.6, g.gy(x) + 1.1];
         g.draw(sn, x, g.gy(x) + r - sn.cy, { py: sn.cy, rot: d / r, sx: 0.85, sy: 0.85 });
         if (Math.random() < 0.3) g.puff(x, g.gy(x), 1, false);
-        g.word('ゴロゴロ〜', sn.x + 1.4, sn.y + 1.6, 0.2, { size: 0.42, dur: 1.5 });
+        g.word(jaen('ゴロゴロ〜', 'roll roll~'), sn.x + 1.4, sn.y + 1.6, 0.2, { size: 0.42, dur: 1.5 });
       } },
 
-    { id: 'plane', name: 'かみひこうき', hint: 'ペラペラに なって…', dur: 2.8, peak: 1.4, w: () => 1.2,
+    { id: 'plane', name: jaen('かみひこうき', 'Paper Airplane'), hint: jaen('ペラペラに なって…', 'Flat as a sheet of paper…'), dur: 2.8, peak: 1.4, w: () => 1.2,
       start(g) { g.hide = true; g.sfx('paper'); },
       draw(g) {
         const sn = g.snap;
-        if (g.t < 0.75) { const f = out3(seg(g.t, 0.05, 0.3)), fo = seg(g.t, 0.45, 0.75); g.draw(sn, sn.x, sn.y, { sy: 1 - 0.92 * f, sx: (1 + 0.3 * f) * (1 - fo) + 0.001 }); g.word('ペラッ', sn.x + 0.6, sn.y + 1.0, 0.1, { size: 0.42 }); return; }
+        if (g.t < 0.75) { const f = out3(seg(g.t, 0.05, 0.3)), fo = seg(g.t, 0.45, 0.75); g.draw(sn, sn.x, sn.y, { sy: 1 - 0.92 * f, sx: (1 + 0.3 * f) * (1 - fo) + 0.001 }); g.word(jaen('ペラッ', 'FLIP'), sn.x + 0.6, sn.y + 1.0, 0.1, { size: 0.42 }); return; }
         g.at(0.75, 'fly', () => g.sfx('whoosh'));
         const a = g.t - 0.75, x0 = sn.x, y0 = sn.y + 0.4;
         let x, y, rot;
@@ -615,10 +615,10 @@
         else if (a < 1.25) { const th = (a - 0.5) / 0.75 * TAU; x = x0 + 1.5 + Math.sin(th) * 0.9; y = y0 + 0.3 + 0.9 - Math.cos(th) * 0.9; rot = -th; }
         else { const b = a - 1.25; x = x0 + 1.5 + b * 5; y = y0 + 0.3 + b * 3; rot = -0.5; }
         at(g, x, y, (c) => plane(c, g.shirt()), rot, 1.4, 1.4);
-        g.word('スーッ', x + 0.5, y + 0.6, 0.8, { size: 0.42, dur: 1.4 });
+        g.word(jaen('スーッ', 'swoosh~'), x + 0.5, y + 0.6, 0.8, { size: 0.42, dur: 1.4 });
       } },
 
-    { id: 'jelly', name: 'プリンになる', hint: 'ぷるぷるして…', dur: 2.5, peak: 1.0, w: (cx) => (cx.reason === 'pudding' ? 3 : 1),
+    { id: 'jelly', name: jaen('プリンになる', 'Turned to Pudding'), hint: jaen('ぷるぷるして…', 'All wiggly and jiggly…'), dur: 2.5, peak: 1.0, w: (cx) => (cx.reason === 'pudding' ? 3 : 1),
       draw(g) {
         g.at(0.3, 'snap', () => { g.snapNow(); g.hide = true; g.sfx('boyon'); });
         if (g.t < 0.3) return;
@@ -626,10 +626,10 @@
         g.draw(sn, sn.x, sn.y, { sx: 1 + j, sy: 1 - j }); g.draw(g.tint(sn, '#ffd23a', 0.5), sn.x, sn.y, { sx: 1 + j, sy: 1 - j, alpha: seg(a, 0, 0.3) });
         const top = sn.bb.t * (1 - j) - 0.1;
         at(g, sn.x + sn.cx, sn.y + top, (c) => { const k = seg(a, 0.6, 1.1); c.fillStyle = '#8a4a1c'; c.beginPath(); c.ellipse(0, 0, 0.45 * k, 0.12 * k, 0, 0, TAU); c.fill(); for (let i = 0; i < 3; i++) { c.fillRect(-0.3 + i * 0.28, 0, 0.07, 0.4 * k * (0.6 + i * 0.2)); } });
-        g.word('プルンプルン', sn.x + 1.0, sn.y + sn.bb.t + 0.4, 0.35, { size: 0.42, col: '#ffd23a', dur: 1.6 });
+        g.word(jaen('プルンプルン', 'jiggle~'), sn.x + 1.0, sn.y + sn.bb.t + 0.4, 0.35, { size: 0.42, col: '#ffd23a', dur: 1.6 });
       } },
 
-    { id: 'snowball', name: 'ゆきだま', hint: 'さむい坂で…', dur: 2.6, peak: 1.8, w: (cx) => 0.9 + cx.night * 1.5,
+    { id: 'snowball', name: jaen('ゆきだま', 'Snowballed'), hint: jaen('さむい坂で…', 'On a snowy hill…'), dur: 2.6, peak: 1.8, w: (cx) => 0.9 + cx.night * 1.5,
       start(g) { g.hide = true; g.sfx('snow'); },
       draw(g) {
         const sn = g.snap, a = Math.max(0, g.t - 0.15), d = Math.min(4.5, 1.4 * a * a + 0.9 * a), r = 0.45 + Math.min(0.75, a * 0.42), x = sn.x + d, gy = g.gy(x);
@@ -637,7 +637,7 @@
         g.draw(sn, x - sn.cx, gy + r - sn.cy, { px: sn.cx, py: sn.cy, rot: d / r, sx: k, sy: k });
         at(g, x, gy + r, (c) => { c.globalAlpha = Math.min(1, 0.25 + a * 0.6); circ(c, 0, 0, r); fs(c, '#f4f9ff'); c.globalAlpha = 1; c.fillStyle = 'rgba(180,210,240,.6)'; for (let i = 0; i < 6; i++) { const an = i + d / r; circ(c, Math.cos(an) * r * 0.6, Math.sin(an) * r * 0.6, r * 0.12); c.fill(); } });
         if (d >= 4.5) at(g, x, gy + r, (c) => { c.lineWidth = 0.05; c.strokeStyle = '#6b4220'; for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * r * 0.9, 0); c.lineTo(s * (r + 0.4), -0.35); c.lineTo(s * (r + 0.5), -0.5); c.stroke(); } poly(c, [[r * 0.2, -r * 0.2], [r * 0.75, -r * 0.1], [r * 0.2, -r * 0.02]]); fs(c, '#ff8a1a'); });
-        g.word('ゴロゴロ', x + 0.9, gy + 1.8, 0.3, { size: 0.4, dur: 1.4 });
+        g.word(jaen('ゴロゴロ', 'rumble…'), x + 0.9, gy + 1.8, 0.3, { size: 0.4, dur: 1.4 });
       } },
   ];
 
@@ -663,7 +663,7 @@
     for (let i = 0; i < d.vs.length; i++) { r -= ws[i]; if (r <= 0) return d.vs[i]; }
     return d.vs[0];
   }
-  const nameOf = (d, v) => (v ? `${d.name}（${v.name}）` : d.name);
+  const nameOf = (d, v) => (v ? (YL.en ? `${d.name} (${v.name})` : `${d.name}（${v.name}）`) : d.name);
   const total = () => LIST.reduce((a, d) => a + (d.vs ? d.vs.length : 1), 0); // 形まで数えた数
 
   window.YoroGags = { LIST, pick, pickV, nameOf, total };

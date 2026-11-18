@@ -7,8 +7,8 @@
   };
   const COST = 5; // 1回のメダル
   const DUP = 2; // ダブったら もどるメダル
-  const RARITY = { N: { w: 60, name: 'ふつう', color: '#8fb3d9' }, R: { w: 28, name: 'レア', color: '#4fb36b' }, SR: { w: 10, name: 'スーパーレア', color: '#b46cf0' }, SSR: { w: 2, name: 'ウルトラレア', color: '#ffb000' } };
-  const SLOTS = { shoe: 'くつ', hat: 'ぼうし', tray: 'おぼん', skin: 'すがた' };
+  const RARITY = { N: { w: 60, name: jaen('ふつう', 'Common'), color: '#8fb3d9' }, R: { w: 28, name: jaen('レア', 'Rare'), color: '#4fb36b' }, SR: { w: 10, name: jaen('スーパーレア', 'Super Rare'), color: '#b46cf0' }, SSR: { w: 2, name: jaen('ウルトラレア', 'Ultra Rare'), color: '#ffb000' } };
+  const SLOTS = YL.en ? { shoe: 'Shoes', hat: 'Hat', tray: 'Tray', skin: 'Look' } : { shoe: 'くつ', hat: 'ぼうし', tray: 'おぼん', skin: 'すがた' };
   // fx（効き目）：jump=ジャンプの高さ×・wind=風の強さ×・speed=いちばん速い速さ＋・balance=体を立て直す力×・pudding=ぐらぐらのたまり方×
   const ITEMS = [
     { id: 'sneaker', slot: 'shoe', r: 'N', name: '赤いスニーカー', icon: 'g.sneaker', color: '#e8303a' },
@@ -30,6 +30,28 @@
     { id: 'penguin', slot: 'skin', r: 'SR', name: 'ペンギン', icon: 'g.penguin', skin: { face: '#ffffff', arm: '#2b2b2b', hair: '#2b2b2b', extra: 'beak' } },
     { id: 'gold', slot: 'skin', r: 'SSR', name: 'ゴールド', icon: 'g.gold', skin: { face: '#ffd84d', arm: '#f0c020', hair: '#e0a800', extra: 'shine' }, fx: { speed: 0.1, jump: 1.03 }, say: 'ピカピカ。ほんの少し速くて高い' },
   ];
+  // 英語の名前と説明（id でかさねる。並び・効き目は日本語と同じものを使う）
+  const ITEMS_EN = {
+    sneaker: { name: 'Red Sneakers' },
+    boots: { name: 'Rain Boots' },
+    spring: { name: 'Spring Shoes', say: 'Jump a bit higher' },
+    grip: { name: 'Grippy Shoes', say: 'Wind pushes you less' },
+    rocket: { name: 'Rocket Shoes', say: 'Top speed goes up a bit' },
+    goldshoe: { name: 'Golden Shoes', say: 'A bit higher jumps and more speed' },
+    straw: { name: 'Straw Hat' },
+    catears: { name: 'Cat Ears' },
+    helmet: { name: 'Helmet', say: 'Bounce back a bit better' },
+    propeller: { name: 'Propeller Hat', say: 'Floaty high jumps' },
+    halo: { name: 'Angel Halo', say: 'You and the pudding are a bit steadier' },
+    redtray: { name: 'Red Tray' },
+    woodtray: { name: 'Non-Slip Tray', say: 'Wobbles build up a bit slower' },
+    silvertray: { name: 'Silver Tray', say: 'Wobbles build up slower' },
+    robot: { name: 'Robot' },
+    bear: { name: 'Bear' },
+    penguin: { name: 'Penguin' },
+    gold: { name: 'Gold', say: 'Shiny! A tiny bit faster and higher' },
+  };
+  if (YL.en) ITEMS.forEach((i) => Object.assign(i, ITEMS_EN[i.id]));
 
   const read = (k, d) => { try { const v = JSON.parse(store.get(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
   let medals = +read('yoro.medals', 0) || 0;
@@ -75,13 +97,13 @@
     const w = worn();
     const html = Object.entries(SLOTS).map(([slot, label]) => {
       const list = ITEMS.filter((i) => i.slot === slot);
-      const cards = [`<button type="button" class="cl${w[slot] ? '' : ' on'}" data-s="${slot}" data-id=""><b>${window.YoroIcon.html('x.none')}</b><span>なし</span></button>`]
+      const cards = [`<button type="button" class="cl${w[slot] ? '' : ' on'}" data-s="${slot}" data-id=""><b>${window.YoroIcon.html('x.none')}</b><span>${jaen('なし', 'None')}</span></button>`]
         .concat(list.map((i) => {
           const has = !!owned[i.id], on = w[slot] && w[slot].id === i.id;
           return `<button type="button" class="cl${on ? ' on' : ''}${has ? '' : ' no'}" data-s="${slot}" data-id="${i.id}" ${has ? '' : 'disabled'}>`
-            + `<b>${has ? window.YoroIcon.html(i.icon) : '？'}</b><span>${has ? i.name : 'ガチャで出る'}</span><i style="color:${RARITY[i.r].color}">${RARITY[i.r].name}</i>${has && i.say ? `<i>${i.say}</i>` : ''}</button>`;
+            + `<b>${has ? window.YoroIcon.html(i.icon) : jaen('？', '?')}</b><span>${has ? i.name : jaen('ガチャで出る', 'From Gacha')}</span><i style="color:${RARITY[i.r].color}">${RARITY[i.r].name}</i>${has && i.say ? `<i>${i.say}</i>` : ''}</button>`;
         })).join('');
-      return `<h3>${label}（ガチャ）</h3><div class="clg">${cards}</div>`;
+      return `<h3>${jaen(`${label}（ガチャ）`, `${label} (Gacha)`)}</h3><div class="clg">${cards}</div>`;
     }).join('');
     el.innerHTML = html;
     el.querySelectorAll('button.cl').forEach((b) => { b.onclick = () => { setEquip(b.dataset.s, b.dataset.id); renderEquip(el, onPick); if (onPick) onPick(); }; });

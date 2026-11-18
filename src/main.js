@@ -33,8 +33,11 @@
   const CLIP = window.YoroClip || { capture() {}, reset() {}, stopAfter() {}, ready: () => false, make: async () => null };
   let mode = 'free', look = null, curBest = 0, unlockAtStart = []; // free＝いつものコース／daily＝今日のコース・見た目・この回のベスト・はじめに使えたもの
   const ctxNow = () => { const st = CL.stats(); return { total: st.total, runs: st.runs, best: bestRun, zukan: ZK.count().got, streak: DY.streak().n, has: ZK.has }; };
-  const itemName = () => (look ? look.carry.name : 'プリン');
-  const tr = (t) => (itemName().includes('プリン') ? t : t.replace(/プリン/g, itemName())); // 文の「プリン」を運んでいるものの名前に
+  const itemName = () => (look ? look.carry.name : jaen('プリン', 'pudding'));
+  const titleCase = (n) => n.replace(/\b[a-z]/g, (c) => c.toUpperCase());
+  const tr = (t) => (!YL.en ? (itemName().includes('プリン') ? t : t.replace(/プリン/g, itemName())) // 文の「プリン」を運んでいるものの名前に
+    : /pudding/i.test(itemName()) ? t : t.replace(/pudding/g, itemName()).replace(/Pudding/g, titleCase(itemName())));
+  const poss = (n) => (/s$/i.test(n) ? `${n}'` : `${n}'s`); // 英語の「〜の」
   function noteNew(isNew, text) { if (isNew) runNew.push(text); return isNew; }
 
   // ---- 記録 ----
@@ -62,7 +65,7 @@
     }
     if (old) { cam.x -= old.goal; cam.y -= old.gy; worldOff += old.goal; for (const q of prints) q.x -= old.goal; }
     else { cam.x = 0; cam.y = 1; worldOff = 0; delivered = null; prints.length = 0; } // 前の道の続きに見えるように
-    ui.meterLabel.textContent = `${n}軒目`;
+    ui.meterLabel.textContent = jaen(`${n}軒目`, `House ${n}`);
     parts.length = 0; shakeA = 0;
     hinted = new Set();
     prevWaiter = n > 1 ? (carry ? waiter : WT.forLevel(n - 1)) : null;
@@ -72,13 +75,17 @@
     const windy = n >= 3 && (force.wind != null ? force.wind !== 0 : R() < 0.15);
     S.wind = (windy ? (force.wind || (R() < 0.5 ? -4 : 4)) : 0) * S.fx.wind;
     makeBoxes(R);
-    let msg = n === 1 ? `${waiter.name}に<br>プリンを とどけよう`
-      : n === 3 ? `つぎは ${waiter.name}の家<br>左右同時で ジャンプ`
-      : `つぎは ${waiter.name}の家`;
-    if (rare) { msg = `えっ！？ つぎは<br><b>${waiter.name}</b>の家！？`; noteNew(ZK.mark('event', 'rare'), 'できごと「めずらしい お客さん」'); }
-    if (S.wind) { const head = S.wind < 0; msg = `${head ? '向かい風だ！' : '追い風だ！'}<br>${msg.split('<br>')[0]}`; noteNew(ZK.mark('event', head ? 'headwind' : 'tailwind'), `できごと「${head ? '向かい風' : '追い風'}」`); }
-    if (n === 1 && goldDay) msg = 'きょうは<br><b>金のプリンの日！</b>';
-    if (n === 1 && mode === 'daily') msg = `きょうのコース<br>${DY.label()}`;
+    let msg = YL.en
+      ? (n === 1 ? `Deliver the pudding<br>to ${waiter.name}!`
+        : n === 3 ? `Next: ${poss(waiter.name)} house<br>Tap both sides to jump`
+        : `Next: ${poss(waiter.name)} house`)
+      : (n === 1 ? `${waiter.name}に<br>プリンを とどけよう`
+        : n === 3 ? `つぎは ${waiter.name}の家<br>左右同時で ジャンプ`
+        : `つぎは ${waiter.name}の家`);
+    if (rare) { msg = jaen(`えっ！？ つぎは<br><b>${waiter.name}</b>の家！？`, `Whoa?! Next up is<br><b>${poss(waiter.name)}</b> house?!`); noteNew(ZK.mark('event', 'rare'), jaen('できごと「めずらしい お客さん」', 'Event: Rare visitor')); }
+    if (S.wind) { const head = S.wind < 0; msg = `${head ? jaen('向かい風だ！', 'Headwind!') : jaen('追い風だ！', 'Tailwind!')}<br>${msg.split('<br>')[0]}`; noteNew(ZK.mark('event', head ? 'headwind' : 'tailwind'), jaen(`できごと「${head ? '向かい風' : '追い風'}」`, `Event: ${head ? 'Headwind' : 'Tailwind'}`)); }
+    if (n === 1 && goldDay) msg = jaen('きょうは<br><b>金のプリンの日！</b>', "It's<br><b>Golden Pudding Day!</b>");
+    if (n === 1 && mode === 'daily') msg = jaen(`きょうのコース<br>${DY.label()}`, `Daily Course<br>${DY.label()}`);
     showBanner(tr(msg));
     if (n > 1 && (rare || S.wind)) { snd.play(S.wind ? 'gust' : 'event'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 3000); }
   }
@@ -112,10 +119,10 @@
       if (d > 0.5) continue;
       const t = ZK.pickTreasure(); if (!t) continue;
       b.taken = performance.now(); b.item = t; runTreasure++; sparkle(b.x, b.y, 12);
-      const isNew = noteNew(ZK.mark('treasure', t.id), `おたから「${t.name}」`);
+      const isNew = noteNew(ZK.mark('treasure', t.id), jaen(`おたから「${t.name}」`, `Treasure: ${t.name}`));
       const m = medalOf(t), could = GA.canPull(); GA.addMedals(m); runMedals += m;
-      pop(`${t.name} +${m}${isNew ? ' NEW！' : ''}`, isNew ? '#d48a00' : '#7a4ad6');
-      if (!could && GA.canPull()) setTimeout(() => pop('ガチャが回せる！', '#e8a600'), 450);
+      pop(`${t.name} +${m}${isNew ? jaen(' NEW！', ' NEW!') : ''}`, isNew ? '#d48a00' : '#7a4ad6');
+      if (!could && GA.canPull()) setTimeout(() => pop(jaen('ガチャが回せる！', 'Gacha ready!'), '#e8a600'), 450);
       paintMedal(true);
       snd.play('treasure', ZK.rareOf(t));
     }
@@ -193,6 +200,15 @@
   function showOnly(el) {
     for (const o of [ui.title, ui.fail, ui.pause, ui.goal]) o.classList.toggle('show', o === el);
     document.body.classList.toggle('menu', el === ui.title || el === ui.fail || el === ui.goal);
+    if (window.YP) { if (el) YP.stop(); else YP.start(); } // ゲームサイトに「遊んでいる／止まった」を知らせる
+  }
+  // ゲームサイトでは「もう一回」「つぎへ」の前に区切りの広告（出るかはサイトが決める）。ふつうの公開版ではすぐ進む
+  let adWait = false;
+  function afterAd(fn) {
+    if (!window.YP || !YP.active) { fn(); return; }
+    if (adWait) return;
+    adWait = true; snd.bgm(false);
+    YP.breakAd(() => { adWait = false; fn(); });
   }
   function start() { restart('free'); }
   // ゲームオーバーのあとは、いつも最初（おかしや）から
@@ -204,7 +220,7 @@
     curBest = 0; // きょりのベストの旗は出さない（ステージ制）
     CLIP.reset();
     goldDay = force.gold != null ? !!force.gold : (mode === 'daily' ? DY.rng(0)() : Math.random()) < 0.03; // ごくたまに「金のプリンの日」
-    if (goldDay) noteNew(ZK.mark('event', 'goldday'), 'できごと「金のプリンの日」');
+    if (goldDay) noteNew(ZK.mark('event', 'goldday'), jaen('できごと「金のプリンの日」', 'Event: Golden Pudding Day'));
     tutSteps = 0; loadLevel(mode === 'daily' ? dailyStage() : stageNow); pops.length = 0; elapsed = 0; runDist = 0; passedBest = false; nextMile = 50; game.spawn(0); showOnly(null); snd.play(goldDay ? 'event' : 'start'); snd.bgm(true);
   }
   const retry = () => restart();
@@ -214,26 +230,26 @@
   function speak(who, mood, text, delay = 0) {
     const v = VOICE[who.id] || 300, a = Array.isArray(v) ? v : [v];
     const kind = typeof a[0] === 'string' ? a[0] : a[1] === 'alien' ? 'alien' : 'human';
-    snd.play('voice', { pitch: typeof a[0] === 'number' ? a[0] : 0, shaky: a[1] === 1, kind, mood, len: (text || '').length, delay });
+    snd.play('voice', { pitch: typeof a[0] === 'number' ? a[0] : 0, shaky: a[1] === 1, kind, mood, len: YL.en ? Math.ceil((text || '').length / 2.5) : (text || '').length, delay });
   }
   // おうちに着いた：GOAL！ タップで次のステージへ
   let goalSay = '', goalAt = 0;
   function deliver() {
     goalSay = WT.happy(waiter, itemName()).say;
-    noteNew(ZK.mark('face', `${waiter.id}.happy`), `${waiter.name}の「にっこり」顔`);
+    noteNew(ZK.mark('face', `${waiter.id}.happy`), jaen(`${waiter.name}の「にっこり」顔`, `${poss(waiter.name)} happy face`));
     faceNow = 'happy'; faceT0 = performance.now();
     snd.play('clear'); snd.bgm(false); confetti(); speak(waiter, 'happy', goalSay, 1.1); // ファンファーレのあとに よろこぶ声
     fails = 0;
     runDist += stage.goal;
     CL.addRun(stage.goal);
     if (mode === 'daily') DY.addDaily(level);
-    else { stageNow = level + 1; store.set('yoro.stage', String(stageNow)); }
+    else { if (level + 1 > stageNow && window.YP) YP.happy(); stageNow = level + 1; store.set('yoro.stage', String(stageNow)); } // はじめてのクリアはサイトに「よろこびの場面」を知らせる
     stageClears++; store.set('yoro.clears', String(stageClears));
-    $('goalTag').textContent = `ステージ ${level} クリア`;
+    $('goalTag').textContent = jaen(`ステージ ${level} クリア`, `Stage ${level} Clear!`);
     $('goalLine').textContent = goalSay;
-    const gn = $('goalNew'); gn.innerHTML = `<b>NEW</b> ずかん ${ZK.count().got}/${ZK.count().total}`; gn.hidden = !runNew.length;
+    const gn = $('goalNew'); gn.innerHTML = jaen(`<b>NEW</b> ずかん ${ZK.count().got}/${ZK.count().total}`, `<b>NEW</b> Album ${ZK.count().got}/${ZK.count().total}`); gn.hidden = !runNew.length;
     const gm = $('goalMedal'); gm.innerHTML = `<span class="coin"></span>+${runMedals}`; gm.hidden = !runMedals;
-    $('nextBtn').innerHTML = `つぎへ<small>ステージ ${level + 1}</small>`;
+    $('nextBtn').innerHTML = jaen(`つぎへ<small>ステージ ${level + 1}</small>`, `Next<small>Stage ${level + 1}</small>`);
     goalAt = performance.now();
     refreshTitle();
     showOnly(ui.goal);
@@ -250,17 +266,18 @@
     delivered = { say: goalSay, t0: performance.now() };
     showOnly(null); snd.play('start'); snd.bgm(true);
   }
-  $('nextBtn').onclick = nextStage;
-  ui.goal.addEventListener('click', (e) => { if (!e.target.closest('button')) nextStage(); });
+  const goNext = () => { if (performance.now() - goalAt >= 700) afterAd(nextStage); };
+  $('nextBtn').onclick = goNext;
+  ui.goal.addEventListener('click', (e) => { if (!e.target.closest('button')) goNext(); });
   $('startBtn').onclick = () => start();
   $('dailyBtn').onclick = () => restart('daily');
-  $('retryBtn').onclick = () => restart();
+  $('retryBtn').onclick = () => afterAd(() => restart());
   // ゲームオーバーの画面は、ボタン以外のどこをタップしても すぐもう一回（動画を作っているあいだは待つ）
-  ui.fail.addEventListener('click', (e) => { if (!e.target.closest('button, a, summary') && !ui.retry.disabled && !vidBusy) restart(); });
+  ui.fail.addEventListener('click', (e) => { if (!e.target.closest('button, a, summary') && !ui.retry.disabled && !vidBusy) afterAd(() => restart()); });
   // 転んだ動画：1回目のタップで作る → できたら、もう1回のタップで送る（スマホは送るときにタップが要る）
   let vidFile = null, vidBusy = false, clipInfo = null;
   const vidBtn = $('vidBtn'), vidLabel = vidBtn.querySelector('b');
-  function resetVid() { vidFile = null; vidBusy = false; vidBtn.disabled = false; vidLabel.textContent = '動画'; }
+  function resetVid() { vidFile = null; vidBusy = false; vidBtn.disabled = false; vidLabel.textContent = jaen('動画', 'Video'); }
   async function shareFile(f) {
     try {
       if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], text: lastShare }); return; }
@@ -271,10 +288,10 @@
   vidBtn.onclick = async () => {
     if (vidFile) { shareFile(vidFile); return; }
     if (vidBusy || !clipInfo) return;
-    vidBusy = true; vidBtn.disabled = true; vidLabel.textContent = 'つくり中';
+    vidBusy = true; vidBtn.disabled = true; vidLabel.textContent = jaen('つくり中', 'Making…');
     try { vidFile = await CLIP.make(clipInfo, (p) => { vidLabel.textContent = `${Math.round(p * 100)}%`; }); } catch (e) { vidFile = null; }
     vidBusy = false; vidBtn.disabled = false;
-    vidLabel.textContent = !vidFile ? 'つくれない' : '動画を送る';
+    vidLabel.textContent = !vidFile ? jaen('つくれない', "Can't make") : jaen('動画を送る', 'Send video');
   };
   // きせかえ
   const closetEl = $('closet');
@@ -291,9 +308,10 @@
   let gBusy = false;
   function paintGacha() {
     const c = GA.count();
-    $('gMedals').innerHTML = `<span class="coin"></span> ${GA.medals}枚${GA.canPull() ? '' : `（あと ${GA.COST - GA.medals}枚）`}`;
+    $('gMedals').innerHTML = jaen(`<span class="coin"></span> ${GA.medals}枚${GA.canPull() ? '' : `（あと ${GA.COST - GA.medals}枚）`}`,
+      `<span class="coin"></span> ${GA.medals}${GA.canPull() ? '' : ` (need ${GA.COST - GA.medals} more)`}`);
     gPull.disabled = gBusy || !GA.canPull();
-    gPull.textContent = GA.canPull() || gBusy ? '回す' : 'メダルが たりない';
+    gPull.textContent = GA.canPull() || gBusy ? jaen('回す', 'Spin!') : jaen('メダルが たりない', 'Not enough medals');
     $('gCount').textContent = `${c.got} / ${c.total}`;
     $('gAll').innerHTML = GA.ITEMS.map((i) => (GA.has(i.id) ? `<span title="${i.name}">${IC.html(i.icon)}</span>` : '<span class="no">？</span>')).join('');
     paintMedal();
@@ -311,9 +329,10 @@
     setTimeout(() => {
       gBusy = false; gMachine.className = 'gm';
       $('gResult').innerHTML = `<div class="gres${it.r === 'SSR' ? ' ssr' : ''}"><span class="rr" style="color:${rr.color}">★ ${rr.name} ★</span><b>${IC.html(it.icon)}</b>`
-        + `<span class="nm">${it.name}</span>（${GA.SLOTS[it.slot]}）<br>${it.say ? `<span class="fx">${it.say}</span><br>` : ''}`
-        + (res.isNew ? '<span class="nw">NEW！ 身につけたよ</span>' : `ダブり… メダル${res.back}枚 もどった`) + '</div>';
-      if (res.isNew) noteNew(true, `ガチャ「${it.name}」`);
+        + `<span class="nm">${it.name}</span>${jaen(`（${GA.SLOTS[it.slot]}）`, ` (${GA.SLOTS[it.slot]})`)}<br>${it.say ? `<span class="fx">${it.say}</span><br>` : ''}`
+        + (res.isNew ? jaen('<span class="nw">NEW！ 身につけたよ</span>', '<span class="nw">NEW! Now wearing it</span>')
+          : jaen(`ダブり… メダル${res.back}枚 もどった`, `Already have it… got ${res.back} medal${res.back === 1 ? '' : 's'} back`)) + '</div>';
+      if (res.isNew) noteNew(true, jaen(`ガチャ「${it.name}」`, `Gacha: ${it.name}`));
       snd.play('treasure', it.r === 'SR' || it.r === 'SSR');
       if (navigator.vibrate) navigator.vibrate(it.r === 'SSR' ? [60, 40, 60, 40, 120] : 40);
       wear = GA.worn(); paintGacha();
@@ -362,24 +381,24 @@
   });
   // 記録を送る（スマホのシェア。使えなければコピー）
   $('shareBtn').onclick = async () => {
-    const url = location.origin + location.pathname;
+    const url = window.YP && YP.active ? '' : location.origin + location.pathname; // ゲームサイトでは よそのURLを付けない
     try {
-      if (navigator.share) { await navigator.share({ title: 'ヨロヨロおつかい', text: lastShare, url }); return; }
-      await navigator.clipboard.writeText(`${lastShare}\n${url}`);
-      $('shareBtn').querySelector('b').textContent = 'コピーした';
-      setTimeout(() => { $('shareBtn').querySelector('b').textContent = '送る'; }, 1800);
+      if (navigator.share) { await navigator.share(url ? { title: jaen('ヨロヨロおつかい', 'Yoroyoro Errand'), text: lastShare, url } : { title: jaen('ヨロヨロおつかい', 'Yoroyoro Errand'), text: lastShare }); return; }
+      await navigator.clipboard.writeText(url ? `${lastShare}\n${url}` : lastShare);
+      $('shareBtn').querySelector('b').textContent = jaen('コピーした', 'Copied!');
+      setTimeout(() => { $('shareBtn').querySelector('b').textContent = jaen('送る', 'Share'); }, 1800);
     } catch (e) { /* やめた・使えないときは何もしない */ }
   };
   const sndBtn = $('sndBtn');
-  const paintSnd = () => { sndBtn.innerHTML = `<svg class="ic"><use href="#${snd.on ? 'i-snd' : 'i-mute'}"/></svg>`; sndBtn.setAttribute('aria-label', snd.on ? '音をけす' : '音を出す'); };
+  const paintSnd = () => { sndBtn.innerHTML = `<svg class="ic"><use href="#${snd.on ? 'i-snd' : 'i-mute'}"/></svg>`; sndBtn.setAttribute('aria-label', snd.on ? jaen('音をけす', 'Mute') : jaen('音を出す', 'Sound on')); };
   sndBtn.onclick = () => { snd.toggle(); paintSnd(); snd.play('tap'); };
   paintSnd();
   function refreshTitle() {
     $('bestRun').hidden = true;
-    $('startBtn').innerHTML = `あるく<small>ステージ ${stageNow}</small>`;
+    $('startBtn').innerHTML = jaen(`あるく<small>ステージ ${stageNow}</small>`, `Play<small>Stage ${stageNow}</small>`);
     const sk = DY.streak(), dd = DY.daily();
-    $('streak').innerHTML = sk.n > 0 ? `<svg class="ic"><use href="#i-flame"/></svg> ${sk.n}日れんぞく` : '';
-    $('dailyBtn').innerHTML = `きょうのコース<small>${DY.label()}・ステージ ${dailyStage()}</small>`;
+    $('streak').innerHTML = sk.n > 0 ? `<svg class="ic"><use href="#i-flame"/></svg> ${jaen(`${sk.n}日れんぞく`, `${sk.n}-day streak`)}` : '';
+    $('dailyBtn').innerHTML = jaen(`きょうのコース<small>${DY.label()}・ステージ ${dailyStage()}</small>`, `Daily Course<small>${DY.label()} · Stage ${dailyStage()}</small>`);
     $('titleMedal').textContent = GA.medals;
     $('titleGachaBtn').classList.toggle('ready', GA.canPull());
     paintMedal();
@@ -392,9 +411,13 @@
     $(cl).onclick = () => o.classList.remove('show');
     o.addEventListener('click', (e) => { if (e.target === o) o.classList.remove('show'); });
   }
+  // ことばの切りかえ（あそびかたの中のボタン）
+  const lb = document.getElementById('langBtn'); if (lb) { lb.textContent = YL.en ? '日本語' : 'English'; lb.onclick = () => YL.set(YL.en ? 'ja' : 'en'); }
   function paintRecords() {
     const st = CL.stats();
-    $('recBody').innerHTML = [['いまのステージ', stageNow], ['クリアした回数', `${stageClears}回`], ['歩いたきょり（合計）', `${Math.floor(st.total || 0)}m`], ['きょうのコース', `ステージ ${dailyStage()}`]]
+    $('recBody').innerHTML = (YL.en
+      ? [['Current stage', stageNow], ['Stages cleared', `${stageClears}`], ['Total distance walked', `${Math.floor(st.total || 0)}m`], ['Daily Course', `Stage ${dailyStage()}`]]
+      : [['いまのステージ', stageNow], ['クリアした回数', `${stageClears}回`], ['歩いたきょり（合計）', `${Math.floor(st.total || 0)}m`], ['きょうのコース', `ステージ ${dailyStage()}`]])
       .map(([k, v]) => `<div class="rec"><span>${k}</span><b>${v}</b></div>`).join('');
   }
   // タイトルに、じぶんの記録の上位を出す
@@ -407,10 +430,10 @@
     const r = WT.reaction(waiter, { reason: S.fallReason, fails, left, item: itemName() });
     faceNow = r.face; faceT0 = performance.now(); speak(waiter, r.mood, r.say);
     const fr = ZK.FALLS.find((f) => f.id === S.fallReason);
-    if (fr) noteNew(ZK.mark('fall', fr.id), `ころび方「${fr.name}」`);
+    if (fr) noteNew(ZK.mark('fall', fr.id), jaen(`ころび方「${fr.name}」`, `Fall: ${fr.name}`));
     const gagName = gag && gag.def.name ? GG.nameOf(gag.def, gag.v) : '';
-    if (gag && gag.def.name) { noteNew(ZK.mark('gag', gag.def.id), `ころび芸「${gag.def.name}」`); if (gag.v) ZK.mark('gagv', `${gag.def.id}.${gag.v.id}`); }
-    noteNew(ZK.mark('face', `${waiter.id}.${r.mood}`), `${waiter.name}の「${ZK.MOOD_NAMES[r.mood] || r.mood}」顔`);
+    if (gag && gag.def.name) { noteNew(ZK.mark('gag', gag.def.id), jaen(`ころび芸「${gag.def.name}」`, `Wipeout: ${gag.def.name}`)); if (gag.v) ZK.mark('gagv', `${gag.def.id}.${gag.v.id}`); }
+    noteNew(ZK.mark('face', `${waiter.id}.${r.mood}`), jaen(`${waiter.name}の「${ZK.MOOD_NAMES[r.mood] || r.mood}」顔`, `${poss(waiter.name)} "${ZK.MOOD_NAMES[r.mood] || r.mood}" face`));
     const total = runDist + Math.min(stage.goal, Math.max(0, S.bestX)); // ゲームオーバーまでに歩けたきょり
     const daily = mode === 'daily';
     const prevBest = curBest;
@@ -421,30 +444,37 @@
     CL.addRun(Math.min(stage.goal, Math.max(0, S.bestX))); // 届けたぶんは GOAL のときに入れた
     const sk = DY.touch();
     const extra = [];
-    if (sk.up && sk.n >= 2) extra.push(`${sk.n}日 れんぞく！`);
-    for (const x of CL.newly(unlockAtStart, ctxNow())) extra.push(`${x.name}が使える！`);
+    if (sk.up && sk.n >= 2) extra.push(jaen(`${sk.n}日 れんぞく！`, `${sk.n}-day streak!`));
+    for (const x of CL.newly(unlockAtStart, ctxNow())) extra.push(jaen(`${x.name}が使える！`, `${x.name} unlocked!`));
     runNew = extra.concat(runNew);
     refreshTitle();
-    ui.failTag.textContent = tr(`${{ pudding: 'プリンを落とした', timeup: '時間切れ', rhythm: 'リズムがくずれた', stop: '止まってころんだ', hole: '穴に落ちた' }[S.fallReason] || 'ころんだ'}${gagName ? ` → ${gagName}` : ''}`);
-    $('failNum').innerHTML = `<small>ステージ</small> ${level}`;
+    const why = YL.en
+      ? { pudding: 'Dropped the pudding', timeup: "Time's up", rhythm: 'Lost the rhythm', stop: 'Stopped and fell', hole: 'Fell in a hole' }[S.fallReason] || 'Fell over'
+      : { pudding: 'プリンを落とした', timeup: '時間切れ', rhythm: 'リズムがくずれた', stop: '止まってころんだ', hole: '穴に落ちた' }[S.fallReason] || 'ころんだ';
+    ui.failTag.textContent = tr(`${why}${gagName ? ` → ${gagName}` : ''}`);
+    $('failNum').innerHTML = jaen(`<small>ステージ</small> ${level}`, `<small>Stage</small> ${level}`);
     ui.failTitle.textContent = r.title;
     ui.failLine.textContent = r.say;
     ui.failAct.textContent = r.action;
-    ui.failDist.textContent = `${daily ? `今日のコース ${DY.daily().tries}回目\n` : ''}${level}軒目・${waiter.name}のおうちまで あと ${left.toFixed(1)}m\n歩いたきょり ${total.toFixed(1)}m${newBest ? '' : `（${daily ? '今日の' : ''}ベスト ${curBest.toFixed(1)}m）`}${runTreasure ? `\nこの回のおたから ${runTreasure}こ` : ''}`;
-    $('retryBtn').textContent = 'もう一回';
+    ui.failDist.textContent = YL.en
+      ? `${daily ? `Daily Course · Try #${DY.daily().tries}\n` : ''}House ${level} · ${left.toFixed(1)}m to ${poss(waiter.name)} house\nWalked ${total.toFixed(1)}m${newBest ? '' : ` (${daily ? "Today's best" : 'Best'} ${curBest.toFixed(1)}m)`}${runTreasure ? `\nTreasures this run: ${runTreasure}` : ''}`
+      : `${daily ? `今日のコース ${DY.daily().tries}回目\n` : ''}${level}軒目・${waiter.name}のおうちまで あと ${left.toFixed(1)}m\n歩いたきょり ${total.toFixed(1)}m${newBest ? '' : `（${daily ? '今日の' : ''}ベスト ${curBest.toFixed(1)}m）`}${runTreasure ? `\nこの回のおたから ${runTreasure}こ` : ''}`;
+    $('retryBtn').textContent = jaen('もう一回', 'Try again');
     ui.retry.disabled = true; setTimeout(() => { ui.retry.disabled = false; }, 700); // 歩いていた指でうっかり押さないように
-    lastShare = `ヨロヨロおつかい${daily ? `の今日のコース（${DY.label()}）` : ''} ステージ${level}で${gagName ? `「${gagName}」になって` : ''}${waiter.name}に「${r.say}」と言われた…`;
-    clipInfo = { dist: `ステージ${level}`, title: r.title, say: r.say, tag: ui.failTag.textContent };
+    lastShare = YL.en
+      ? `Yoroyoro Errand${daily ? ` (Daily Course: ${DY.label()})` : ''}: I wiped out on Stage ${level}${gagName ? ` with a "${gagName}"` : ''} and ${waiter.name} said, "${String(r.say).replace(/\s*\n\s*/g, ' ')}"`
+      : `ヨロヨロおつかい${daily ? `の今日のコース（${DY.label()}）` : ''} ステージ${level}で${gagName ? `「${gagName}」になって` : ''}${waiter.name}に「${r.say}」と言われた…`;
+    clipInfo = { dist: jaen(`ステージ${level}`, `Stage ${level}`), title: r.title, say: r.say, tag: ui.failTag.textContent };
     resetVid();
     // 歩いたきょりを、じぶんの記録ランキングに入れて上位を出す（このスマホの中だけ。今日のコースは入れない）
     const rk = daily ? { list: [], idx: -1 } : total >= 0.5 ? RANK.add(total) : { list: RANK.list(), idx: -1 };
     RANK.render($('failRank'), rk);
     // あとちょっと：すぐ上の記録まで何mだったか
     const near = $('failNear'); near.classList.remove('best');
-    near.textContent = `おうちまで あと ${left.toFixed(1)}m${left < 3 ? '！ おしい！' : ''}`;
+    near.textContent = jaen(`おうちまで あと ${left.toFixed(1)}m${left < 3 ? '！ おしい！' : ''}`, `${left.toFixed(1)}m to go${left < 3 ? '! So close!' : ''}`);
     // ずかん：この回で新しく入ったもの（なければ、まだ見ていないころび方のヒント）
     const zc = ZK.count(), nb = $('failNew');
-    nb.innerHTML = `<b>NEW</b> ずかん ${zc.got}/${zc.total}`;
+    nb.innerHTML = jaen(`<b>NEW</b> ずかん ${zc.got}/${zc.total}`, `<b>NEW</b> Album ${zc.got}/${zc.total}`);
     nb.hidden = !runNew.length;
     paintFailGacha();
     showTitleRank();
@@ -634,7 +664,7 @@
       ctx.fillStyle = passedBest ? '#c9c9c9' : '#ffc61a';
       ctx.beginPath(); ctx.moveTo(x, y - s * 1.8); ctx.lineTo(x + s * 0.8, y - s * 1.58); ctx.lineTo(x, y - s * 1.36); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#3b2a1e'; ctx.font = `900 ${Math.round(s * 0.2)}px sans-serif`; ctx.textAlign = 'center';
-      ctx.fillText('ベスト', x + s * 0.32, y - s * 1.52);
+      ctx.fillText(jaen('ベスト', 'BEST'), x + s * 0.32, y - s * 1.52);
     }
     // じゃまな物
     for (const o of stage.obstacles) drawObstacle(o);
@@ -647,7 +677,7 @@
       for (let i = 0; i < 5; i++) { ctx.fillStyle = i % 2 ? '#fff' : '#ff6b8b'; ctx.fillRect(sx0 - s * 1.1 + i * s * 0.44, sy0 - s * 2.45, s * 0.44, s * 0.35); }
       ctx.strokeRect(sx0 - s * 1.1, sy0 - s * 2.45, s * 2.2, s * 0.35);
       ctx.fillStyle = '#3b2a1e'; ctx.font = `900 ${Math.round(s * 0.28)}px sans-serif`; ctx.textAlign = 'center';
-      ctx.fillText('おかしや', sx0, sy0 - s * 1.65);
+      ctx.fillText(jaen('おかしや', 'SWEETS'), sx0, sy0 - s * 1.65);
       ctx.fillStyle = '#8fd3ff'; ctx.fillRect(sx0 - s * 0.7, sy0 - s * 1.4, s * 1.4, s * 0.8); ctx.strokeRect(sx0 - s * 0.7, sy0 - s * 1.4, s * 1.4, s * 0.8);
     } else {
       drawHouse(1.6, prevWaiter, 'happy', level - 1);
@@ -775,7 +805,10 @@
       box(-1.0, 2.02, 1.4, 2.14, '#4a525d', 3); poly([[-1.12, 2.0], [-0.94, 2.0], [-0.94, 2.24], [-1.06, 2.3], [-1.12, 2.22]], '#4a525d'); poly([[1.52, 2.0], [1.34, 2.0], [1.34, 2.24], [1.46, 2.3], [1.52, 2.22]], '#4a525d');
       box(-0.1, 0.5, 0.1, 1.05, '#e9c48f', 3);
       ctx.fillStyle = INK; ctx.font = `800 ${Math.round(s * 0.12)}px "Hiragino Sans", sans-serif`; ctx.textAlign = 'center';
-      [...g.who.name].slice(0, 4).forEach((ch, i) => ctx.fillText(ch, X(0), Y(0.92 - i * 0.13)));
+      if (YL.en) { // 英語は縦書きにせず、柱にそって横に寝かせる
+        ctx.save(); ctx.translate(X(0), Y(0.775)); ctx.rotate(Math.PI / 2); ctx.font = `800 ${Math.round(s * 0.1)}px "Hiragino Sans", sans-serif`; ctx.textBaseline = 'middle';
+        ctx.fillText(g.who.name, 0, 0, s * 0.52); ctx.restore();
+      } else [...g.who.name].slice(0, 4).forEach((ch, i) => ctx.fillText(ch, X(0), Y(0.92 - i * 0.13)));
       // ねこだらけ（縁側に4匹・屋根に1匹）
       const cols = ['#f0a85a', '#fafafa', '#3b3b3b', '#c9c9c9', '#e8c08a'];
       const loaf = (x, y, col, k) => {
@@ -867,7 +900,7 @@
       poly([[1.3, 2.7], [1.75, 2.62 + w], [1.75, 2.38 + w], [1.3, 2.42]], '#2b2b2b');
       dot(1.52, 2.55 + w, 0.07, '#ffffff'); ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(X(1.49), Y(2.56 + w), 2, 0, 7); ctx.arc(X(1.55), Y(2.56 + w), 2, 0, 7); ctx.fill();
       box(1.05, 1.55, 1.35, 1.75, '#fff7e6', 2);
-      ctx.fillStyle = '#e8303a'; ctx.font = `900 ${Math.round(g.s * 0.12)}px sans-serif`; ctx.textAlign = 'center'; ctx.save(); ctx.translate(X(1.2), Y(1.62)); ctx.rotate(-0.08); ctx.fillText('ひみつ', 0, 0); ctx.restore();
+      ctx.fillStyle = '#e8303a'; ctx.font = `900 ${Math.round(g.s * (YL.en ? 0.075 : 0.12))}px sans-serif`; ctx.textAlign = 'center'; ctx.save(); ctx.translate(X(1.2), Y(1.62)); ctx.rotate(-0.08); ctx.fillText(jaen('ひみつ', 'SECRET'), 0, 0); ctx.restore();
     },
     // となりのおばさん：花の家。家より高いひまわり
     aunt(g) {
@@ -979,7 +1012,7 @@
       for (const [x, y] of [[-0.5, 0.78], [-0.5, 1.02], [1.1, 0.78], [1.1, 1.02]]) dot(x, y, 0.13, '#fff7e6');
       box(-0.4, 0.8, 1.0, 1.0, '#fff7e6', 10); ctx.stroke();
       box(0.12, 0.8, 0.48, 0.98, '#e9c48f', 3);
-      ctx.fillStyle = INK; ctx.font = `800 ${Math.round(g.s * 0.12)}px "Hiragino Sans", sans-serif`; ctx.textAlign = 'center'; ctx.fillText('コロ', X(0.3), Y(0.85));
+      ctx.fillStyle = INK; ctx.font = `800 ${Math.round(g.s * (YL.en ? 0.1 : 0.12))}px "Hiragino Sans", sans-serif`; ctx.textAlign = 'center'; ctx.fillText(jaen('コロ', 'KORO'), X(0.3), Y(0.85));
       // えさ皿と骨の山
       poly([[1.1, 0], [1.55, 0], [1.48, 0.13], [1.17, 0.13]], '#4f8be8');
       for (const [x, y, a] of [[1.25, 0.2, 0.3], [1.42, 0.24, -0.4], [1.33, 0.33, 0.1]]) { ctx.save(); ctx.translate(X(x), Y(y)); ctx.rotate(a); ctx.fillStyle = '#fff7e6'; ctx.fillRect(-0.12 * g.s, -0.025 * g.s, 0.24 * g.s, 0.05 * g.s); ctx.strokeRect(-0.12 * g.s, -0.025 * g.s, 0.24 * g.s, 0.05 * g.s); ctx.restore(); }
@@ -1088,7 +1121,7 @@
     ctx.fillStyle = '#ffcf3d'; ctx.beginPath(); ctx.arc(gx - s * 0.48, gy - s * 0.62, s * 0.05, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#c9c2b4'; ctx.fillRect(gx - s * 1.08, gy - s * 0.07, s * 0.78, s * 0.07); ctx.strokeRect(gx - s * 1.08, gy - s * 0.07, s * 0.78, s * 0.07);
     // 表札（木の小さい板）
-    ctx.font = `800 ${Math.round(s * 0.13)}px "Hiragino Sans", sans-serif`; ctx.textAlign = 'center';
+    ctx.font = `800 ${Math.round(s * (YL.en ? 0.11 : 0.13))}px "Hiragino Sans", sans-serif`; ctx.textAlign = 'center';
     const tw = ctx.measureText(who.name).width + s * 0.16, tx = wx0 + ww / 2, ty = gy - s * 0.6;
     ctx.fillStyle = '#e9c48f'; roundRect(tx - tw / 2, ty - s * 0.13, tw, s * 0.24, 4); ctx.fill(); ctx.lineWidth = 2; ctx.stroke();
     ctx.fillStyle = '#3b2a1e'; ctx.fillText(who.name, tx, ty + s * 0.04);
@@ -1143,6 +1176,7 @@
   function bubble(x, y, text) {
     const [bx, by] = W2S(x, game.groundHeightAt(x) + y); const s = scale;
     ctx.font = `800 ${Math.round(s * 0.2)}px sans-serif`; ctx.textAlign = 'center';
+    if (YL.en) { const mw = Math.max(...text.split('\n').map((l) => ctx.measureText(l).width)), room = W * 0.8 - 20; if (mw > room) ctx.font = `800 ${Math.max(10, Math.floor(s * 0.2 * room / mw))}px sans-serif`; }
     const lines = text.split('\n'); const w = Math.min(W * 0.8, Math.max(...lines.map((l) => ctx.measureText(l).width)) + 20), h = lines.length * s * 0.26 + 14;
     const left = Math.max(8, Math.min(W - w - 8, bx - w / 2));
     ctx.fillStyle = '#fff'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 3;
@@ -1592,7 +1626,7 @@
     ctx.fillStyle = k >= 1 ? '#ff4d4d' : '#ffb020';
     if (k > 0.05) { roundRect(x - w / 2 + 2, y - h / 2 + 2, (w - 4) * k, h - 4, (h - 4) / 2); ctx.fill(); }
     ctx.fillStyle = '#3b2a1e'; ctx.font = `900 ${Math.round(scale * 0.2)}px sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText(k >= 1 ? 'はなせ！' : 'ためて…', x, y - h);
+    ctx.fillText(k >= 1 ? jaen('はなせ！', 'Let go!') : jaen('ためて…', 'Hold…'), x, y - h);
   }
 
   // 次に押す足のボタンを光らせる（タイミングのバーは出さない）
@@ -1615,11 +1649,11 @@
     ui.meter2.classList.toggle('low', st < 0.35 && S.status === 'play');
     const v = S.char && S.status === 'play' ? Math.max(0, S.char.torso.getLinearVelocity().x) : 0;
     spdShown += (v - spdShown) * 0.1;
-    ui.spd.textContent = `${spdShown.toFixed(1)}m/秒`;
+    ui.spd.textContent = jaen(`${spdShown.toFixed(1)}m/秒`, `${spdShown.toFixed(1)}m/s`);
     ui.spd.classList.toggle('fast', spdShown > 2.3);
     const x = Math.max(0, game.charX());
     $('stgNow').textContent = level; $('stgNext').textContent = level + 1;
-    ui.dist.innerHTML = `<svg class="ic"><use href="#i-house"/></svg>あと${Math.ceil(Math.max(0, stage.goal - x))}m`; // おうちまで
+    ui.dist.innerHTML = `<svg class="ic"><use href="#i-house"/></svg>${jaen(`あと${Math.ceil(Math.max(0, stage.goal - x))}m`, `${Math.ceil(Math.max(0, stage.goal - x))}m to go`)}`; // おうちまで
     ui.prog.style.width = `${Math.round(Math.min(1, x / stage.goal) * 100)}%`; // おうちまでの線
     ui.finger.classList.toggle('show', !tutDone && level === 1 && S.status === 'play' && tutSteps < 6 && !ui.title.classList.contains('show') && !ui.pause.classList.contains('show'));
     const tl = Math.max(0, stage.timeLimit - elapsed);
@@ -1666,32 +1700,32 @@
         else {
           snd.play(ev.type, ev.v);
           if ((ev.type === 'land' || ev.type === 'boing') && S.char) { const tp = S.char.torso.getPosition(); puff(tp.x, game.groundHeightAt(tp.x), 8, true); shakeA = Math.max(shakeA, ev.type === 'land' ? 4 : 3); }
-          if (ev.type === 'stumble') pop({ same: '同じ足！', fast: 'あせりすぎ！', slow: 'もたもた！' }[ev.v.why] || 'おっと！', ev.v.bad > 0.6 ? '#e8303a' : '#ff8a00');
-          if (ev.type === 'stop') { for (let i = pops.length - 1; i >= 0; i--) if (pops[i].text.startsWith('ふらふら')) pops.splice(i, 1); pop('止まっちゃだめ！', '#e8303a'); }
-          if (ev.type === 'wobble') pop('ふらふら…', '#ff8a00');
-          if (ev.type === 'combo') pop(`ナイスリズム ×${ev.v} スピードUP！`, '#2f9e44');
-          if (ev.type === 'jump2') pop('2だんジャンプ！', '#2f6fd6');
+          if (ev.type === 'stumble') pop((YL.en ? { same: 'Same foot!', fast: 'Too fast!', slow: 'Too slow!' } : { same: '同じ足！', fast: 'あせりすぎ！', slow: 'もたもた！' })[ev.v.why] || jaen('おっと！', 'Whoops!'), ev.v.bad > 0.6 ? '#e8303a' : '#ff8a00');
+          if (ev.type === 'stop') { for (let i = pops.length - 1; i >= 0; i--) if (pops[i].text.startsWith(jaen('ふらふら', 'Wobbly'))) pops.splice(i, 1); pop(jaen('止まっちゃだめ！', "Don't stop!"), '#e8303a'); }
+          if (ev.type === 'wobble') pop(jaen('ふらふら…', 'Wobbly…'), '#ff8a00');
+          if (ev.type === 'combo') pop(jaen(`ナイスリズム ×${ev.v} スピードUP！`, `Nice rhythm ×${ev.v} Speed UP!`), '#2f9e44');
+          if (ev.type === 'jump2') pop(jaen('2だんジャンプ！', 'Double jump!'), '#2f6fd6');
           if (ev.type === 'step') { const fp = S.char && S.char[ev.v] && S.char[ev.v].shin.getWorldPoint(planck.Vec2(0.07, -0.25)); if (fp) puff(fp.x, game.groundHeightAt(fp.x), 3, false); addPrint(ev.v); if (++tutSteps === 6 && !tutDone) { tutDone = true; store.set('yoro.tut', '1'); } }
         }
       }
       if (level <= 10 && S.status === 'play') { // 最初のうちは、しかけの手前でやり方を出す
         const x = game.charX();
         stage.springs.forEach((q, i) => {
-          if (!hinted.has('s' + i) && q.x - x < 2.6 && q.x - x > 0) { hinted.add('s' + i); showBanner('赤い台に乗ると<br>ピョーンと飛ぶよ！'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 2500); }
+          if (!hinted.has('s' + i) && q.x - x < 2.6 && q.x - x > 0) { hinted.add('s' + i); showBanner(jaen('赤い台に乗ると<br>ピョーンと飛ぶよ！', 'Step on the red springboard<br>to go BOING!')); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 2500); }
         });
         stage.pits.forEach((q, i) => {
-          if (!hinted.has('p' + i) && q.x0 - x < 2.8 && q.x0 - x > 0) { hinted.add('p' + i); showBanner('穴だ！ 左右を同時にタップ！<br>とどかなければ 空中でもう1回！'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 2500); }
+          if (!hinted.has('p' + i) && q.x0 - x < 2.8 && q.x0 - x > 0) { hinted.add('p' + i); showBanner(jaen('穴だ！ 左右を同時にタップ！<br>とどかなければ 空中でもう1回！', 'A hole! Tap both sides at once!<br>Too short? Tap again in midair!')); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 2500); }
         });
         if (level <= 6) stage.obstacles.forEach((o, i) => {
           if (!hinted.has(i) && o.x - x < 2.6 && o.x - x > 0) {
-            hinted.add(i); showBanner('左右を 同時にタップで ジャンプ！<br>長く押すと 高く飛ぶよ'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 3000);
+            hinted.add(i); showBanner(jaen('左右を 同時にタップで ジャンプ！<br>長く押すと 高く飛ぶよ', 'Tap both sides at once to jump!<br>Hold longer to jump higher')); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 3000);
           }
         });
       }
       if (S.status === 'play') { // 歩いたきょりの節目と、自己ベストをこえた瞬間
         const tot = runDist + Math.max(0, game.charX());
-        if (!passedBest && curBest > 0 && tot > curBest) { passedBest = true; pop(mode === 'daily' ? '今日のベスト こえた！' : '自己ベスト こえた！', '#d48a00'); snd.play('best'); }
-        if (tot >= nextMile) { pop(`${nextMile}m とっぱ！`, '#2f6fd6'); snd.play('checkpoint'); nextMile += 50; }
+        if (!passedBest && curBest > 0 && tot > curBest) { passedBest = true; pop(mode === 'daily' ? jaen('今日のベスト こえた！', "Beat today's best!") : jaen('自己ベスト こえた！', 'New personal best!'), '#d48a00'); snd.play('best'); }
+        if (tot >= nextMile) { pop(jaen(`${nextMile}m とっぱ！`, `${nextMile}m reached!`), '#2f6fd6'); snd.play('checkpoint'); nextMile += 50; }
       }
       if (S.status === 'clear') deliver();
       if (S.status === 'play') pickupBoxes();
@@ -1748,7 +1782,7 @@
 
   // 新しい版が出ていたら、タイトルにいるときに読み込み直す（スマホに古い画面が残らないように）
   async function checkVersion() {
-    if (!window.BUILD || window.BUILD === 'dev') return;
+    if (!window.BUILD || window.BUILD === 'dev' || window.BUILD === 'portal') return;
     try {
       const r = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' }); if (!r.ok) return;
       const v = (await r.json()).v;
@@ -1757,6 +1791,7 @@
   }
   checkVersion();
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVersion(); });
+  if (window.YP) YP.ready.then(() => YP.loaded()); // ゲームサイトに「読みこみ終わり」を知らせる
   // テスト用（自動操作で動作確認するため）
   window.__yoro = { get game() { return game; }, get boxes() { return boxes; }, get mode() { return mode; }, force, openCloset, closeCloset, openGacha, closeGacha, GA, start, retry, restart, nextStage, loadLevel, pause, resume, openZukan, closeZukan };
 })();
