@@ -1470,12 +1470,18 @@
       ctx.restore();
     },
   };
+  const OPENING = [['crush', 'piano'], ['screen'], ['bird']]; // はじめて遊ぶ人の 1回目・2回目・3回目の芸（ピアノでぺしゃんこ → 画面にベチャッ → とりにさらわれる）
   function startGag() {
     gag = null;
+    clearTimeout(hintTimer); hintTimer = null; ui.hint.style.opacity = 0; // 開始の案内が芸の上に残らないように
     if (!S.char || !GG.LIST.length) return;
     const cx = { reason: S.fallReason, who: waiter.id, night: themeOf(level).night, level };
     let pk;
     if (force.gag) { const d = GG.LIST.find((x) => x.id === force.gag); if (d) pk = { def: d, v: GG.pickV(d, cx, force.gagv) }; }
+    if (!pk && S.fallReason !== 'hole' && GG.LIST.filter((d) => ZK.has('gag', d.id)).length < 3) { // はじめの3回は、ひと目で笑える派手な芸から
+      const o = OPENING.find(([id]) => !ZK.has('gag', id)), d = o && GG.LIST.find((x) => x.id === o[0]);
+      if (d) pk = { def: d, v: GG.pickV(d, cx, o[1]) };
+    }
     if (!pk) pk = GG.pick(cx, (id) => ZK.has('gag', id));
     const tp = S.char.torso.getPosition();
     gag = Object.assign(Object.create(GAPI), { def: pk.def, v: pk.v, t0: performance.now(), t: 0, dt: 0, st: {}, fired: new Set(), hide: false, cam: null, skip: false, pic: false, x: tp.x, y: game.groundHeightAt(tp.x) });
