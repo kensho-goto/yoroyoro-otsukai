@@ -1750,7 +1750,8 @@
   curBest = bestRun; look = CL.current(ctxNow());
   loadLevel(1); refreshTitle();
   game.spawn(0);
-  function frame(now) {
+  function frameBody(now) {
+    if (force.crash > 0) { force.crash--; throw new Error('test crash'); } // テスト用：わざとエラーを起こす
     let dt = Math.min(0.1, (now - last) / 1000); last = now;
     const paused = ui.title.classList.contains('show') || ui.pause.classList.contains('show') || ui.goal.classList.contains('show');
     if (!paused) {
@@ -1858,6 +1859,22 @@
       const fc = shownFace.getContext('2d'); fc.clearRect(0, 0, 240, 240);
       WT.drawFace(fc, waiter, faceNow, 120, 132, 82, (performance.now() - faceT0) / 1000);
     }
+    if (S.char && !Number.isFinite(S.char.torso.getPosition().x)) throw new Error('body lost'); // 体の計算がこわれた
+  }
+  // 万一エラーが起きても画面を止めない。続けて起きるときは、そのステージを最初からやり直す（記録は消えない）
+  let crashes = [];
+  function recover(e) {
+    console.warn('yoro recover', e);
+    ctx = canvas.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; // ころび芸で別の紙にかいていた途中でも、元の画面にもどす
+    gag = null; zoom = 1;
+    const t = performance.now(); crashes = crashes.filter((x) => t - x < 3000); crashes.push(t);
+    if (crashes.length >= 3 || (S.char && !Number.isFinite(S.char.torso.getPosition().x))) {
+      crashes = [];
+      try { restart(); } catch (e2) { try { showOnly(ui.title); } catch (e3) { /* これ以上は何もしない */ } }
+    }
+  }
+  function frame(now) {
+    try { frameBody(now); } catch (e) { recover(e); }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -1875,5 +1892,5 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVersion(); });
   if (window.YP) YP.ready.then(() => YP.loaded()); // ゲームサイトに「読みこみ終わり」を知らせる
   // テスト用（自動操作で動作確認するため）
-  window.__yoro = { get game() { return game; }, get boxes() { return boxes; }, get mode() { return mode; }, force, openCloset, closeCloset, openGacha, closeGacha, GA, start, retry, restart, nextStage, loadLevel, pause, resume, openZukan, closeZukan, get mis() { return mis; }, get mst() { return mst; } };
+  window.__yoro = { get game() { return game; }, get boxes() { return boxes; }, get mode() { return mode; }, force, openCloset, closeCloset, openGacha, closeGacha, GA, start, retry, restart, nextStage, loadLevel, pause, resume, openZukan, closeZukan, recover, get mis() { return mis; }, get mst() { return mst; } };
 })();
