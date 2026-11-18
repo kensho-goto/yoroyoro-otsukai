@@ -85,6 +85,23 @@
   .pad.on { transform: translateY(4px); box-shadow: inset 0 -2px 0 rgba(0,0,0,.18); opacity: 1; }
   .pad.next { box-shadow: inset 0 -6px 0 rgba(0,0,0,.18), 0 0 0 5px #fff; animation: nextp .5s infinite alternate; }
   @keyframes nextp { to { box-shadow: inset 0 -6px 0 rgba(0,0,0,.18), 0 0 0 5px var(--pudding); } }
+  /* キーボードで遊ぶとき（パソコン）：大きな足ボタンのかわりに、下のまん中に小さなキーの絵（F・J）。光る方を押す */
+  .pad .key, .keyhelp { display: none; }
+  body.kb .pads { left: 50%; right: auto; width: 250px; margin-left: -125px; height: auto; bottom: max(12px, env(safe-area-inset-bottom)); grid-template-rows: auto auto; }
+  body.kb .pad { margin: 0 8px; height: 62px; border-radius: 16px; gap: 6px; }
+  body.kb .pad svg.ic { font-size: 30px; }
+  body.kb .pad .key { display: block; font-family: var(--num); font-size: 30px; color: #fff; -webkit-text-stroke: 5px var(--ink); paint-order: stroke fill; }
+  body.kb .keyhelp { display: block; grid-column: 1 / 3; margin: 6px 0 0; text-align: center; font-weight: 900; font-size: 13px; color: #fff; -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill; }
+  body.kb .finger { display: none !important; }
+  /* 横長の画面：ステージ開始の案内は、主人公（左寄り）と重ならない右側に */
+  @media (orientation: landscape) and (min-width: 760px) { html body .hint { top: 22%; left: 54%; right: 2%; text-align: left; } }
+  /* 横長の画面（パソコン）：ゲームオーバー・GOAL の結果は右の板に、景色は左に */
+  @media (orientation: landscape) and (min-width: 760px) {
+    html body #fail .scr, html body #goal .scr { width: 100%; flex-direction: row; justify-content: flex-end; }
+    html body #fail .grow, html body #goal .grow { display: none; }
+    html body .sheet { width: 410px; flex: none; justify-content: center; border-radius: 26px 0 0 26px; padding: 18px 22px; overflow-y: auto; }
+    html body #goalSheet { padding-top: 18px; } html body #goalSheet .goalw { margin-top: 0; font-size: 84px; }
+  }
   /* はじめての人に、指で押し方を見せる */
   .finger { position: fixed; left: 25%; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 20px); width: 64px; height: 64px; margin-left: -20px; pointer-events: none; z-index: 5; display: none; }
   .finger.show { display: block; animation: walkf 1.1s infinite; }
@@ -341,8 +358,9 @@
 <div class="hint" id="hint"></div>
 
 <div class="pads">
-  <div class="pad l" id="padL"><svg class="ic"><use href="#i-foot"/></svg></div>
-  <div class="pad r" id="padR"><svg class="ic"><use href="#i-foot"/></svg></div>
+  <div class="pad l" id="padL"><svg class="ic"><use href="#i-foot"/></svg><b class="key">F</b></div>
+  <div class="pad r" id="padR"><svg class="ic"><use href="#i-foot"/></svg><b class="key">J</b></div>
+  <p class="keyhelp" data-en="Both at once = Jump">同時に押すと ジャンプ</p>
 </div>
 <div class="finger" id="finger"><svg viewBox="0 0 24 24"><use href="#i-finger"/></svg></div>
 

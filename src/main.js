@@ -204,7 +204,11 @@
     if ((l || r) && playing()) hideHintSoon();
   }
   const playing = () => S.status === 'play' && !ui.title.classList.contains('show') && !ui.pause.classList.contains('show');
+  // パソコン（マウス）ではキーの絵、タッチしたら大きな足ボタン。最後に使った方に合わせて切りかえる
+  const setKb = (on) => document.body.classList.toggle('kb', on);
+  try { setKb(matchMedia('(hover: hover) and (pointer: fine)').matches); } catch (e) { /* 古いブラウザは足ボタンのまま */ }
   window.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') setKb(false);
     if (gag && !shownEnd && gag.t > 1.0) gag.skip = true; // ころび芸は、とちゅうでタップすると とばせる
     if (e.target.closest('.overlay.show') || e.target.closest('#sndBtn')) return;
     pointers.set(e.pointerId, e.clientX); updateInput(); e.preventDefault();
@@ -218,15 +222,16 @@
   window.addEventListener('blur', () => { pointers.clear(); keys.left = keys.right = false; updateInput(); });
   const LK = ['KeyF', 'KeyA', 'ArrowLeft', 'KeyZ'], RK = ['KeyJ', 'KeyL', 'ArrowRight', 'KeyM'];
   window.addEventListener('keydown', (e) => {
+    if (LK.includes(e.code) || RK.includes(e.code)) setKb(true);
     if (LK.includes(e.code)) keys.left = true;
     else if (RK.includes(e.code)) keys.right = true;
     else if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
       if (gachaEl.classList.contains('show')) closeGacha();
       else if (zukanEl.classList.contains('show')) closeZukan();
       else if (closetEl.classList.contains('show')) closeCloset();
-      else if (ui.goal.classList.contains('show')) nextStage();
+      else if (ui.goal.classList.contains('show')) goNext();
       else if (ui.title.classList.contains('show')) start();
-      else if (ui.fail.classList.contains('show') && !ui.retry.disabled) restart();
+      else if (ui.fail.classList.contains('show') && !ui.retry.disabled && !vidBusy) afterAd(() => restart());
       else if (ui.pause.classList.contains('show')) resume();
       return;
     } else return;
@@ -537,14 +542,17 @@
   }
   // ---- 描画 ----
   const cam = { x: 0, y: 1 };
-  let anc = 0.6; // 画面の上から何割の所にカメラの中心を置くか（結果の板が出ているときは、景色を板の上へ持ち上げる）
-  const W2S = (x, y) => [W * 0.45 + (x - cam.x) * scale, H * anc - (y - cam.y) * scale];
+  let anc = 0.6, ancX = 0.45; // カメラの中心を、画面の上から何割・左から何割に置くか（結果の板が出ているときは、板にかくれない所へ）
+  const W2S = (x, y) => [W * ancX + (x - cam.x) * scale, H * anc - (y - cam.y) * scale];
   function ancTarget() {
-    const sh = ui.fail.classList.contains('show') ? $('failSheet') : ui.goal.classList.contains('show') ? ui.goal.querySelector('.goalw') : null;
-    if (!sh || !H) return 0.6;
+    const fs = ui.fail.classList.contains('show') ? $('failSheet') : ui.goal.classList.contains('show') ? $('goalSheet') : null;
+    if (!fs || !H) return [0.6, 0.45];
+    const fr = fs.getBoundingClientRect();
+    if (fr.left > W * 0.3) return [0.6, Math.max(0.2, (fr.left * 0.5 - 0.3 * scale) / W)]; // 板が右にある（横長）：左の空いた所のまん中
+    const sh = ui.goal.classList.contains('show') ? ui.goal.querySelector('.goalw') : fs;
     const top = sh.getBoundingClientRect().top; // 板（GOAL! の字）の上はし
     const gy = game.groundHeightAt(cam.x); // カメラが見ている所の地面（ころび芸で上を見ているときも、地面は板のすぐ上に）
-    return Math.max(0.1, Math.min(0.6, (top - 18 + (gy - cam.y) * scale) / H));
+    return [Math.max(0.1, Math.min(0.6, (top - 18 + (gy - cam.y) * scale) / H)), 0.45];
   }
 
   // 3ステージごとに 朝→昼→夕方→夜 と変わる（進んでいる感じを出す）
@@ -1482,7 +1490,7 @@
   function gagPhoto() {
     try {
       if (!ZK.gagPic) return;
-      const sz = Math.min(W, H) * 0.86, [cx, cy] = gag.def.id === 'screen' ? [W / 2, H * 0.45] : [W * 0.45, H * (anc - 0.02)];
+      const sz = Math.min(W, H) * 0.86, [cx, cy] = gag.def.id === 'screen' ? [W / 2, H * 0.45] : [W * ancX, H * (anc - 0.02)];
       const cv = document.createElement('canvas'); cv.width = cv.height = 132;
       cv.getContext('2d').drawImage(canvas, (cx - sz / 2) * DPR, (cy - sz / 2) * DPR, sz * DPR, sz * DPR, 0, 0, 132, 132);
       ZK.gagPic(gag.def.id, cv.toDataURL('image/jpeg', 0.72));
@@ -1809,7 +1817,7 @@
       cam.x += ((gc ? gc[0] : p.x + (onTitle ? 1.0 : 0.6)) - cam.x) * 0.08; // タイトルでは家が見えるよう少し左に寄せる
       cam.y += ((gc ? gc[1] - 0.1 : game.groundHeightAt(p.x) + (onTitle ? 0.2 : 0.9)) - cam.y) * 0.05; // ボタンにかくれないよう地面を上げる
     }
-    { const at = ancTarget(); anc += (at - anc) * 0.12; if (Math.abs(at - anc) < 0.001) anc = at; }
+    { const [at, ax] = ancTarget(); anc += (at - anc) * 0.12; if (Math.abs(at - anc) < 0.001) anc = at; ancX += (ax - ancX) * 0.12; if (Math.abs(ax - ancX) < 0.001) ancX = ax; }
     shakeA *= 0.86; if (shakeA < 0.3) shakeA = 0;
     const shx = shakeA ? (Math.random() - 0.5) * 2 * shakeA : 0, shy = shakeA ? (Math.random() - 0.5) * 2 * shakeA : 0;
     ctx.setTransform(DPR, 0, 0, DPR, shx * DPR, shy * DPR);
