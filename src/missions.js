@@ -74,7 +74,7 @@
     const r = rec();
     let medals = 0;
     for (const m of list) {
-      if (m.state === 'go' && m.def.kind !== 'count') m.state = 'ok';
+      if (m.state === 'go') m.state = m.def.kind === 'count' ? 'ng' : 'ok'; // 数えるお題は、ゴールまでにとどかなければ しっぱい
       if (m.state === 'ok') { medals += m.medal; r.done++; }
       if (!r.seen.includes(m.id)) r.seen.push(m.id);
     }

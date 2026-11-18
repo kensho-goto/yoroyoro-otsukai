@@ -1,4 +1,4 @@
-// ヨロヨロおつかい — きせかえ（運ぶもの・服）。遊ぶほど使えるものが増える。このスマホの中だけに残す
+// ヨロヨロおつかい — きせかえ（服は自分で選ぶ・運ぶものは届け先の人が毎回ランダムで頼む）。遊ぶほど使えるものが増える。このスマホの中だけに残す
 (function () {
   const store = {
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -7,21 +7,21 @@
   // 使えるようになる条件：total=合計で歩いたきょり・best=自己ベスト・runs=遊んだ回数・zukan=ずかんの数・streak=れんぞく日数・treasure=おたから
   // 英語の運ぶもの名は文の中に入る（「プリン」の代わり）ので小文字の名詞。最初は必ず 'pudding'
   const CARRY = YL.en ? [
-    { id: 'pudding', name: 'pudding', icon: 'c.pudding' },
-    { id: 'dango', name: 'dango', icon: 'c.dango', need: { total: 100 } },
-    { id: 'cake', name: 'shortcake', icon: 'c.cake', need: { best: 40 } },
-    { id: 'egg', name: 'fried egg', icon: 'c.egg', need: { zukan: 25 } },
-    { id: 'suika', name: 'watermelon', icon: 'c.suika', need: { total: 500 } },
-    { id: 'goldfish', name: 'goldfish bowl', icon: 'c.goldfish', need: { best: 120 } },
-    { id: 'goldpudding', name: 'golden pudding', icon: 'c.goldpudding', need: { treasure: 'goldpudding' } },
+    { id: 'pudding', name: 'pudding', icon: 'c.pudding', shake: 1, bonus: 0, w: 4 },
+    { id: 'dango', name: 'dango', icon: 'c.dango', shake: 0.92, bonus: 0, w: 3, need: { total: 100 } },
+    { id: 'cake', name: 'shortcake', icon: 'c.cake', shake: 1.05, bonus: 1, w: 3, need: { best: 40 } },
+    { id: 'egg', name: 'fried egg', icon: 'c.egg', shake: 1.1, bonus: 1, w: 3, need: { zukan: 25 } },
+    { id: 'suika', name: 'watermelon', icon: 'c.suika', shake: 1.1, bonus: 1, w: 2, need: { total: 500 } },
+    { id: 'goldfish', name: 'goldfish bowl', icon: 'c.goldfish', shake: 1.18, bonus: 2, w: 2, need: { best: 120 } },
+    { id: 'goldpudding', name: 'golden pudding', icon: 'c.goldpudding', shake: 1, bonus: 3, w: 0.6, need: { treasure: 'goldpudding' } },
   ] : [
-    { id: 'pudding', name: 'プリン', icon: 'c.pudding' },
-    { id: 'dango', name: 'おだんご', icon: 'c.dango', need: { total: 100 } },
-    { id: 'cake', name: 'ショートケーキ', icon: 'c.cake', need: { best: 40 } },
-    { id: 'egg', name: '目玉焼き', icon: 'c.egg', need: { zukan: 25 } },
-    { id: 'suika', name: 'スイカ', icon: 'c.suika', need: { total: 500 } },
-    { id: 'goldfish', name: '金魚ばち', icon: 'c.goldfish', need: { best: 120 } },
-    { id: 'goldpudding', name: '金のプリン', icon: 'c.goldpudding', need: { treasure: 'goldpudding' } },
+    { id: 'pudding', name: 'プリン', icon: 'c.pudding', shake: 1, bonus: 0, w: 4 },
+    { id: 'dango', name: 'おだんご', icon: 'c.dango', shake: 0.92, bonus: 0, w: 3, need: { total: 100 } },
+    { id: 'cake', name: 'ショートケーキ', icon: 'c.cake', shake: 1.05, bonus: 1, w: 3, need: { best: 40 } },
+    { id: 'egg', name: '目玉焼き', icon: 'c.egg', shake: 1.1, bonus: 1, w: 3, need: { zukan: 25 } },
+    { id: 'suika', name: 'スイカ', icon: 'c.suika', shake: 1.1, bonus: 1, w: 2, need: { total: 500 } },
+    { id: 'goldfish', name: '金魚ばち', icon: 'c.goldfish', shake: 1.18, bonus: 2, w: 2, need: { best: 120 } },
+    { id: 'goldpudding', name: '金のプリン', icon: 'c.goldpudding', shake: 1, bonus: 3, w: 0.6, need: { treasure: 'goldpudding' } },
   ];
   const OUTFITS = YL.en ? [
     { id: 'normal', name: 'Usual', shirt: '#ff9f43', apron: '#fff', pants: '#3f639a', shoe: '#d4493a' },
@@ -40,6 +40,21 @@
     { id: 'chef', name: 'コックさん', shirt: '#ffffff', apron: '#ffffff', pants: '#3b3b3b', shoe: '#3b3b3b', hat: 'chef', need: { zukan: 50 } },
     { id: 'prince', name: '王子さま', shirt: '#7a5af8', apron: null, pants: '#ffffff', shoe: '#7a5af8', hat: 'crown', need: { treasure: 'crown' } },
   ];
+  // 運ぶものは、届け先の人が決める（ランダム）。人ごとに頼みやすいものがある（出やすさ×4）
+  const LIKES = { grandma: 'dango', grandpa: 'dango', sister: 'cake', teacher: 'cake', mom: 'egg', dog: 'egg', aunt: 'dango',
+    dad: 'suika', uncle: 'suika', friend: 'suika', brother: 'cake', cat: 'goldfish', alien: 'goldfish', ghost: 'dango', king: 'goldpudding' };
+  function pickCarry(ctx, whoId, R, prevId) {
+    R = R || Math.random;
+    const pool = CARRY.filter((x) => ok(x, ctx));
+    const wt = (x) => x.w * (LIKES[whoId] === x.id ? 4 : 1) * (x.id === prevId && pool.length > 1 ? 0.15 : 1); // 前と同じものは出にくく
+    let r = R() * pool.reduce((a, x) => a + wt(x), 0);
+    for (const x of pool) { r -= wt(x); if (r <= 0) return x; }
+    return pool[0];
+  }
+  const likeOf = (whoId) => CARRY.find((x) => x.id === LIKES[whoId]);
+  // 届けた回数（きせかえ画面に出す）
+  function delivered() { try { return JSON.parse(store.get('yoro.carried') || '{}'); } catch (e) { return {}; } }
+  function addDelivered(id) { const d = delivered(); d[id] = (d[id] || 0) + 1; store.set('yoro.carried', JSON.stringify(d)); return d[id]; }
   const TREASURE_NAME = YL.en ? { goldpudding: 'Golden Pudding', crown: 'Crown' } : { goldpudding: '金のプリン', crown: '王かん' };
 
   // 遊んだ記録（合計きょり・回数）
@@ -106,10 +121,17 @@
         + `<b>${can ? icon : window.YoroIcon.html('x.lock', 'dim')}</b><span>${x.name}</span>${can ? (on ? `<i>${jaen('つかっている', 'Selected')}</i>` : '') : `<i>${needText(x.need, ctx)}</i>`}</button>`;
     };
     const sw = (o) => `<span class="sw" style="background:linear-gradient(${o.shirt} 0 55%, ${o.pants} 55% 100%)"></span>`;
-    el.innerHTML = `<h3>${jaen('運ぶもの', 'Carry')}</h3><div class="clg">${CARRY.map((x) => card('carry', x, window.YoroIcon.html(x.icon))).join('')}</div>`
+    const dv = delivered();
+    const carryCard = (x) => {
+      const can = ok(x, ctx);
+      const stars = '★'.repeat(x.shake < 1 ? 1 : x.shake < 1.04 ? 2 : x.shake < 1.15 ? 3 : 4);
+      return `<div class="cl${can ? '' : ' no'}"><b>${can ? window.YoroIcon.html(x.icon) : window.YoroIcon.html('x.lock', 'dim')}</b><span>${x.name}</span>`
+        + (can ? `<i>${jaen('ぐらぐら', 'Wobble')} ${stars}${x.bonus ? ` · <em><span class="coin"></span>+${x.bonus}</em>` : ''}<br>${jaen(`届けた ${dv[x.id] || 0}回`, `Delivered ${dv[x.id] || 0}×`)}</i>` : `<i>${needText(x.need, ctx)}</i>`) + '</div>';
+    };
+    el.innerHTML = `<h3>${jaen('運ぶもの', 'Carry')}</h3><p class="clnote">${jaen('届け先の人が、毎回えらびます。運びにくいものほど、ゴールでメダルが多め', 'The person you deliver to picks it each time. Harder to carry = more medals at the goal')}</p><div class="clg">${CARRY.map(carryCard).join('')}</div>`
       + `<h3>${jaen('服', 'Clothes')}</h3><div class="clg">${OUTFITS.map((x) => card('outfit', x, sw(x))).join('')}</div>`;
     el.querySelectorAll('button.cl').forEach((b) => { b.onclick = () => { choose(b.dataset.k, b.dataset.id); render(el, ctx, onPick); if (onPick) onPick(); }; });
   }
 
-  window.YoroCloset = { CARRY, OUTFITS, stats, addRun, ok, needText, unlockedIds, newly, chosen, choose, current, render };
+  window.YoroCloset = { CARRY, OUTFITS, stats, addRun, ok, needText, unlockedIds, newly, chosen, choose, current, render, pickCarry, likeOf, delivered, addDelivered };
 })();

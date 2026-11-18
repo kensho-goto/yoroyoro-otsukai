@@ -75,8 +75,10 @@
     const rare = n >= 2 && (force.rare != null ? force.rare : R() < 0.05); // ごくたまに、めずらしいお客さん
     waiter = force.who ? [...WT.WAITERS, ...WT.RARE].find((w) => w.id === force.who) : rare ? WT.RARE[Math.floor(R() * WT.RARE.length)] : WT.forLevel(n); faceNow = 'wait';
     // たまに風がふく（3軒目から）
+    pickCarryFor(n, R);
     const windy = n >= 3 && (force.wind != null ? force.wind !== 0 : R() < 0.15);
     S.wind = (windy ? (force.wind || (R() < 0.5 ? -4 : 4)) : 0) * S.fx.wind;
+    S.tuning.accGain *= look.carry.shake || 1; // 運ぶものによって、ぐらぐらのたまりやすさが少しちがう
     makeBoxes(R);
     mst = { boxes: 0, high: 0, jumps: 0, jump2: 0, boing: 0, combo: 0, stumble: 0, wobble: 0, stop: 0, shaky: 0, fast: 0, oops: 0, time: 0 };
     mis = MI.pick(misCtx());
@@ -92,6 +94,7 @@
     if (S.wind) { const head = S.wind < 0; msg = `${head ? jaen('向かい風だ！', 'Headwind!') : jaen('追い風だ！', 'Tailwind!')}<br>${msg.split('<br>')[0]}`; noteNew(ZK.mark('event', head ? 'headwind' : 'tailwind'), jaen(`できごと「${head ? '向かい風' : '追い風'}」`, `Event: ${head ? 'Headwind' : 'Tailwind'}`)); }
     if (n === 1 && goldDay) msg = jaen('きょうは<br><b>金のプリンの日！</b>', "It's<br><b>Golden Pudding Day!</b>");
     if (n === 1 && mode === 'daily') msg = jaen(`きょうのコース<br>${DY.label()}`, `Daily Course<br>${DY.label()}`);
+    if (!(n === 1 && mode !== 'daily' && (goldDay || look.carry.id === 'pudding'))) msg += `<br><span class="hc">${IC.html(look.carry.icon)}${look.carry.name}${look.carry.bonus ? `<i class="cb"><span class="coin"></span>+${look.carry.bonus}</i>` : ''}${carryFirst ? jaen(' はじめて！', ' First time!') : ''}</span>`;
     if (mis.length) msg += `<small class="hm">${mis.some((m) => m.isNew) ? '<i>NEW</i> ' : ''}${jaen('ミッション', 'Mission')}：${mis.map((m) => m.text).join(jaen('・', ' · '))}</small>`;
     showBanner(tr(msg));
     if (n > 1 && (rare || S.wind)) { snd.play(S.wind ? 'gust' : 'event'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 3000); }
@@ -134,6 +137,23 @@
       paintMedal(true);
       snd.play('treasure', ZK.rareOf(t));
     }
+  }
+  // ---- 運ぶもの：届け先の人が毎回ランダムで頼む（服は自分で選ぶ）。同じステージのやり直しは同じもの ----
+  let carryFirst = false;
+  function pickCarryFor(n, R) {
+    const cx = ctxNow(), base = CL.current(cx);
+    let item;
+    if (goldDay) item = CL.CARRY.find((x) => x.id === 'goldpudding');
+    else if (n === 1 && stageClears === 0) item = CL.CARRY[0]; // いちばんはじめはプリン
+    else if (force.carry) item = CL.CARRY.find((x) => x.id === force.carry);
+    else {
+      let saved = null; try { saved = JSON.parse(store.get('yoro.carryNow') || 'null'); } catch (e) { /* なくてよい */ }
+      const keep = mode === 'free' && saved && saved.stage === n && CL.CARRY.find((x) => x.id === saved.id && CL.ok(x, cx));
+      item = keep || CL.pickCarry(cx, waiter.id, mode === 'daily' ? DY.rng(n + 500) : R, look && look.carry.id);
+      if (mode === 'free') store.set('yoro.carryNow', JSON.stringify({ stage: n, id: item.id }));
+    }
+    carryFirst = !(CL.delivered()[item.id] > 0) && item.id !== 'pudding';
+    look = { carry: item || CL.CARRY[0], outfit: base.outfit };
   }
   // ---- ミッション ----
   function misCtx() { return { level, boxes: boxes.length, high: boxes.filter((b) => b.high).length, springs: stage.springs.length, timeLimit: stage.timeLimit, seed: mode === 'daily' ? DY.seed() : 0 }; }
@@ -270,9 +290,10 @@
     snd.play('clear'); snd.bgm(false); confetti(); speak(waiter, 'happy', goalSay, 1.1); // ファンファーレのあとに よろこぶ声
     fails = 0;
     const misMedal = MI.finish(mis); paintMis();
-    if (misMedal) { GA.addMedals(misMedal); runMedals += misMedal; paintMedal(true); }
+    const cBonus = look.carry.bonus || 0; CL.addDelivered(look.carry.id);
+    if (misMedal + cBonus) { GA.addMedals(misMedal + cBonus); runMedals += misMedal + cBonus; paintMedal(true); }
     const gmi = $('goalMis');
-    if (gmi) { gmi.hidden = !mis.length; gmi.innerHTML = mis.map((m) => `<span class="mi ${m.state}"><b>${m.state === 'ok' ? '✓' : '✕'}</b>${tr(m.text)}${m.state === 'ok' ? ` <i>+${m.medal}</i>` : ''}</span>`).join(''); }
+    if (gmi) { gmi.hidden = !mis.length && !cBonus; gmi.innerHTML = (cBonus ? `<span class="mi ok"><b>✓</b>${jaen(`${look.carry.name}を とどけた`, `Delivered the ${look.carry.name}`)} <i>+${cBonus}</i></span>` : '') + mis.map((m) => `<span class="mi ${m.state}"><b>${m.state === 'ok' ? '✓' : '✕'}</b>${tr(m.text)}${m.state === 'ok' ? ` <i>+${m.medal}</i>` : ''}</span>`).join(''); }
     runDist += stage.goal;
     CL.addRun(stage.goal);
     if (mode === 'daily') DY.addDaily(level);
@@ -329,10 +350,10 @@
   // きせかえ
   const closetEl = $('closet');
   function openCloset() {
-    CL.render($('closetBody'), ctxNow(), () => { look = CL.current(ctxNow()); snd.play('tap'); });
+    CL.render($('closetBody'), ctxNow(), () => { look = { carry: look.carry, outfit: CL.current(ctxNow()).outfit }; snd.play('tap'); });
     GA.renderEquip($('closetGacha'), () => { wear = GA.worn(); snd.play('tap'); });
     closetEl.classList.add('show'); closetEl.querySelector('.card').scrollTop = 0; snd.play('tap'); }
-  function closeCloset() { closetEl.classList.remove('show'); look = CL.current(ctxNow()); wear = GA.worn(); }
+  function closeCloset() { closetEl.classList.remove('show'); look = { carry: look.carry, outfit: CL.current(ctxNow()).outfit }; wear = GA.worn(); }
   $('closetBtn').onclick = openCloset;
   $('closetClose').onclick = closeCloset;
   closetEl.addEventListener('click', (e) => { if (e.target === closetEl) closeCloset(); });
@@ -478,7 +499,7 @@
     const sk = DY.touch();
     const extra = [];
     if (sk.up && sk.n >= 2) extra.push(jaen(`${sk.n}日 れんぞく！`, `${sk.n}-day streak!`));
-    for (const x of CL.newly(unlockAtStart, ctxNow())) extra.push(jaen(`${x.name}が使える！`, `${x.name} unlocked!`));
+    for (const x of CL.newly(unlockAtStart, ctxNow())) extra.push(x.icon ? jaen(`${x.name}も 頼まれるように！`, `Now people may ask for ${x.name}!`) : jaen(`${x.name}が使える！`, `${x.name} unlocked!`));
     runNew = extra.concat(runNew);
     refreshTitle();
     const why = YL.en
