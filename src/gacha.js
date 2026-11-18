@@ -2,8 +2,8 @@
 // 出たものは見た目が変わり、ほんの少しだけ遊び方にも効く。このスマホの中だけに残す
 (function () {
   const store = {
-    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
-    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存できなくても遊べる */ } },
+    get(k) { return YS.get(k); }, // 保存先は src/save.js
+    set(k, v) { YS.set(k, v); },
   };
   const COST = 5; // 1回のメダル
   const DUP = 2; // ダブったら もどるメダル

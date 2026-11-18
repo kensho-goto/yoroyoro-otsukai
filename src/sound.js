@@ -1,8 +1,8 @@
 // ヨロヨロおつかい — 音（ぜんぶその場で作るオリジナルの音。音のファイルは使わない）
 (function () {
   const store = {
-    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
-    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存できなくても鳴らせる */ } },
+    get(k) { return YS.get(k); }, // 保存先は src/save.js
+    set(k, v) { YS.set(k, v); },
   };
   let ctx = null, master = null, sfxBus = null, bgmBus = null, comp = null;
   let on = store.get('yoro.sound') !== 'off';

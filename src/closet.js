@@ -1,8 +1,8 @@
 // ヨロヨロおつかい — きせかえ（服は自分で選ぶ・運ぶものは届け先の人が毎回ランダムで頼む）。遊ぶほど使えるものが増える。このスマホの中だけに残す
 (function () {
   const store = {
-    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
-    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存できなくても遊べる */ } },
+    get(k) { return YS.get(k); }, // 保存先は src/save.js
+    set(k, v) { YS.set(k, v); },
   };
   // 使えるようになる条件：total=合計で歩いたきょり・best=自己ベスト・runs=遊んだ回数・zukan=ずかんの数・streak=れんぞく日数・treasure=おたから
   // 英語の運ぶもの名は文の中に入る（「プリン」の代わり）ので小文字の名詞。最初は必ず 'pudding'

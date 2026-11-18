@@ -1,8 +1,8 @@
 // ヨロヨロおつかい — 今日のコース（日付でコースが変わる。その日はみんな同じ）と、れんぞくで遊んだ日数
 (function () {
   const store = {
-    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
-    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存できなくても遊べる */ } },
+    get(k) { return YS.get(k); }, // 保存先は src/save.js
+    set(k, v) { YS.set(k, v); },
   };
   const read = (k, d) => { try { return Object.assign({}, d, JSON.parse(store.get(k) || '{}')); } catch (e) { return Object.assign({}, d); } };
   const pad = (n) => String(n).padStart(2, '0');

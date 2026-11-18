@@ -6,14 +6,14 @@
   const ok = (l) => l === 'ja' || l === 'en';
   let q = null; let saved = null;
   try { q = new URLSearchParams(location.search).get('lang'); } catch (e) { /* なくてよい */ }
-  try { saved = localStorage.getItem('yoro.lang'); } catch (e) { /* 保存できなくても遊べる */ }
-  if (ok(q)) { try { localStorage.setItem('yoro.lang', q); } catch (e) { /* 同上 */ } }
+  saved = YS.get('yoro.lang');
+  if (ok(q)) YS.set('yoro.lang', q);
   const nav = (navigator.languages && navigator.languages[0]) || navigator.language || 'ja';
   const lang = ok(q) ? q : ok(saved) ? saved : /^ja\b/i.test(nav) ? 'ja' : 'en';
   const en = lang === 'en';
   function set(l) {
     if (!ok(l) || l === lang) return;
-    try { localStorage.setItem('yoro.lang', l); } catch (e) { /* 同上 */ }
+    YS.set('yoro.lang', l);
     const u = new URL(location.href); u.searchParams.delete('lang'); location.replace(u.toString());
   }
   window.YL = { lang, en, set };

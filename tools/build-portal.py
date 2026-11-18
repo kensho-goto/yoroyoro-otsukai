@@ -37,8 +37,23 @@ drop(r'<script src="src/gate\.js\?v=dev"></script>\s*')
 s = s.replace("window.BUILD = 'dev'", "window.BUILD = 'portal'")
 s = s.replace('?v=dev', '?v=' + ver)
 s = s.replace('<script src="src/i18n.js', SDK + '\n<script src="src/portal.js?v=' + ver + '"></script>\n<script src="src/i18n.js', 1)
-if 'crazygames-sdk' not in s or 'portal.js' not in s:
+if 'crazygames-sdk' not in s or 'portal.js' not in s or s.index('src/save.js') > s.index('src/portal.js'):
     raise SystemExit('SDK を入れられなかった')
+# ゲームの本体（i18n.js から main.js まで）は、サイトの準備と記録の読みこみが終わってから、順番に読みこむ
+m = re.search(r'<script src="src/i18n\.js[^"]*"></script>.*<script src="src/main\.js[^"]*"></script>', s, flags=re.S)
+if not m:
+    raise SystemExit('ゲームの本体の読みこみが見つからない')
+srcs = re.findall(r'<script src="([^"]+)"></script>', m.group(0))
+loader = ('<script>\n(function () { // ゲームの本体は、サイトの準備が終わってから順番に読みこむ\n'
+          '  const list = ' + repr(srcs).replace("'", '"') + ';\n'
+          '  const next = () => { const f = list.shift(); if (!f) { document.documentElement.classList.remove("boot"); return; } const e = document.createElement("script"); e.src = f; e.onload = next; e.onerror = next; document.body.appendChild(e); };\n'
+          '  YP.ready.then(next, next);\n'
+          '})();\n</script>')
+s = s[:m.start()] + loader + s[m.end():]
+# 読みこみ中は、ことばを切りかえる前の画面を見せない
+s = s.replace('<html lang="ja">', '<html lang="ja" class="boot">', 1).replace('</style>', '  html.boot .overlay, html.boot .hud, html.boot .pads { visibility: hidden; }\n</style>', 1)
+if 'class="boot"' not in s:
+    raise SystemExit('読みこみ中のかくしが入らない')
 open(OUT + '/index.html', 'w', encoding='utf-8').write(s)
 
 for f in sorted(os.listdir('src')):

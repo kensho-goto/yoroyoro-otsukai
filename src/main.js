@@ -45,8 +45,8 @@
 
   // ---- 記録 ----
   const store = {
-    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
-    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存できなくても遊べる */ } },
+    get(k) { return YS.get(k); }, // 保存先は src/save.js
+    set(k, v) { YS.set(k, v); },
   };
   let runDist = 0; // 届けたおうちまでのきょりの合計（今の道の分は入れない）
   let bestRun = Math.max(0, parseFloat(store.get('yoro.bestRun')) || 0); // 歩いたきょりの自己ベスト（きせかえの条件に使う）

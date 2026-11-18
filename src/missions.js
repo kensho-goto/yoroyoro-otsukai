@@ -30,8 +30,8 @@
   const SAME = { box1: 'box', box2: 'box', allbox: 'box', high: 'high', high2: 'high', quick: 'time', quick2: 'time', combo: 'combo', combo2: 'combo', clean: 'oops', nooops: 'oops', nostop: 'oops', nowobble: 'oops' };
 
   const store = {
-    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
-    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存できなくても遊べる */ } },
+    get(k) { return YS.get(k); }, // 保存先は src/save.js
+    set(k, v) { YS.set(k, v); },
   };
   function rec() { try { return Object.assign({ done: 0, seen: [] }, JSON.parse(store.get('yoro.missions') || '{}')); } catch (e) { return { done: 0, seen: [] }; } }
   const save = (r) => store.set('yoro.missions', JSON.stringify(r));
