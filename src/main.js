@@ -537,7 +537,15 @@
   }
   // ---- 描画 ----
   const cam = { x: 0, y: 1 };
-  const W2S = (x, y) => [W * 0.45 + (x - cam.x) * scale, H * 0.6 - (y - cam.y) * scale];
+  let anc = 0.6; // 画面の上から何割の所にカメラの中心を置くか（結果の板が出ているときは、景色を板の上へ持ち上げる）
+  const W2S = (x, y) => [W * 0.45 + (x - cam.x) * scale, H * anc - (y - cam.y) * scale];
+  function ancTarget() {
+    const sh = ui.fail.classList.contains('show') ? $('failSheet') : ui.goal.classList.contains('show') ? ui.goal.querySelector('.goalw') : null;
+    if (!sh || !H) return 0.6;
+    const top = sh.getBoundingClientRect().top; // 板（GOAL! の字）の上はし
+    const gy = game.groundHeightAt(cam.x); // カメラが見ている所の地面（ころび芸で上を見ているときも、地面は板のすぐ上に）
+    return Math.max(0.1, Math.min(0.6, (top - 18 + (gy - cam.y) * scale) / H));
+  }
 
   // 3ステージごとに 朝→昼→夕方→夜 と変わる（進んでいる感じを出す）
   const THEMES = [
@@ -571,14 +579,14 @@
       const cx = ((wx * scale) % (W + 300) + W + 300) % (W + 300) - 150;
       cloud(cx, H * (0.1 + (i % 3) * 0.07), scale * (0.6 + (i % 2) * 0.3));
     }
-    hills(0.2, T.hill[0], H * 0.6, 1.2);
+    hills(0.2, T.hill[0], H * anc, 1.2);
     drawTown(T);
-    hills(0.45, T.hill[1], H * 0.7, 0.8);
+    hills(0.45, T.hill[1], H * (anc + 0.1), 0.8);
     drawPoles(T);
   }
   // 遠くの町並み（家の屋根がならぶ。夕方と夜は窓に明かり）
   function drawTown(T) {
-    const par = 0.3, cw = 1.5, base = H * 0.665, off = (cam.x + worldOff) * par;
+    const par = 0.3, cw = 1.5, base = H * (anc + 0.065), off = (cam.x + worldOff) * par;
     const i0 = Math.floor(((0 - W * 0.5) / scale + off) / cw) - 1, i1 = Math.floor(((W - W * 0.5) / scale + off) / cw) + 1;
     for (let i = i0; i <= i1; i++) {
       if (hash(i * 3.1) < 0.18) continue; // ところどころ空き地
@@ -1474,7 +1482,7 @@
   function gagPhoto() {
     try {
       if (!ZK.gagPic) return;
-      const sz = Math.min(W, H) * 0.86, [cx, cy] = gag.def.id === 'screen' ? [W / 2, H * 0.45] : [W * 0.45, H * 0.58];
+      const sz = Math.min(W, H) * 0.86, [cx, cy] = gag.def.id === 'screen' ? [W / 2, H * 0.45] : [W * 0.45, H * (anc - 0.02)];
       const cv = document.createElement('canvas'); cv.width = cv.height = 132;
       cv.getContext('2d').drawImage(canvas, (cx - sz / 2) * DPR, (cy - sz / 2) * DPR, sz * DPR, sz * DPR, 0, 0, 132, 132);
       ZK.gagPic(gag.def.id, cv.toDataURL('image/jpeg', 0.72));
@@ -1801,6 +1809,7 @@
       cam.x += ((gc ? gc[0] : p.x + (onTitle ? 1.0 : 0.6)) - cam.x) * 0.08; // タイトルでは家が見えるよう少し左に寄せる
       cam.y += ((gc ? gc[1] - 0.1 : game.groundHeightAt(p.x) + (onTitle ? 0.2 : 0.9)) - cam.y) * 0.05; // ボタンにかくれないよう地面を上げる
     }
+    { const at = ancTarget(); anc += (at - anc) * 0.12; if (Math.abs(at - anc) < 0.001) anc = at; }
     shakeA *= 0.86; if (shakeA < 0.3) shakeA = 0;
     const shx = shakeA ? (Math.random() - 0.5) * 2 * shakeA : 0, shy = shakeA ? (Math.random() - 0.5) * 2 * shakeA : 0;
     ctx.setTransform(DPR, 0, 0, DPR, shx * DPR, shy * DPR);

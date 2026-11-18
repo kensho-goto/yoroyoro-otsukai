@@ -234,7 +234,7 @@
   .mi i { font-style: normal; color: #d48a00; }
   body[data-mis="2"] .meters { top: calc(max(8px, env(safe-area-inset-top)) + 122px); }
   body[data-mis="3"] .meters { top: calc(max(8px, env(safe-area-inset-top)) + 146px); }
-  .mis.gm { margin: 4px 0 2px; } .mis.gm .mi { font-size: 14px; }
+  .mis.gmis { margin: 6px 0 2px; } .mis.gmis .mi { font-size: 14px; }
   .medal {
     position: fixed; top: calc(max(8px, env(safe-area-inset-top)) + 52px); right: 14px; z-index: 4; pointer-events: none;
     display: flex; align-items: center; gap: 4px; font-family: var(--num); font-size: 22px;
@@ -271,8 +271,24 @@
   .fnum small { font-size: 26px; }
   .coin { display: inline-block; width: .9em; height: .9em; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff2a8 0 18%, #ffcf3d 19% 100%); box-shadow: 0 0 0 2px var(--ink); vertical-align: -0.1em; position: relative; }
   .coin::after { content: ''; position: absolute; inset: 22%; border-radius: 50%; border: 2px solid #d99a12; }
-  #fail .scr { justify-content: flex-end; }
-  #goal { background: linear-gradient(to bottom, rgba(20,30,45,0) 25%, rgba(20,30,45,.55) 100%); }
+  /* ゲームオーバー・GOAL：結果は下の板にまとめ、景色（転んだところ・家）はその上に見せる（カメラは main.js で板の上へ持ち上げる） */
+  #fail, #goal { background: none; }
+  #fail .scr, #goal .scr { justify-content: flex-end; padding: 0; }
+  .sheet { width: 100%; display: flex; flex-direction: column; align-items: center; background: #fff8ec; border-radius: 26px 26px 0 0;
+    box-shadow: 0 0 0 3px var(--ink), 0 -8px 24px rgba(0,0,0,.18); padding: 14px 18px max(16px, env(safe-area-inset-bottom)); }
+  .sheet > .btn { max-width: 340px; }
+  .sheet .bubble, .sheet .pill { box-shadow: 0 0 0 2px #eadfca; }
+  #goalSheet { padding-top: 0; }
+  #goalSheet .goalw { margin-top: -52px; }
+  /* 背の低いスマホ（iPhone SE など）：板を低くして、景色を広く見せる */
+  @media (max-height: 720px) {
+    .sheet { padding-top: 10px; }
+    .sheet .fnum { font-size: 48px; } .sheet .fnum small { font-size: 20px; }
+    .sheet .face { width: 72px; height: 72px; } .sheet .who { margin: 6px 0 2px; }
+    .sheet .bubble { font-size: 15px; padding: 8px 10px; }
+    #goalSheet .goalw { font-size: 72px; margin-top: -40px; }
+    .sheet .icons { margin-top: 6px; }
+  }
   .goalw { font-family: var(--num); font-size: 96px; line-height: 1; color: var(--pudding); -webkit-text-stroke: 12px var(--ink); paint-order: stroke fill; animation: goalin .5s cubic-bezier(.2,1.6,.4,1) both; margin-bottom: 8px; }
   @keyframes goalin { from { transform: scale(.2) rotate(-12deg); opacity: 0; } to { transform: none; opacity: 1; } }
   /* タイトル・ゲームオーバーのあいだは、遊ぶときの表示を出さない */
@@ -368,17 +384,21 @@
 <div class="overlay screen" id="goal">
   <div class="scr">
     <div class="grow"></div>
+    <div class="sheet" id="goalSheet">
     <div class="goalw">GOAL!</div>
     <p class="tag" id="goalTag"></p>
     <div class="who"><canvas class="face" id="goalFace" width="240" height="240"></canvas><div class="bubble" id="goalLine"></div></div>
-    <div class="mis gm" id="goalMis" hidden></div>
+    <div class="mis gmis" id="goalMis" hidden></div>
     <div class="pills"><span class="pill" id="goalNew" hidden></span><span class="pill" id="goalMedal" hidden></span></div>
     <button class="btn" id="nextBtn" data-en="Next">つぎへ</button>
+    </div>
   </div>
 </div>
 
 <div class="overlay screen" id="fail">
   <div class="scr">
+    <div class="grow"></div>
+    <div class="sheet" id="failSheet">
     <p class="tag" id="failTag"></p>
     <div class="fnum out" id="failNum"></div>
     <p class="near" id="failNear"></p>
@@ -392,6 +412,7 @@
       <button class="ib" id="failGachaBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-capsule"/></svg></span><b data-en="Gacha">ガチャ</b></button>
     </div>
     <div hidden><h2 id="failTitle"></h2><p id="failAct"></p><p id="failDist"></p><div class="rank" id="failRank"></div></div>
+    </div>
   </div>
 </div>
 
