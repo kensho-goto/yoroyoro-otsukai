@@ -8,7 +8,7 @@
   const COST = 5; // 1回のメダル
   const DUP = 2; // ダブったら もどるメダル
   const RARITY = { N: { w: 60, name: jaen('ふつう', 'Common'), color: '#8fb3d9' }, R: { w: 28, name: jaen('レア', 'Rare'), color: '#4fb36b' }, SR: { w: 10, name: jaen('スーパーレア', 'Super Rare'), color: '#b46cf0' }, SSR: { w: 2, name: jaen('ウルトラレア', 'Ultra Rare'), color: '#ffb000' } };
-  const SLOTS = YL.en ? { shoe: 'Shoes', hat: 'Hat', tray: 'Tray', skin: 'Look' } : { shoe: 'くつ', hat: 'ぼうし', tray: 'おぼん', skin: 'すがた' };
+  const SLOTS = YL.zh ? { shoe: '鞋子', hat: '帽子', tray: '托盘', skin: '造型' } : YL.en ? { shoe: 'Shoes', hat: 'Hat', tray: 'Tray', skin: 'Look' } : { shoe: 'くつ', hat: 'ぼうし', tray: 'おぼん', skin: 'すがた' };
   // fx（効き目）：jump=ジャンプの高さ×・wind=風の強さ×・speed=いちばん速い速さ＋・balance=体を立て直す力×・pudding=ぐらぐらのたまり方×
   const ITEMS = [
     { id: 'sneaker', slot: 'shoe', r: 'N', name: '赤いスニーカー', icon: 'g.sneaker', color: '#e8303a' },
@@ -51,7 +51,7 @@
     penguin: { name: 'Penguin' },
     gold: { name: 'Gold', say: 'Shiny! A tiny bit faster and higher' },
   };
-  if (YL.en) ITEMS.forEach((i) => Object.assign(i, ITEMS_EN[i.id]));
+  if (YL.en) ITEMS.forEach((i) => Object.assign(i, YL.t(ITEMS_EN[i.id])));
 
   const read = (k, d) => { try { const v = JSON.parse(store.get(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
   let medals = +read('yoro.medals', 0) || 0;
@@ -103,7 +103,7 @@
           return `<button type="button" class="cl${on ? ' on' : ''}${has ? '' : ' no'}" data-s="${slot}" data-id="${i.id}" ${has ? '' : 'disabled'}>`
             + `<b>${has ? window.YoroIcon.html(i.icon) : jaen('？', '?')}</b><span>${has ? i.name : jaen('ガチャで出る', 'From Gacha')}</span><i style="color:${RARITY[i.r].color}">${RARITY[i.r].name}</i>${has && i.say ? `<i>${i.say}</i>` : ''}</button>`;
         })).join('');
-      return `<h3>${jaen(`${label}（ガチャ）`, `${label} (Gacha)`)}</h3><div class="clg">${cards}</div>`;
+      return `<h3>${jaen(`${label}（ガチャ）`, `${label} (Gacha)`, `${label}（扭蛋）`)}</h3><div class="clg">${cards}</div>`;
     }).join('');
     el.innerHTML = html;
     el.querySelectorAll('button.cl').forEach((b) => { b.onclick = () => { setEquip(b.dataset.s, b.dataset.id); renderEquip(el, onPick); if (onPick) onPick(); }; });

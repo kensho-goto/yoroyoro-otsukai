@@ -190,7 +190,7 @@
           if (v.hat === 'noodle') at(g, h[0], h[1], (c) => { c.strokeStyle = '#f2c45a'; c.lineWidth = 0.035; for (let i = 0; i < 7; i++) { c.beginPath(); c.moveTo(-0.22 + i * 0.07, -0.2); for (let k = 1; k < 6; k++) c.lineTo(-0.22 + i * 0.07 + Math.sin(k * 2 + i + g.t * 3) * 0.03, -0.2 + k * 0.09); c.stroke(); } });
           if (v.hat === 'cream') at(g, h[0], h[1] + 0.1, (c) => { cloud(c, 7, 0.28, '#fff7ea', 1); circ(c, 0.05, -0.2, 0.08); fs(c, '#e8303a'); });
         }
-        g.word(v.word + '!', st.tx + 0.2, (st.ty || g.y + 1) + 0.6, tHit, { size: YL.en ? 0.42 : 0.5, col: v.flat ? '#ffd23a' : '#fff' });
+        g.word(v.word + '!', st.tx + 0.2, (st.ty || g.y + 1) + 0.6, tHit, { size: YL.latin ? 0.42 : 0.5, col: v.flat ? '#ffd23a' : '#fff' });
       } },
 
     { id: 'shatter', name: jaen('こなごな', 'Shattered'), hint: jaen('カチーンと かたまって…', 'Frozen stiff with a clink…'), dur: 2.6, peak: 1.0, w: () => 2,
@@ -215,7 +215,7 @@
           g.piece(img, p.rx, p.ry, p.w, p.h, p.x, p.y, p.a);
           if (v.blocks) at(g, p.x, p.y, (c) => { c.lineWidth = 0.03; c.strokeStyle = ['#ff6b8b', '#4aa3ff', '#ffd23a', '#5fc96b'][Math.floor((p.rx + p.ry) * 7) & 3]; c.strokeRect(-p.w / 2, -p.h / 2, p.w, p.h); }, p.a);
         }
-        g.word(v.word + '!', sn.x + sn.cx, sn.y + sn.bb.t + 0.4, 0.95, { size: YL.en ? 0.42 : 0.5 });
+        g.word(v.word + '!', sn.x + sn.cx, sn.y + sn.bb.t + 0.4, 0.95, { size: YL.latin ? 0.42 : 0.5 });
       } },
 
     { id: 'stuck', name: jaen('さかさまに ささる', 'Stuck Head-First'), hint: jaen('ポーンと とんで…', 'Up, up and away…'), dur: 2.5, peak: 1.4, w: (cx) => (cx.reason === 'head' ? 6 : 2),
@@ -663,7 +663,7 @@
     for (let i = 0; i < d.vs.length; i++) { r -= ws[i]; if (r <= 0) return d.vs[i]; }
     return d.vs[0];
   }
-  const nameOf = (d, v) => (v ? (YL.en ? `${d.name} (${v.name})` : `${d.name}（${v.name}）`) : d.name);
+  const nameOf = (d, v) => (v ? (YL.latin ? `${d.name} (${v.name})` : `${d.name}（${v.name}）`) : d.name);
   const total = () => LIST.reduce((a, d) => a + (d.vs ? d.vs.length : 1), 0); // 形まで数えた数
 
   window.YoroGags = { LIST, pick, pickV, nameOf, total };

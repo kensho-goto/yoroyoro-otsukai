@@ -32,9 +32,11 @@ python3 tools/build-portal.py
   Every stage brings a little mission — grab the high box, never stop, hit top speed — and new kinds keep appearing as you go.
   Collect medals from ? boxes and missions, spin the Gacha for new outfits, and see how far you can go. Stages never end.
 - **Controls**: Mobile — tap the left / right half of the screen. Keyboard — F (left foot) and J (right foot). Tap both at once to jump.
+- **中国語（簡体字）の名前**：摇摇晃晃去跑腿（ゲームの中も中国語で遊べる。端末が中国語なら自動で中国語）
+- **中国語の短い説明**：左右轮流按，别把布丁弄掉！摇摇晃晃的送布丁游戏，每次摔倒都超搞笑。
 - **Tags（候補）**: ragdoll, physics, funny, walking, casual, one-button(×), difficult, 2 player(×)
 - **Age rating**: PEGI 12 相当（サイトの決まり）。暴力・血の表現なし（ころぶのはギャグ表現）。
 
 ## 使っているもの（使ってよいかの確認済み）
-- planck.js（MIT）・Dela Gothic One（SIL Open Font License、Google Fonts から読む）
+- planck.js（MIT）・Dela Gothic One（SIL Open Font License、Google Fonts から読む）・ZCOOL QingKe HuangYou（中国語のときだけ。SIL Open Font License、Google Fonts から読む）
 - 音はすべてその場で作っている（音の素材ファイルなし）・絵はすべてコードで描いている

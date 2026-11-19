@@ -37,15 +37,15 @@
     const fr = frames();
     const OW = 360, OH = 480, VH = 400;
     const out = mk(OW, OH), g = out.getContext('2d');
-    const font = '"Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif';
+    const font = YL.zh ? '"PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif' : '"Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif';
     function caption(sub) {
       g.fillStyle = '#fff7e6'; g.fillRect(0, VH, OW, OH - VH);
       g.fillStyle = '#3b2a1e'; g.fillRect(0, VH, OW, 4);
-      g.textAlign = 'center'; g.fillStyle = '#d9531a'; g.font = `900 ${YL.en ? 20 : 22}px ${font}`;
-      g.fillText(jaen(`ヨロヨロおつかい ${info.dist}`, `Yoroyoro Errand ${info.dist}`), OW / 2, VH + 32);
+      g.textAlign = 'center'; g.fillStyle = '#d9531a'; g.font = `900 ${YL.latin ? 20 : 22}px ${font}`;
+      g.fillText(jaen(`ヨロヨロおつかい ${info.dist}`, `Yoroyoro Errand ${info.dist}`, `摇摇晃晃去跑腿 ${info.dist}`), OW / 2, VH + 32);
       g.fillStyle = '#3b2a1e'; g.font = `800 15px ${font}`;
       const st = sub || info.tag || '';
-      if (YL.en) { let fs = 15; while (fs > 11 && g.measureText(st).width > OW - 20) { fs -= 1; g.font = `800 ${fs}px ${font}`; } } // 英語ははみ出すときだけ小さく
+      if (YL.latin) { let fs = 15; while (fs > 11 && g.measureText(st).width > OW - 20) { fs -= 1; g.font = `800 ${fs}px ${font}`; } } // 英語ははみ出すときだけ小さく
       g.fillText(st, OW / 2, VH + 60);
     }
     function frame(c, label) {
@@ -69,11 +69,11 @@
       g.strokeStyle = '#3b2a1e'; g.lineWidth = 4; g.strokeRect(20, 18, OW - 40, 140);
       g.textAlign = 'center'; g.fillStyle = '#3b2a1e'; g.font = `900 30px ${font}`;
       const title = info.title || jaen('ゲームオーバー', 'Game Over');
-      if (YL.en) { let fs = 30; while (fs > 16 && g.measureText(title).width > OW - 60) { fs -= 2; g.font = `900 ${fs}px ${font}`; } } // 英語は長いので、はみ出すときは小さく
+      if (YL.latin) { let fs = 30; while (fs > 16 && g.measureText(title).width > OW - 60) { fs -= 2; g.font = `900 ${fs}px ${font}`; } } // 英語は長いので、はみ出すときは小さく
       g.fillText(title, OW / 2, 60);
       g.font = `800 16px ${font}`;
       const say = (info.say || '').replace(/\n.*/s, '');
-      const lines = YL.en ? wrapWords(say, OW - 60) : say.match(/.{1,17}/g) || [];
+      const lines = YL.latin ? wrapWords(say, OW - 60) : say.match(/.{1,17}/g) || [];
       lines.slice(0, 3).forEach((l, i) => g.fillText(l, OW / 2, 94 + i * 24));
       g.restore();
     }

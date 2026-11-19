@@ -6,7 +6,7 @@
   };
   // 使えるようになる条件：total=合計で歩いたきょり・best=自己ベスト・runs=遊んだ回数・zukan=ずかんの数・streak=れんぞく日数・treasure=おたから
   // 英語の運ぶもの名は文の中に入る（「プリン」の代わり）ので小文字の名詞。最初は必ず 'pudding'
-  const CARRY = YL.en ? [
+  const CARRY = YL.t(YL.en ? [
     { id: 'pudding', name: 'pudding', icon: 'c.pudding', shake: 1, bonus: 0, w: 4 },
     { id: 'dango', name: 'dango', icon: 'c.dango', shake: 0.92, bonus: 0, w: 3, need: { total: 100 } },
     { id: 'cake', name: 'shortcake', icon: 'c.cake', shake: 1.05, bonus: 1, w: 3, need: { best: 40 } },
@@ -22,8 +22,8 @@
     { id: 'suika', name: 'スイカ', icon: 'c.suika', shake: 1.1, bonus: 1, w: 2, need: { total: 500 } },
     { id: 'goldfish', name: '金魚ばち', icon: 'c.goldfish', shake: 1.18, bonus: 2, w: 2, need: { best: 120 } },
     { id: 'goldpudding', name: '金のプリン', icon: 'c.goldpudding', shake: 1, bonus: 3, w: 0.6, need: { treasure: 'goldpudding' } },
-  ];
-  const OUTFITS = YL.en ? [
+  ]);
+  const OUTFITS = YL.t(YL.en ? [
     { id: 'normal', name: 'Usual', shirt: '#ff9f43', apron: '#fff', pants: '#3f639a', shoe: '#d4493a' },
     { id: 'jersey', name: 'Red Tracksuit', shirt: '#e8303a', apron: null, pants: '#e8303a', shoe: '#ffffff', stripe: '#fff', need: { runs: 10 } },
     { id: 'rain', name: 'Yellow Raincoat', shirt: '#ffd23a', apron: null, pants: '#3f639a', shoe: '#ffd23a', hat: 'hood', need: { total: 250 } },
@@ -39,7 +39,7 @@
     { id: 'ninja', name: 'にんじゃ', shirt: '#39405a', apron: null, pants: '#39405a', shoe: '#22222a', hat: 'band', need: { best: 80 } },
     { id: 'chef', name: 'コックさん', shirt: '#ffffff', apron: '#ffffff', pants: '#3b3b3b', shoe: '#3b3b3b', hat: 'chef', need: { zukan: 50 } },
     { id: 'prince', name: '王子さま', shirt: '#7a5af8', apron: null, pants: '#ffffff', shoe: '#7a5af8', hat: 'crown', need: { treasure: 'crown' } },
-  ];
+  ]);
   // 運ぶものは、届け先の人が決める（ランダム）。人ごとに頼みやすいものがある（出やすさ×4）
   const LIKES = { grandma: 'dango', grandpa: 'dango', sister: 'cake', teacher: 'cake', mom: 'egg', dog: 'egg', aunt: 'dango',
     dad: 'suika', uncle: 'suika', friend: 'suika', brother: 'cake', cat: 'goldfish', alien: 'goldfish', ghost: 'dango', king: 'goldpudding' };
@@ -55,7 +55,7 @@
   // 届けた回数（きせかえ画面に出す）
   function delivered() { try { return JSON.parse(store.get('yoro.carried') || '{}'); } catch (e) { return {}; } }
   function addDelivered(id) { const d = delivered(); d[id] = (d[id] || 0) + 1; store.set('yoro.carried', JSON.stringify(d)); return d[id]; }
-  const TREASURE_NAME = YL.en ? { goldpudding: 'Golden Pudding', crown: 'Crown' } : { goldpudding: '金のプリン', crown: '王かん' };
+  const TREASURE_NAME = YL.t(YL.en ? { goldpudding: 'Golden Pudding', crown: 'Crown' } : { goldpudding: '金のプリン', crown: '王かん' });
 
   // 遊んだ記録（合計きょり・回数）
   function stats() {
@@ -66,6 +66,15 @@
   // 条件の文と、あとどれくらいか
   function needText(n, ctx) {
     if (!n) return '';
+    if (YL.zh) {
+      if (n.total != null) return `累计走 ${n.total}m（还差 ${Math.max(0, n.total - ctx.total).toFixed(0)}m）`;
+      if (n.best != null) return `一次走 ${n.best}m（最佳 ${ctx.best.toFixed(1)}m）`;
+      if (n.runs != null) return `玩 ${n.runs} 次（还差 ${Math.max(0, n.runs - ctx.runs)} 次）`;
+      if (n.zukan != null) return `图鉴收集 ${n.zukan} 个（现在 ${ctx.zukan}）`;
+      if (n.streak != null) return `连续玩 ${n.streak} 天（现在 ${ctx.streak}）`;
+      if (n.treasure) return `找到宝物「${TREASURE_NAME[n.treasure] || '?'}」`;
+      return '';
+    }
     if (YL.en) {
       if (n.total != null) return `Walk ${n.total}m total (${Math.max(0, n.total - ctx.total).toFixed(0)}m to go)`;
       if (n.best != null) return `Walk ${n.best}m in one run (best ${ctx.best.toFixed(1)}m)`;
@@ -126,7 +135,7 @@
       const can = ok(x, ctx);
       const stars = '★'.repeat(x.shake < 1 ? 1 : x.shake < 1.04 ? 2 : x.shake < 1.15 ? 3 : 4);
       return `<div class="cl${can ? '' : ' no'}"><b>${can ? window.YoroIcon.html(x.icon) : window.YoroIcon.html('x.lock', 'dim')}</b><span>${x.name}</span>`
-        + (can ? `<i>${jaen('ぐらぐら', 'Wobble')} ${stars}${x.bonus ? ` · <em><span class="coin"></span>+${x.bonus}</em>` : ''}<br>${jaen(`届けた ${dv[x.id] || 0}回`, `Delivered ${dv[x.id] || 0}×`)}</i>` : `<i>${needText(x.need, ctx)}</i>`) + '</div>';
+        + (can ? `<i>${jaen('ぐらぐら', 'Wobble')} ${stars}${x.bonus ? ` · <em><span class="coin"></span>+${x.bonus}</em>` : ''}<br>${jaen(`届けた ${dv[x.id] || 0}回`, `Delivered ${dv[x.id] || 0}×`, `送达 ${dv[x.id] || 0} 次`)}</i>` : `<i>${needText(x.need, ctx)}</i>`) + '</div>';
     };
     el.innerHTML = `<h3>${jaen('運ぶもの', 'Carry')}</h3><p class="clnote">${jaen('届け先の人が、毎回えらびます。運びにくいものほど、ゴールでメダルが多め', 'The person you deliver to picks it each time. Harder to carry = more medals at the goal')}</p><div class="clg">${CARRY.map(carryCard).join('')}</div>`
       + `<h3>${jaen('服', 'Clothes')}</h3><div class="clg">${OUTFITS.map((x) => card('outfit', x, sw(x))).join('')}</div>`;

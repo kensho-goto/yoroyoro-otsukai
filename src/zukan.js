@@ -6,7 +6,7 @@
     set(k, v) { YS.set(k, v); },
   };
   // ころび方（見ていないものはヒントだけ出す）
-  const FALLS = YL.en ? [
+  const FALLS = YL.t(YL.en ? [
     { id: 'pudding', name: 'Pudding Launch', icon: 'f.pudding', hint: 'Walk all wobbly and…' },
     { id: 'hole', name: 'Hole in One', icon: 'f.hole', hint: 'Near a hole…' },
     { id: 'timeup', name: "Time's Up", icon: 'f.timeup', hint: 'Take it too easy and…' },
@@ -26,9 +26,9 @@
     { id: 'torso', name: 'おなかからドテッ', icon: 'f.torso', hint: 'うつぶせに…' },
     { id: 'knee', name: 'ひざカックン', icon: 'f.knee', hint: 'ひざから くずれると…' },
     { id: 'down', name: 'しりもち', icon: 'f.down', hint: 'うしろに すわりこむと…' },
-  ];
+  ]);
   // おたから（w が大きいほど出やすい）
-  const TREASURES = YL.en ? [
+  const TREASURES = YL.t(YL.en ? [
     { id: 'candy', name: 'Candy', icon: 't.candy', w: 30 },
     { id: 'cookie', name: 'Cookie', icon: 't.cookie', w: 25 },
     { id: 'acorn', name: 'Acorn', icon: 't.acorn', w: 20 },
@@ -50,9 +50,9 @@
     { id: 'gem', name: 'ほうせき', icon: 't.gem', w: 2.5 },
     { id: 'goldpudding', name: '金のプリン', icon: 't.goldpudding', w: 1 },
     { id: 'crown', name: '王かん', icon: 't.crown', w: 0.5 },
-  ];
+  ]);
   // たまに起きる出来事
-  const EVENTS = YL.en ? [
+  const EVENTS = YL.t(YL.en ? [
     { id: 'headwind', name: 'Headwind', icon: 'e.headwind', hint: 'Sometimes the wind…' },
     { id: 'tailwind', name: 'Tailwind', icon: 'e.tailwind', hint: 'Sometimes the wind…' },
     { id: 'goldday', name: 'Golden Pudding Day', icon: 'e.goldday', hint: 'Once in a blue moon…' },
@@ -62,9 +62,9 @@
     { id: 'tailwind', name: '追い風', icon: 'e.tailwind', hint: 'たまに風が…' },
     { id: 'goldday', name: '金のプリンの日', icon: 'e.goldday', hint: 'ごくたまに…' },
     { id: 'rare', name: 'めずらしい お客さん', icon: 'e.rare', hint: 'ごくたまに…' },
-  ];
-  const MOOD_NAMES = YL.en ? { sad: 'Sad', sigh: 'Fed Up', sulk: 'Sulky', shock: 'Shocked', angry: 'Angry', cry: 'Crying', happy: 'Happy' }
-    : { sad: 'しょんぼり', sigh: 'あきれ', sulk: 'すね', shock: 'びっくり', angry: 'おこり', cry: 'なき', happy: 'にっこり' };
+  ]);
+  const MOOD_NAMES = YL.t(YL.en ? { sad: 'Sad', sigh: 'Fed Up', sulk: 'Sulky', shock: 'Shocked', angry: 'Angry', cry: 'Crying', happy: 'Happy' }
+    : { sad: 'しょんぼり', sigh: 'あきれ', sulk: 'すね', shock: 'びっくり', angry: 'おこり', cry: 'なき', happy: 'にっこり' });
 
   function load() {
     try {
@@ -125,8 +125,8 @@
     }).join('');
     const gs = GAGS(), pc = loadPics();
     const gcell = (d) => { const ok = has('gag', d.id), nv = d.vs ? d.vs.filter((v) => has('gagv', `${d.id}.${v.id}`)).length : 0;
-      return `<div class="zk zg2${ok ? '' : ' no'}"><b>${ok && pc[d.id] ? `<img src="${pc[d.id]}" alt="">` : ok ? '★' : jaen('？', '?')}</b><span>${ok ? d.name : d.hint}${ok && d.vs ? `<small>${jaen(`${nv}/${d.vs.length}しゅるい`, `${nv}/${d.vs.length} found`)}</small>` : ''}</span></div>`; };
-    el.innerHTML = jaen(`<p class="zt">あつめた数 <b>${c.got}</b> / ${c.total}</p>`, `<p class="zt">Collected <b>${c.got}</b> / ${c.total}</p>`)
+      return `<div class="zk zg2${ok ? '' : ' no'}"><b>${ok && pc[d.id] ? `<img src="${pc[d.id]}" alt="">` : ok ? '★' : jaen('？', '?')}</b><span>${ok ? d.name : d.hint}${ok && d.vs ? `<small>${jaen(`${nv}/${d.vs.length}しゅるい`, `${nv}/${d.vs.length} found`, `发现${nv}/${d.vs.length}种`)}</small>` : ''}</span></div>`; };
+    el.innerHTML = jaen(`<p class="zt">あつめた数 <b>${c.got}</b> / ${c.total}</p>`, `<p class="zt">Collected <b>${c.got}</b> / ${c.total}</p>`, `<p class="zt">已收集 <b>${c.got}</b> / ${c.total}</p>`)
       + sec(jaen('ころび芸', 'Wipeouts'), gs.filter((d) => has('gag', d.id)).length, gs.length, `<p class="zs">${jaen('ころぶと、毎回ちがう芸が出るよ。写真は いちばん おもしろいところ', 'Every fall is a different wipeout. The photo is the funniest moment!')}</p><div class="zg">${gs.map(gcell).join('')}</div>`)
       + sec(jaen('ころび方', 'Ways to Fall'), FALLS.filter((f) => has('fall', f.id)).length, FALLS.length, `<div class="zg">${falls}</div>`)
       + sec(jaen('おたから', 'Treasures'), TREASURES.filter((t) => has('treasure', t.id)).length, TREASURES.length, `<div class="zg">${trs}</div>`)

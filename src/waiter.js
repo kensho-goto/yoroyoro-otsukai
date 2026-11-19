@@ -22,7 +22,7 @@
     { id: 'alien', name: jaen('うちゅう人', 'Space Alien'), call: jaen('チキュウジン', 'Earthling'), hair: '#4fb33a', skin: '#a8f08a', style: 'spiky', rare: true, body: '#7a5af8' },
   ];
   // 英語のときのセリフ（{treat}・{reason}・{call}・{n}・{left} は日本語版と同じ。reason は「So you {reason}…」に入る過去形）
-  const EN = YL.en ? {
+  const EN = YL.t(YL.en ? {
     TREATS: ['my pudding', 'my secret-stash pudding', 'my 3 o\'clock pudding', 'the pudding I was dreaming of',
       'my reward pudding', 'the celebration pudding', 'the limited-edition pudding', 'the extra-caramel pudding',
       'the pudding I was chilling', 'the pudding for sharing'],
@@ -89,7 +89,7 @@
     HAPPY: ['{treat} is here! Thank you!', 'Wow! It made it in one piece!', 'Way to go, {call}!',
       'Pudding\'s still jiggly! You\'re a genius!', 'Let\'s eat it together!', 'Good job! I\'ve got the spoons ready!',
       'Finally! I\'ve been waiting!'],
-  } : null;
+  } : null);
   const TREATS = EN ? EN.TREATS : ['プリン', 'とっておきのプリン', '3時のおやつのプリン', '楽しみにしてたプリン', 'ごほうびのプリン', 'お祝いのプリン',
     '1日10個かぎりのプリン', 'カラメルたっぷりのプリン', '冷蔵庫で冷やすはずだったプリン', 'みんなで分けるはずのプリン'];
   const REASON = EN ? EN.REASON : { pudding: ['プリンを落とした', 'プリンを飛ばした', 'プリンを宙に舞わせた'], other: ['ころんだ', 'すってんころりんした', '地面とごあいさつした'],
@@ -165,13 +165,14 @@
   const swap = (t, item) => {
     if (!item || item === DEFAULT_ITEM) return t;
     if (!YL.en) return t.replace(/プリン/g, item);
+    if (YL.zh) return t.replace(/布丁/g, item);
     return t.replace(/\bpudding\b/g, item).replace(/\bPudding\b/g, item.charAt(0).toUpperCase() + item.slice(1));
   };
   // 英語：文の頭（行の頭と . ! ? のあと）を大文字に（{treat} や {call} が文の頭に来るとき用）
   const cap = (t) => (YL.en ? t.replace(/(^|[.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase()) : t);
   // ころんだだけのときは「飛んだ」話をしない（英語は fly / flew などで見分ける）
-  const isFlyLine = (l) => (YL.en ? /\bfl(y|ew|ying|ies|own)\b/i.test(l) : l.includes('飛'));
-  const animalSays = (say) => jaen(`\n（たぶん「${say}」と言っている）`, `\n(Probably means: "${say}")`);
+  const isFlyLine = (l) => (YL.zh ? l.includes('飞') : YL.en ? /\bfl(y|ew|ying|ies|own)\b/i.test(l) : l.includes('飛'));
+  const animalSays = (say) => jaen(`\n（たぶん「${say}」と言っている）`, `\n(Probably means: "${say}")`, `\n（大概是在说「${say}」）`);
   function reaction(w, { reason, fails, left, item }) {
     const pool = fails <= 1 ? ['sad', 'sad', 'shock', 'sigh'] : fails <= 3 ? ['sigh', 'sulk', 'shock', 'sad', 'angry'] : ['angry', 'cry', 'sulk', 'sigh', 'angry', 'cry'];
     const mood = pick(pool);
@@ -182,7 +183,7 @@
     let say = cap(fill(pick(lines), ctx));
     if (w.animal) say = pick(ANIMAL_SAY[w.style]) + (Math.random() < 0.5 ? animalSays(say) : '');
     const title = pick(M.title), act = pick(ACTIONS[mood]);
-    return { mood, face: M.face, title, say: swap(say, item), action: jaen(`${w.name}は ${act}。`, `${w.name} ${act}.`) };
+    return { mood, face: M.face, title, say: swap(say, item), action: jaen(`${w.name}は ${act}。`, `${w.name} ${act}.`, `${w.name}${act}。`) };
   }
   function happy(w, item) {
     let say = cap(fill(pick(HAPPY), { treat: pick(TREATS), call: w.call }));

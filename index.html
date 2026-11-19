@@ -168,6 +168,12 @@
   /* 英語のとき：ロゴは横に長いので小さめ・下げて「How to」と重ならないように。文字は英語向けの書体を先に */
   html[lang=en] .logo { margin-top: 12vh; } html[lang=en] .logo .w { font-size: 52px; } html[lang=en] .logo .sub2 { font-size: 40px; }
   html[lang=en] body, html[lang=en] .btn small { font-family: "Helvetica Neue", Arial, "Hiragino Sans", system-ui, sans-serif; }
+  /* 中国語のとき：中国語の字（日本の字とまざらないように）。太い字は ZCOOL QingKe HuangYou（読めなければ端末の太字） */
+  html[lang=zh-CN] { --num: "ZCOOL QingKe HuangYou", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif; }
+  html[lang=zh-CN] body, html[lang=zh-CN] .btn small { font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif; }
+  /* ことばの切りかえ（3つ並べる。いまのことばは色をかえる） */
+  .langs { display: flex; gap: 8px; margin-top: 12px; } .langs .btn { margin-top: 0; flex: 1; }
+  .langs .btn.on { background: var(--pudding); box-shadow: inset 0 -5px 0 #d99a1c; }
   @keyframes yoro { 0%,100% { transform: rotate(-7deg) translateY(0); } 50% { transform: rotate(6deg) translateY(4px); } }
   .tbest { margin: 10px 0 0 !important; font-family: var(--num); font-size: 18px; }
   .tbest svg.ic { font-size: 22px; }
@@ -377,7 +383,7 @@
 <div class="overlay screen show" id="title">
   <div class="scr">
     <button class="ib qbtn" id="howBtn" type="button"><span class="ic-c"><svg class="ic"><use href="#i-q"/></svg></span><b data-en="How to">あそびかた</b></button>
-    <div class="logo" data-en='<span class="w">Yo</span><span class="w">ro</span><span class="w">yo</span><span class="w">ro</span><span class="sub2">Errand</span>'><span class="w">ヨ</span><span class="w">ロ</span><span class="w">ヨ</span><span class="w">ロ</span><span class="sub2">おつかい</span></div>
+    <div class="logo" data-en='<span class="w">Yo</span><span class="w">ro</span><span class="w">yo</span><span class="w">ro</span><span class="sub2">Errand</span>' data-zh='<span class="w">摇</span><span class="w">摇</span><span class="w">晃</span><span class="w">晃</span><span class="sub2">去跑腿</span>'><span class="w">ヨ</span><span class="w">ロ</span><span class="w">ヨ</span><span class="w">ロ</span><span class="sub2">おつかい</span></div>
     <p class="tbest out" id="bestRun" hidden></p>
     <div class="grow"></div>
     <button class="btn" id="startBtn" data-en="Walk">あるく</button>
@@ -445,8 +451,8 @@
 <div class="overlay" id="howto">
   <div class="card">
     <h2 data-en="How to Play">あそびかた</h2>
-    <p class="rule" data-en="• Tap the left and right feet one after the other to walk. Faster taps, faster steps<br>• Reach the house for a GOAL. The stages go on forever<br>• Tap both at once to jump. Tap both again in the air to double jump<br>• Falling over, dropping the pudding, or running out of time ends the run<br>• When <svg class=&quot;ic&quot;><use href=&quot;#i-pudding&quot;/></svg> fills up, the pudding flies off. When <svg class=&quot;ic&quot;><use href=&quot;#i-body&quot;/></svg> runs low, you wobble<br>• Grab ? boxes for medals. 5 medals = 1 Gacha spin<br>• Each stage has a Mission. Clear it and reach home for bonus medals. More kinds appear as you go<br>• On a computer, use the F and J keys">・左と右の足を、こうごに押して歩く。速く押すほど速い<br>・おうちに着いたら GOAL。ステージはどこまでも続く<br>・左右を同時に押すとジャンプ。空中でもう一回で2段ジャンプ<br>・ころぶ・プリンを落とす・時間切れでおしまい<br>・<svg class="ic"><use href="#i-pudding"/></svg> がたまるとプリンが飛ぶ。<svg class="ic"><use href="#i-body"/></svg> がへるとふらふら<br>・？の箱をとるとメダル。5枚でガチャ<br>・ステージごとにミッション。達成してゴールするとメダル。進むほど種類がふえる<br>・パソコンは F と J キー</p>
-    <button class="btn sub" id="langBtn" type="button">English</button><button class="btn sub" id="howtoClose" type="button" data-en="Close">とじる</button>
+    <p class="rule" data-en="• Tap the left and right feet one after the other to walk. Faster taps, faster steps<br>• Reach the house for a GOAL. The stages go on forever<br>• Tap both at once to jump. Tap both again in the air to double jump<br>• Falling over, dropping the pudding, or running out of time ends the run<br>• When <svg class=&quot;ic&quot;><use href=&quot;#i-pudding&quot;/></svg> fills up, the pudding flies off. When <svg class=&quot;ic&quot;><use href=&quot;#i-body&quot;/></svg> runs low, you wobble<br>• Grab ? boxes for medals. 5 medals = 1 Gacha spin<br>• Each stage has a Mission. Clear it and reach home for bonus medals. More kinds appear as you go<br>• On a computer, use the F and J keys" data-zh="・左右两只脚轮流按，就能走路。按得越快走得越快<br>・走到家就是 GOAL。关卡没有尽头<br>・左右同时按就能跳。在空中再按一次是二段跳<br>・摔倒、布丁掉了、时间到，就结束了<br>・<svg class=&quot;ic&quot;><use href=&quot;#i-pudding&quot;/></svg> 满了布丁就会飞出去。<svg class=&quot;ic&quot;><use href=&quot;#i-body&quot;/></svg> 变少了就会摇摇晃晃<br>・拿到？箱子能得奖牌。5枚奖牌扭1次扭蛋<br>・每关都有任务。完成任务再到家，就能多得奖牌。越往后任务种类越多<br>・用电脑玩时，按 F 和 J 键">・左と右の足を、こうごに押して歩く。速く押すほど速い<br>・おうちに着いたら GOAL。ステージはどこまでも続く<br>・左右を同時に押すとジャンプ。空中でもう一回で2段ジャンプ<br>・ころぶ・プリンを落とす・時間切れでおしまい<br>・<svg class="ic"><use href="#i-pudding"/></svg> がたまるとプリンが飛ぶ。<svg class="ic"><use href="#i-body"/></svg> がへるとふらふら<br>・？の箱をとるとメダル。5枚でガチャ<br>・ステージごとにミッション。達成してゴールするとメダル。進むほど種類がふえる<br>・パソコンは F と J キー</p>
+    <div class="langs" id="langBtns"></div><button class="btn sub" id="howtoClose" type="button" data-en="Close">とじる</button>
   </div>
 </div>
 
@@ -485,6 +491,7 @@
 <script>window.BUILD = 'dev';</script>
 <script src="vendor/planck.min.js?v=dev"></script>
 <script src="src/save.js?v=dev"></script>
+<script src="src/zh.js?v=dev"></script>
 <script src="src/i18n.js?v=dev"></script>
 <script src="src/icons.js?v=dev"></script>
 <script src="src/core.js?v=dev"></script>

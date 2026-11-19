@@ -39,8 +39,11 @@
   const itemName = () => (look ? look.carry.name : jaen('プリン', 'pudding'));
   const titleCase = (n) => n.replace(/\b[a-z]/g, (c) => c.toUpperCase());
   const tr = (t) => (!YL.en ? (itemName().includes('プリン') ? t : t.replace(/プリン/g, itemName())) // 文の「プリン」を運んでいるものの名前に
+    : YL.zh ? (itemName().includes('布丁') ? t : t.replace(/布丁/g, itemName()))
     : /pudding/i.test(itemName()) ? t : t.replace(/pudding/g, itemName()).replace(/Pudding/g, titleCase(itemName())));
-  const poss = (n) => (/s$/i.test(n) ? `${n}'` : `${n}'s`); // 英語の「〜の」
+  const JF = YL.zh ? '"PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif' : '"Hiragino Sans", sans-serif'; // 絵の中の字
+  const NF = YL.zh ? '"ZCOOL QingKe HuangYou", "PingFang SC", "Microsoft YaHei", sans-serif' : '"Dela Gothic One", "Hiragino Sans", sans-serif'; // 芸の大きな字
+  const poss = (n) => (YL.zh ? n : /s$/i.test(n) ? `${n}'` : `${n}'s`); // 英語の「〜の」（中国語は名前のまま）
   function noteNew(isNew, text) { if (isNew) runNew.push(text); return isNew; }
 
   // ---- 記録 ----
@@ -68,7 +71,7 @@
     }
     if (old) { cam.x -= old.goal; cam.y -= old.gy; worldOff += old.goal; for (const q of prints) q.x -= old.goal; }
     else { cam.x = 0; cam.y = 1; worldOff = 0; delivered = null; prints.length = 0; } // 前の道の続きに見えるように
-    ui.meterLabel.textContent = jaen(`${n}軒目`, `House ${n}`);
+    ui.meterLabel.textContent = jaen(`${n}軒目`, `House ${n}`, `第${n}户`);
     parts.length = 0; shakeA = 0;
     hinted = new Set();
     prevWaiter = n > 1 ? (carry ? waiter : WT.forLevel(n - 1)) : null;
@@ -83,17 +86,21 @@
     mst = { boxes: 0, high: 0, jumps: 0, jump2: 0, boing: 0, combo: 0, stumble: 0, wobble: 0, stop: 0, shaky: 0, fast: 0, oops: 0, time: 0 };
     mis = MI.pick(misCtx());
     paintMis();
-    let msg = YL.en
+    let msg = YL.zh
+      ? (n === 1 ? `把布丁<br>送到${waiter.name}那里！`
+        : n === 3 ? `下一站：${waiter.name}家<br>左右同时按就能跳`
+        : `下一站：${waiter.name}家`)
+      : YL.en
       ? (n === 1 ? `Deliver the pudding<br>to ${waiter.name}!`
         : n === 3 ? `Next: ${poss(waiter.name)} house<br>Tap both sides to jump`
         : `Next: ${poss(waiter.name)} house`)
       : (n === 1 ? `${waiter.name}に<br>プリンを とどけよう`
         : n === 3 ? `つぎは ${waiter.name}の家<br>左右同時で ジャンプ`
         : `つぎは ${waiter.name}の家`);
-    if (rare) { msg = jaen(`えっ！？ つぎは<br><b>${waiter.name}</b>の家！？`, `Whoa?! Next up is<br><b>${poss(waiter.name)}</b> house?!`); noteNew(ZK.mark('event', 'rare'), jaen('できごと「めずらしい お客さん」', 'Event: Rare visitor')); }
-    if (S.wind) { const head = S.wind < 0; msg = `${head ? jaen('向かい風だ！', 'Headwind!') : jaen('追い風だ！', 'Tailwind!')}<br>${msg.split('<br>')[0]}`; noteNew(ZK.mark('event', head ? 'headwind' : 'tailwind'), jaen(`できごと「${head ? '向かい風' : '追い風'}」`, `Event: ${head ? 'Headwind' : 'Tailwind'}`)); }
+    if (rare) { msg = jaen(`えっ！？ つぎは<br><b>${waiter.name}</b>の家！？`, `Whoa?! Next up is<br><b>${poss(waiter.name)}</b> house?!`, `咦？！下一站是<br><b>${waiter.name}</b>家？！`); noteNew(ZK.mark('event', 'rare'), jaen('できごと「めずらしい お客さん」', 'Event: Rare visitor')); }
+    if (S.wind) { const head = S.wind < 0; msg = `${head ? jaen('向かい風だ！', 'Headwind!') : jaen('追い風だ！', 'Tailwind!')}<br>${msg.split('<br>')[0]}`; noteNew(ZK.mark('event', head ? 'headwind' : 'tailwind'), jaen(`できごと「${head ? '向かい風' : '追い風'}」`, `Event: ${head ? 'Headwind' : 'Tailwind'}`, `事件：${head ? '逆风' : '顺风'}`)); }
     if (n === 1 && goldDay) msg = jaen('きょうは<br><b>金のプリンの日！</b>', "It's<br><b>Golden Pudding Day!</b>");
-    if (n === 1 && mode === 'daily') msg = jaen(`きょうのコース<br>${DY.label()}`, `Daily Course<br>${DY.label()}`);
+    if (n === 1 && mode === 'daily') msg = jaen(`きょうのコース<br>${DY.label()}`, `Daily Course<br>${DY.label()}`, `每日挑战<br>${DY.label()}`);
     if (!(n === 1 && mode !== 'daily' && (goldDay || look.carry.id === 'pudding'))) msg += `<br><span class="hc">${IC.html(look.carry.icon)}${look.carry.name}${look.carry.bonus ? `<i class="cb"><span class="coin"></span>+${look.carry.bonus}</i>` : ''}${carryFirst ? jaen(' はじめて！', ' First time!') : ''}</span>`;
     if (mis.length) msg += `<small class="hm">${mis.some((m) => m.isNew) ? '<i>NEW</i> ' : ''}${jaen('ミッション', 'Mission')}：${mis.map((m) => m.text).join(jaen('・', ' · '))}</small>`;
     showBanner(tr(msg));
@@ -130,7 +137,7 @@
       const t = ZK.pickTreasure(); if (!t) continue;
       b.taken = performance.now(); b.item = t; runTreasure++; sparkle(b.x, b.y, 12);
       mst.boxes++; if (b.high) mst.high++;
-      const isNew = noteNew(ZK.mark('treasure', t.id), jaen(`おたから「${t.name}」`, `Treasure: ${t.name}`));
+      const isNew = noteNew(ZK.mark('treasure', t.id), jaen(`おたから「${t.name}」`, `Treasure: ${t.name}`, `宝物：${t.name}`));
       const m = medalOf(t), could = GA.canPull(); GA.addMedals(m); runMedals += m;
       pop(`${t.name} +${m}${isNew ? jaen(' NEW！', ' NEW!') : ''}`, isNew ? '#d48a00' : '#7a4ad6');
       if (!could && GA.canPull()) setTimeout(() => pop(jaen('ガチャが回せる！', 'Gacha ready!'), '#e8a600'), 450);
@@ -170,7 +177,7 @@
     if (!mis.length || S.status !== 'play') return;
     mst.time = elapsed; mst.oops = mst.stumble + mst.wobble + mst.stop;
     for (const m of MI.update(mis, mst, misCtx())) {
-      if (m.state === 'ok') { pop(jaen(`ミッション達成！ +${m.medal}`, `Mission done! +${m.medal}`), '#d48a00'); snd.play('best'); }
+      if (m.state === 'ok') { pop(jaen(`ミッション達成！ +${m.medal}`, `Mission done! +${m.medal}`, `任务完成！+${m.medal}`), '#d48a00'); snd.play('best'); }
       else pop(jaen('ミッション しっぱい…', 'Mission failed…'), '#7a8796');
     }
     const key = mis.map((m) => m.state + MI.progress(m, mst)).join();
@@ -284,13 +291,13 @@
   function speak(who, mood, text, delay = 0) {
     const v = VOICE[who.id] || 300, a = Array.isArray(v) ? v : [v];
     const kind = typeof a[0] === 'string' ? a[0] : a[1] === 'alien' ? 'alien' : 'human';
-    snd.play('voice', { pitch: typeof a[0] === 'number' ? a[0] : 0, shaky: a[1] === 1, kind, mood, len: YL.en ? Math.ceil((text || '').length / 2.5) : (text || '').length, delay });
+    snd.play('voice', { pitch: typeof a[0] === 'number' ? a[0] : 0, shaky: a[1] === 1, kind, mood, len: YL.latin ? Math.ceil((text || '').length / 2.5) : (text || '').length, delay });
   }
   // おうちに着いた：GOAL！ タップで次のステージへ
   let goalSay = '', goalAt = 0;
   function deliver() {
     goalSay = WT.happy(waiter, itemName()).say;
-    noteNew(ZK.mark('face', `${waiter.id}.happy`), jaen(`${waiter.name}の「にっこり」顔`, `${poss(waiter.name)} happy face`));
+    noteNew(ZK.mark('face', `${waiter.id}.happy`), jaen(`${waiter.name}の「にっこり」顔`, `${poss(waiter.name)} happy face`, `${waiter.name}的「开心」表情`));
     faceNow = 'happy'; faceT0 = performance.now();
     snd.play('clear'); snd.bgm(false); confetti(); speak(waiter, 'happy', goalSay, 1.1); // ファンファーレのあとに よろこぶ声
     fails = 0;
@@ -298,17 +305,17 @@
     const cBonus = look.carry.bonus || 0; CL.addDelivered(look.carry.id);
     if (misMedal + cBonus) { GA.addMedals(misMedal + cBonus); runMedals += misMedal + cBonus; paintMedal(true); }
     const gmi = $('goalMis');
-    if (gmi) { gmi.hidden = !mis.length && !cBonus; gmi.innerHTML = (cBonus ? `<span class="mi ok"><b>✓</b>${jaen(`${look.carry.name}を とどけた`, `Delivered the ${look.carry.name}`)} <i>+${cBonus}</i></span>` : '') + mis.map((m) => `<span class="mi ${m.state}"><b>${m.state === 'ok' ? '✓' : '✕'}</b>${tr(m.text)}${m.state === 'ok' ? ` <i>+${m.medal}</i>` : ''}</span>`).join(''); }
+    if (gmi) { gmi.hidden = !mis.length && !cBonus; gmi.innerHTML = (cBonus ? `<span class="mi ok"><b>✓</b>${jaen(`${look.carry.name}を とどけた`, `Delivered the ${look.carry.name}`, `送到了${look.carry.name}`)} <i>+${cBonus}</i></span>` : '') + mis.map((m) => `<span class="mi ${m.state}"><b>${m.state === 'ok' ? '✓' : '✕'}</b>${tr(m.text)}${m.state === 'ok' ? ` <i>+${m.medal}</i>` : ''}</span>`).join(''); }
     runDist += stage.goal;
     CL.addRun(stage.goal);
     if (mode === 'daily') DY.addDaily(level);
     else { if (level + 1 > stageNow && window.YP) YP.happy(); stageNow = level + 1; store.set('yoro.stage', String(stageNow)); } // はじめてのクリアはサイトに「よろこびの場面」を知らせる
     stageClears++; store.set('yoro.clears', String(stageClears));
-    $('goalTag').textContent = jaen(`ステージ ${level} クリア`, `Stage ${level} Clear!`);
+    $('goalTag').textContent = jaen(`ステージ ${level} クリア`, `Stage ${level} Clear!`, `第${level}关 通过！`);
     $('goalLine').textContent = goalSay;
-    const gn = $('goalNew'); gn.innerHTML = jaen(`<b>NEW</b> ずかん ${ZK.count().got}/${ZK.count().total}`, `<b>NEW</b> Album ${ZK.count().got}/${ZK.count().total}`); gn.hidden = !runNew.length;
+    const gn = $('goalNew'); gn.innerHTML = jaen(`<b>NEW</b> ずかん ${ZK.count().got}/${ZK.count().total}`, `<b>NEW</b> Album ${ZK.count().got}/${ZK.count().total}`, `<b>NEW</b> 图鉴 ${ZK.count().got}/${ZK.count().total}`); gn.hidden = !runNew.length;
     const gm = $('goalMedal'); gm.innerHTML = `<span class="coin"></span>+${runMedals}`; gm.hidden = !runMedals;
-    $('nextBtn').innerHTML = jaen(`つぎへ<small>ステージ ${level + 1}</small>`, `Next<small>Stage ${level + 1}</small>`);
+    $('nextBtn').innerHTML = jaen(`つぎへ<small>ステージ ${level + 1}</small>`, `Next<small>Stage ${level + 1}</small>`, `下一关<small>第${level + 1}关</small>`);
     goalAt = performance.now();
     refreshTitle();
     showOnly(ui.goal);
@@ -368,7 +375,7 @@
   function paintGacha() {
     const c = GA.count();
     $('gMedals').innerHTML = jaen(`<span class="coin"></span> ${GA.medals}枚${GA.canPull() ? '' : `（あと ${GA.COST - GA.medals}枚）`}`,
-      `<span class="coin"></span> ${GA.medals}${GA.canPull() ? '' : ` (need ${GA.COST - GA.medals} more)`}`);
+      `<span class="coin"></span> ${GA.medals}${GA.canPull() ? '' : ` (need ${GA.COST - GA.medals} more)`}`, `<span class="coin"></span> ${GA.medals}枚${GA.canPull() ? "" : `（还差${GA.COST - GA.medals}枚）`}`);
     gPull.disabled = gBusy || !GA.canPull();
     gPull.textContent = GA.canPull() || gBusy ? jaen('回す', 'Spin!') : jaen('メダルが たりない', 'Not enough medals');
     $('gCount').textContent = `${c.got} / ${c.total}`;
@@ -388,10 +395,10 @@
     setTimeout(() => {
       gBusy = false; gMachine.className = 'gm';
       $('gResult').innerHTML = `<div class="gres${it.r === 'SSR' ? ' ssr' : ''}"><span class="rr" style="color:${rr.color}">★ ${rr.name} ★</span><b>${IC.html(it.icon)}</b>`
-        + `<span class="nm">${it.name}</span>${jaen(`（${GA.SLOTS[it.slot]}）`, ` (${GA.SLOTS[it.slot]})`)}<br>${it.say ? `<span class="fx">${it.say}</span><br>` : ''}`
+        + `<span class="nm">${it.name}</span>${jaen(`（${GA.SLOTS[it.slot]}）`, ` (${GA.SLOTS[it.slot]})`, `（${GA.SLOTS[it.slot]}）`)}<br>${it.say ? `<span class="fx">${it.say}</span><br>` : ''}`
         + (res.isNew ? jaen('<span class="nw">NEW！ 身につけたよ</span>', '<span class="nw">NEW! Now wearing it</span>')
-          : jaen(`ダブり… メダル${res.back}枚 もどった`, `Already have it… got ${res.back} medal${res.back === 1 ? '' : 's'} back`)) + '</div>';
-      if (res.isNew) noteNew(true, jaen(`ガチャ「${it.name}」`, `Gacha: ${it.name}`));
+          : jaen(`ダブり… メダル${res.back}枚 もどった`, `Already have it… got ${res.back} medal${res.back === 1 ? '' : 's'} back`, `重复了…退回${res.back}枚奖牌`)) + '</div>';
+      if (res.isNew) noteNew(true, jaen(`ガチャ「${it.name}」`, `Gacha: ${it.name}`, `扭蛋：${it.name}`));
       snd.play('treasure', it.r === 'SR' || it.r === 'SSR');
       if (navigator.vibrate) navigator.vibrate(it.r === 'SSR' ? [60, 40, 60, 40, 120] : 40);
       wear = GA.worn(); paintGacha();
@@ -454,10 +461,10 @@
   paintSnd();
   function refreshTitle() {
     $('bestRun').hidden = true;
-    $('startBtn').innerHTML = jaen(`あるく<small>ステージ ${stageNow}</small>`, `Play<small>Stage ${stageNow}</small>`);
+    $('startBtn').innerHTML = jaen(`あるく<small>ステージ ${stageNow}</small>`, `Play<small>Stage ${stageNow}</small>`, `出发<small>第${stageNow}关</small>`);
     const sk = DY.streak(), dd = DY.daily();
-    $('streak').innerHTML = sk.n > 0 ? `<svg class="ic"><use href="#i-flame"/></svg> ${jaen(`${sk.n}日れんぞく`, `${sk.n}-day streak`)}` : '';
-    $('dailyBtn').innerHTML = jaen(`きょうのコース<small>${DY.label()}・ステージ ${dailyStage()}</small>`, `Daily Course<small>${DY.label()} · Stage ${dailyStage()}</small>`);
+    $('streak').innerHTML = sk.n > 0 ? `<svg class="ic"><use href="#i-flame"/></svg> ${jaen(`${sk.n}日れんぞく`, `${sk.n}-day streak`, `连续${sk.n}天`)}` : '';
+    $('dailyBtn').innerHTML = jaen(`きょうのコース<small>${DY.label()}・ステージ ${dailyStage()}</small>`, `Daily Course<small>${DY.label()} · Stage ${dailyStage()}</small>`, `每日挑战<small>${DY.label()} · 第${dailyStage()}关</small>`);
     $('titleMedal').textContent = GA.medals;
     $('titleGachaBtn').classList.toggle('ready', GA.canPull());
     paintMedal();
@@ -471,10 +478,16 @@
     o.addEventListener('click', (e) => { if (e.target === o) o.classList.remove('show'); });
   }
   // ことばの切りかえ（あそびかたの中のボタン）
-  const lb = document.getElementById('langBtn'); if (lb) { lb.textContent = YL.en ? '日本語' : 'English'; lb.onclick = () => YL.set(YL.en ? 'ja' : 'en'); }
+  const lbs = document.getElementById('langBtns');
+  if (lbs) {
+    lbs.innerHTML = YL.LANGS.map((l) => `<button class="btn sub${l === YL.lang ? ' on' : ''}" type="button" data-l="${l}">${YL.NAMES[l]}</button>`).join('');
+    lbs.querySelectorAll('button').forEach((b) => { b.onclick = () => YL.set(b.dataset.l); });
+  }
   function paintRecords() {
     const st = CL.stats();
-    $('recBody').innerHTML = (YL.en
+    $('recBody').innerHTML = (YL.zh
+      ? [['现在的关卡', stageNow], ['通关次数', `${stageClears}次`], ['完成的任务', `${MI.done()}个`], ['走过的总距离', `${Math.floor(st.total || 0)}m`], ['每日挑战', `第${dailyStage()}关`]]
+      : YL.en
       ? [['Current stage', stageNow], ['Stages cleared', `${stageClears}`], ['Missions done', `${MI.done()}`], ['Total distance walked', `${Math.floor(st.total || 0)}m`], ['Daily Course', `Stage ${dailyStage()}`]]
       : [['いまのステージ', stageNow], ['クリアした回数', `${stageClears}回`], ['ミッション達成', `${MI.done()}回`], ['歩いたきょり（合計）', `${Math.floor(st.total || 0)}m`], ['きょうのコース', `ステージ ${dailyStage()}`]])
       .map(([k, v]) => `<div class="rec"><span>${k}</span><b>${v}</b></div>`).join('');
@@ -489,10 +502,10 @@
     const r = WT.reaction(waiter, { reason: S.fallReason, fails, left, item: itemName() });
     faceNow = r.face; faceT0 = performance.now(); speak(waiter, r.mood, r.say);
     const fr = ZK.FALLS.find((f) => f.id === S.fallReason);
-    if (fr) noteNew(ZK.mark('fall', fr.id), jaen(`ころび方「${fr.name}」`, `Fall: ${fr.name}`));
+    if (fr) noteNew(ZK.mark('fall', fr.id), jaen(`ころび方「${fr.name}」`, `Fall: ${fr.name}`, `摔法：${fr.name}`));
     const gagName = gag && gag.def.name ? GG.nameOf(gag.def, gag.v) : '';
-    if (gag && gag.def.name) { noteNew(ZK.mark('gag', gag.def.id), jaen(`ころび芸「${gag.def.name}」`, `Wipeout: ${gag.def.name}`)); if (gag.v) ZK.mark('gagv', `${gag.def.id}.${gag.v.id}`); }
-    noteNew(ZK.mark('face', `${waiter.id}.${r.mood}`), jaen(`${waiter.name}の「${ZK.MOOD_NAMES[r.mood] || r.mood}」顔`, `${poss(waiter.name)} "${ZK.MOOD_NAMES[r.mood] || r.mood}" face`));
+    if (gag && gag.def.name) { noteNew(ZK.mark('gag', gag.def.id), jaen(`ころび芸「${gag.def.name}」`, `Wipeout: ${gag.def.name}`, `绝技：${gag.def.name}`)); if (gag.v) ZK.mark('gagv', `${gag.def.id}.${gag.v.id}`); }
+    noteNew(ZK.mark('face', `${waiter.id}.${r.mood}`), jaen(`${waiter.name}の「${ZK.MOOD_NAMES[r.mood] || r.mood}」顔`, `${poss(waiter.name)} "${ZK.MOOD_NAMES[r.mood] || r.mood}" face`, `${waiter.name}的「${ZK.MOOD_NAMES[r.mood] || r.mood}」表情`));
     const total = runDist + Math.min(stage.goal, Math.max(0, S.bestX)); // ゲームオーバーまでに歩けたきょり
     const daily = mode === 'daily';
     const prevBest = curBest;
@@ -503,37 +516,43 @@
     CL.addRun(Math.min(stage.goal, Math.max(0, S.bestX))); // 届けたぶんは GOAL のときに入れた
     const sk = DY.touch();
     const extra = [];
-    if (sk.up && sk.n >= 2) extra.push(jaen(`${sk.n}日 れんぞく！`, `${sk.n}-day streak!`));
-    for (const x of CL.newly(unlockAtStart, ctxNow())) extra.push(x.icon ? jaen(`${x.name}も 頼まれるように！`, `Now people may ask for ${x.name}!`) : jaen(`${x.name}が使える！`, `${x.name} unlocked!`));
+    if (sk.up && sk.n >= 2) extra.push(jaen(`${sk.n}日 れんぞく！`, `${sk.n}-day streak!`, `连续${sk.n}天！`));
+    for (const x of CL.newly(unlockAtStart, ctxNow())) extra.push(x.icon ? jaen(`${x.name}も 頼まれるように！`, `Now people may ask for ${x.name}!`, `以后也会有人请你送${x.name}了！`) : jaen(`${x.name}が使える！`, `${x.name} unlocked!`, `${x.name}可以用了！`));
     runNew = extra.concat(runNew);
     refreshTitle();
-    const why = YL.en
+    const why = YL.zh
+      ? { pudding: '布丁掉了', timeup: '时间到', rhythm: '乱了节奏', stop: '停下摔倒了', hole: '掉进洞里' }[S.fallReason] || '摔倒了'
+      : YL.en
       ? { pudding: 'Dropped the pudding', timeup: "Time's up", rhythm: 'Lost the rhythm', stop: 'Stopped and fell', hole: 'Fell in a hole' }[S.fallReason] || 'Fell over'
       : { pudding: 'プリンを落とした', timeup: '時間切れ', rhythm: 'リズムがくずれた', stop: '止まってころんだ', hole: '穴に落ちた' }[S.fallReason] || 'ころんだ';
     ui.failTag.textContent = tr(`${why}${gagName ? ` → ${gagName}` : ''}`);
-    $('failNum').innerHTML = jaen(`<small>ステージ</small> ${level}`, `<small>Stage</small> ${level}`);
+    $('failNum').innerHTML = jaen(`<small>ステージ</small> ${level}`, `<small>Stage</small> ${level}`, `<small>关卡</small> ${level}`);
     ui.failTitle.textContent = r.title;
     ui.failLine.textContent = r.say;
     ui.failAct.textContent = r.action;
-    ui.failDist.textContent = YL.en
+    ui.failDist.textContent = YL.zh
+      ? `${daily ? `每日挑战 第${DY.daily().tries}次\n` : ''}第${level}户 · 离${waiter.name}家还有 ${left.toFixed(1)}m\n走了 ${total.toFixed(1)}m${newBest ? '' : `（${daily ? '今日' : ''}最佳 ${curBest.toFixed(1)}m）`}${runTreasure ? `\n这次拿到的宝物 ${runTreasure}个` : ''}`
+      : YL.en
       ? `${daily ? `Daily Course · Try #${DY.daily().tries}\n` : ''}House ${level} · ${left.toFixed(1)}m to ${poss(waiter.name)} house\nWalked ${total.toFixed(1)}m${newBest ? '' : ` (${daily ? "Today's best" : 'Best'} ${curBest.toFixed(1)}m)`}${runTreasure ? `\nTreasures this run: ${runTreasure}` : ''}`
       : `${daily ? `今日のコース ${DY.daily().tries}回目\n` : ''}${level}軒目・${waiter.name}のおうちまで あと ${left.toFixed(1)}m\n歩いたきょり ${total.toFixed(1)}m${newBest ? '' : `（${daily ? '今日の' : ''}ベスト ${curBest.toFixed(1)}m）`}${runTreasure ? `\nこの回のおたから ${runTreasure}こ` : ''}`;
     $('retryBtn').textContent = jaen('もう一回', 'Try again');
     ui.retry.disabled = true; setTimeout(() => { ui.retry.disabled = false; }, 700); // 歩いていた指でうっかり押さないように
-    lastShare = YL.en
+    lastShare = YL.zh
+      ? `摇摇晃晃去跑腿${daily ? `（每日挑战 ${DY.label()}）` : ''}：我在第${level}关${gagName ? `变成了「${gagName}」，` : '摔倒了，'}被${waiter.name}说了一句「${String(r.say).replace(/\s*\n\s*/g, ' ')}」…`
+      : YL.en
       ? `Yoroyoro Errand${daily ? ` (Daily Course: ${DY.label()})` : ''}: I wiped out on Stage ${level}${gagName ? ` with a "${gagName}"` : ''} and ${waiter.name} said, "${String(r.say).replace(/\s*\n\s*/g, ' ')}"`
       : `ヨロヨロおつかい${daily ? `の今日のコース（${DY.label()}）` : ''} ステージ${level}で${gagName ? `「${gagName}」になって` : ''}${waiter.name}に「${r.say}」と言われた…`;
-    clipInfo = { dist: jaen(`ステージ${level}`, `Stage ${level}`), title: r.title, say: r.say, tag: ui.failTag.textContent };
+    clipInfo = { dist: jaen(`ステージ${level}`, `Stage ${level}`, `第${level}关`), title: r.title, say: r.say, tag: ui.failTag.textContent };
     resetVid();
     // 歩いたきょりを、じぶんの記録ランキングに入れて上位を出す（このスマホの中だけ。今日のコースは入れない）
     const rk = daily ? { list: [], idx: -1 } : total >= 0.5 ? RANK.add(total) : { list: RANK.list(), idx: -1 };
     RANK.render($('failRank'), rk);
     // あとちょっと：すぐ上の記録まで何mだったか
     const near = $('failNear'); near.classList.remove('best');
-    near.textContent = jaen(`おうちまで あと ${left.toFixed(1)}m${left < 3 ? '！ おしい！' : ''}`, `${left.toFixed(1)}m to go${left < 3 ? '! So close!' : ''}`);
+    near.textContent = jaen(`おうちまで あと ${left.toFixed(1)}m${left < 3 ? '！ おしい！' : ''}`, `${left.toFixed(1)}m to go${left < 3 ? '! So close!' : ''}`, `还差${left.toFixed(1)}m${left < 3 ? '！就差一点！' : ''}`);
     // ずかん：この回で新しく入ったもの（なければ、まだ見ていないころび方のヒント）
     const zc = ZK.count(), nb = $('failNew');
-    nb.innerHTML = jaen(`<b>NEW</b> ずかん ${zc.got}/${zc.total}`, `<b>NEW</b> Album ${zc.got}/${zc.total}`);
+    nb.innerHTML = jaen(`<b>NEW</b> ずかん ${zc.got}/${zc.total}`, `<b>NEW</b> Album ${zc.got}/${zc.total}`, `<b>NEW</b> 图鉴 ${zc.got}/${zc.total}`);
     nb.hidden = !runNew.length;
     paintFailGacha();
     showTitleRank();
@@ -874,9 +893,9 @@
       ctx.restore(); ctx.stroke();
       box(-1.0, 2.02, 1.4, 2.14, '#4a525d', 3); poly([[-1.12, 2.0], [-0.94, 2.0], [-0.94, 2.24], [-1.06, 2.3], [-1.12, 2.22]], '#4a525d'); poly([[1.52, 2.0], [1.34, 2.0], [1.34, 2.24], [1.46, 2.3], [1.52, 2.22]], '#4a525d');
       box(-0.1, 0.5, 0.1, 1.05, '#e9c48f', 3);
-      ctx.fillStyle = INK; ctx.font = `800 ${Math.round(s * 0.12)}px "Hiragino Sans", sans-serif`; ctx.textAlign = 'center';
-      if (YL.en) { // 英語は縦書きにせず、柱にそって横に寝かせる
-        ctx.save(); ctx.translate(X(0), Y(0.775)); ctx.rotate(Math.PI / 2); ctx.font = `800 ${Math.round(s * 0.1)}px "Hiragino Sans", sans-serif`; ctx.textBaseline = 'middle';
+      ctx.fillStyle = INK; ctx.font = `800 ${Math.round(s * 0.12)}px ${JF}`; ctx.textAlign = 'center';
+      if (YL.latin) { // 英語は縦書きにせず、柱にそって横に寝かせる
+        ctx.save(); ctx.translate(X(0), Y(0.775)); ctx.rotate(Math.PI / 2); ctx.font = `800 ${Math.round(s * 0.1)}px ${JF}`; ctx.textBaseline = 'middle';
         ctx.fillText(g.who.name, 0, 0, s * 0.52); ctx.restore();
       } else [...g.who.name].slice(0, 4).forEach((ch, i) => ctx.fillText(ch, X(0), Y(0.92 - i * 0.13)));
       // ねこだらけ（縁側に4匹・屋根に1匹）
@@ -970,7 +989,7 @@
       poly([[1.3, 2.7], [1.75, 2.62 + w], [1.75, 2.38 + w], [1.3, 2.42]], '#2b2b2b');
       dot(1.52, 2.55 + w, 0.07, '#ffffff'); ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(X(1.49), Y(2.56 + w), 2, 0, 7); ctx.arc(X(1.55), Y(2.56 + w), 2, 0, 7); ctx.fill();
       box(1.05, 1.55, 1.35, 1.75, '#fff7e6', 2);
-      ctx.fillStyle = '#e8303a'; ctx.font = `900 ${Math.round(g.s * (YL.en ? 0.075 : 0.12))}px sans-serif`; ctx.textAlign = 'center'; ctx.save(); ctx.translate(X(1.2), Y(1.62)); ctx.rotate(-0.08); ctx.fillText(jaen('ひみつ', 'SECRET'), 0, 0); ctx.restore();
+      ctx.fillStyle = '#e8303a'; ctx.font = `900 ${Math.round(g.s * (YL.latin ? 0.075 : 0.12))}px sans-serif`; ctx.textAlign = 'center'; ctx.save(); ctx.translate(X(1.2), Y(1.62)); ctx.rotate(-0.08); ctx.fillText(jaen('ひみつ', 'SECRET'), 0, 0); ctx.restore();
     },
     // となりのおばさん：花の家。家より高いひまわり
     aunt(g) {
@@ -1082,7 +1101,7 @@
       for (const [x, y] of [[-0.5, 0.78], [-0.5, 1.02], [1.1, 0.78], [1.1, 1.02]]) dot(x, y, 0.13, '#fff7e6');
       box(-0.4, 0.8, 1.0, 1.0, '#fff7e6', 10); ctx.stroke();
       box(0.12, 0.8, 0.48, 0.98, '#e9c48f', 3);
-      ctx.fillStyle = INK; ctx.font = `800 ${Math.round(g.s * (YL.en ? 0.1 : 0.12))}px "Hiragino Sans", sans-serif`; ctx.textAlign = 'center'; ctx.fillText(jaen('コロ', 'KORO'), X(0.3), Y(0.85));
+      ctx.fillStyle = INK; ctx.font = `800 ${Math.round(g.s * (YL.latin ? 0.1 : 0.12))}px ${JF}`; ctx.textAlign = 'center'; ctx.fillText(jaen('コロ', 'KORO'), X(0.3), Y(0.85));
       // えさ皿と骨の山
       poly([[1.1, 0], [1.55, 0], [1.48, 0.13], [1.17, 0.13]], '#4f8be8');
       for (const [x, y, a] of [[1.25, 0.2, 0.3], [1.42, 0.24, -0.4], [1.33, 0.33, 0.1]]) { ctx.save(); ctx.translate(X(x), Y(y)); ctx.rotate(a); ctx.fillStyle = '#fff7e6'; ctx.fillRect(-0.12 * g.s, -0.025 * g.s, 0.24 * g.s, 0.05 * g.s); ctx.strokeRect(-0.12 * g.s, -0.025 * g.s, 0.24 * g.s, 0.05 * g.s); ctx.restore(); }
@@ -1191,7 +1210,7 @@
     ctx.fillStyle = '#ffcf3d'; ctx.beginPath(); ctx.arc(gx - s * 0.48, gy - s * 0.62, s * 0.05, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#c9c2b4'; ctx.fillRect(gx - s * 1.08, gy - s * 0.07, s * 0.78, s * 0.07); ctx.strokeRect(gx - s * 1.08, gy - s * 0.07, s * 0.78, s * 0.07);
     // 表札（木の小さい板）
-    ctx.font = `800 ${Math.round(s * (YL.en ? 0.11 : 0.13))}px "Hiragino Sans", sans-serif`; ctx.textAlign = 'center';
+    ctx.font = `800 ${Math.round(s * (YL.latin ? 0.11 : 0.13))}px ${JF}`; ctx.textAlign = 'center';
     const tw = ctx.measureText(who.name).width + s * 0.16, tx = wx0 + ww / 2, ty = gy - s * 0.6;
     ctx.fillStyle = '#e9c48f'; roundRect(tx - tw / 2, ty - s * 0.13, tw, s * 0.24, 4); ctx.fill(); ctx.lineWidth = 2; ctx.stroke();
     ctx.fillStyle = '#3b2a1e'; ctx.fillText(who.name, tx, ty + s * 0.04);
@@ -1465,7 +1484,7 @@
       const p = a / 0.14 - 1, k = a < 0.14 ? Math.max(0.01, 1 + 2.9 * p ** 3 + 1.9 * p ** 2) : 1, al = a > dur - 0.25 ? (dur - a) / 0.25 : 1;
       const [X, Y] = o.scr ? [x, y] : W2S(x, y + a * 0.25), size = o.scr ? o.size : (o.size || 0.5) * scale;
       ctx.save(); ctx.globalAlpha = al; ctx.translate(X, Y); ctx.rotate(o.rot ?? -0.1); ctx.scale(k, k);
-      ctx.font = `${Math.round(size)}px "Dela Gothic One", "Hiragino Sans", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+      ctx.font = `${Math.round(size)}px ${NF}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
       ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = size * 0.24; ctx.strokeText(str, 0, 0); ctx.fillStyle = o.col || '#fff'; ctx.fillText(str, 0, 0);
       ctx.restore();
     },
@@ -1725,11 +1744,11 @@
     ui.meter2.classList.toggle('low', st < 0.35 && S.status === 'play');
     const v = S.char && S.status === 'play' ? Math.max(0, S.char.torso.getLinearVelocity().x) : 0;
     spdShown += (v - spdShown) * 0.1;
-    ui.spd.textContent = jaen(`${spdShown.toFixed(1)}m/秒`, `${spdShown.toFixed(1)}m/s`);
+    ui.spd.textContent = jaen(`${spdShown.toFixed(1)}m/秒`, `${spdShown.toFixed(1)}m/s`, `${spdShown.toFixed(1)}m/秒`);
     ui.spd.classList.toggle('fast', spdShown > 2.3);
     const x = Math.max(0, game.charX());
     $('stgNow').textContent = level; $('stgNext').textContent = level + 1;
-    ui.dist.innerHTML = `<svg class="ic"><use href="#i-house"/></svg>${jaen(`あと${Math.ceil(Math.max(0, stage.goal - x))}m`, `${Math.ceil(Math.max(0, stage.goal - x))}m to go`)}`; // おうちまで
+    ui.dist.innerHTML = `<svg class="ic"><use href="#i-house"/></svg>${jaen(`あと${Math.ceil(Math.max(0, stage.goal - x))}m`, `${Math.ceil(Math.max(0, stage.goal - x))}m to go`, `还有${Math.ceil(Math.max(0, stage.goal - x))}m`)}`; // おうちまで
     ui.prog.style.width = `${Math.round(Math.min(1, x / stage.goal) * 100)}%`; // おうちまでの線
     ui.finger.classList.toggle('show', !tutDone && level === 1 && S.status === 'play' && tutSteps < 6 && !ui.title.classList.contains('show') && !ui.pause.classList.contains('show'));
     const tl = Math.max(0, stage.timeLimit - elapsed);
@@ -1780,10 +1799,10 @@
           if (ev.type === 'combo') mst.combo++;
           snd.play(ev.type, ev.v);
           if ((ev.type === 'land' || ev.type === 'boing') && S.char) { const tp = S.char.torso.getPosition(); puff(tp.x, game.groundHeightAt(tp.x), 8, true); shakeA = Math.max(shakeA, ev.type === 'land' ? 4 : 3); }
-          if (ev.type === 'stumble') pop((YL.en ? { same: 'Same foot!', fast: 'Too fast!', slow: 'Too slow!' } : { same: '同じ足！', fast: 'あせりすぎ！', slow: 'もたもた！' })[ev.v.why] || jaen('おっと！', 'Whoops!'), ev.v.bad > 0.6 ? '#e8303a' : '#ff8a00');
+          if (ev.type === 'stumble') pop((YL.en ? YL.t({ same: 'Same foot!', fast: 'Too fast!', slow: 'Too slow!' }) : { same: '同じ足！', fast: 'あせりすぎ！', slow: 'もたもた！' })[ev.v.why] || jaen('おっと！', 'Whoops!'), ev.v.bad > 0.6 ? '#e8303a' : '#ff8a00');
           if (ev.type === 'stop') { for (let i = pops.length - 1; i >= 0; i--) if (pops[i].text.startsWith(jaen('ふらふら', 'Wobbly'))) pops.splice(i, 1); pop(jaen('止まっちゃだめ！', "Don't stop!"), '#e8303a'); }
           if (ev.type === 'wobble') pop(jaen('ふらふら…', 'Wobbly…'), '#ff8a00');
-          if (ev.type === 'combo') pop(jaen(`ナイスリズム ×${ev.v} スピードUP！`, `Nice rhythm ×${ev.v} Speed UP!`), '#2f9e44');
+          if (ev.type === 'combo') pop(jaen(`ナイスリズム ×${ev.v} スピードUP！`, `Nice rhythm ×${ev.v} Speed UP!`, `节奏不错 ×${ev.v} 加速！`), '#2f9e44');
           if (ev.type === 'jump2') pop(jaen('2だんジャンプ！', 'Double jump!'), '#2f6fd6');
           if (ev.type === 'step') { const fp = S.char && S.char[ev.v] && S.char[ev.v].shin.getWorldPoint(planck.Vec2(0.07, -0.25)); if (fp) puff(fp.x, game.groundHeightAt(fp.x), 3, false); addPrint(ev.v); if (++tutSteps === 6 && !tutDone) { tutDone = true; store.set('yoro.tut', '1'); } }
         }
@@ -1805,7 +1824,7 @@
       if (S.status === 'play') { // 歩いたきょりの節目と、自己ベストをこえた瞬間
         const tot = runDist + Math.max(0, game.charX());
         if (!passedBest && curBest > 0 && tot > curBest) { passedBest = true; pop(mode === 'daily' ? jaen('今日のベスト こえた！', "Beat today's best!") : jaen('自己ベスト こえた！', 'New personal best!'), '#d48a00'); snd.play('best'); }
-        if (tot >= nextMile) { pop(jaen(`${nextMile}m とっぱ！`, `${nextMile}m reached!`), '#2f6fd6'); snd.play('checkpoint'); nextMile += 50; }
+        if (tot >= nextMile) { pop(jaen(`${nextMile}m とっぱ！`, `${nextMile}m reached!`, `突破${nextMile}m！`), '#2f6fd6'); snd.play('checkpoint'); nextMile += 50; }
       }
       if (S.status === 'play') { if ((S.danger || 0) > 0.7) mst.shaky++; if (spdShown >= 2.3) mst.fast++; }
       if (S.status === 'play') pickupBoxes();

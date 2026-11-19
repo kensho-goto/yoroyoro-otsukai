@@ -60,16 +60,18 @@
   // レベルごとのコースと難しさ（x: メートル, h: 高さメートル）。レベルに上限はない
   // 英語も同じ長さ・同じ順（乱数で選ぶ番号を日本語とそろえる）。Node（tools）では YL がないので日本語
   const EN = typeof YL !== 'undefined' && YL.en;
-  const LEVEL_NAMES = EN ? ['My First Errand', 'A Little Farther', 'First Obstacle', 'Bumpy Road', 'Up and Down',
+  const ZH = typeof YL !== 'undefined' && YL.zh;
+  const ZT = (x) => (typeof YL !== 'undefined' && YL.t ? YL.t(x) : x); // 中国語の表に通す
+  const LEVEL_NAMES = ZT(EN ? ['My First Errand', 'A Little Farther', 'First Obstacle', 'Bumpy Road', 'Up and Down',
     'First Tough One: Main Street', 'Springboard Road', 'The Next Town', 'First Hole', 'Hole-y Moly Lot']
     : ['はじめてのおつかい', 'ちょっと遠くへ', 'はじめての障害物', 'でこぼこ道', '上って下って',
-    '最初の難関・商店街', 'ジャンプ台のある道', 'となり町', 'はじめての穴', '穴だらけの空き地'];
-  const PLACES = EN ? ['across the River', 'by the Station', 'at the Harbor', 'deep in the Woods', 'up the Hill', 'by the Tracks', 'past the Park', 'in the Apartments', 'by the Rice Fields', 'up the Slope',
+    '最初の難関・商店街', 'ジャンプ台のある道', 'となり町', 'はじめての穴', '穴だらけの空き地']);
+  const PLACES = ZT(EN ? ['across the River', 'by the Station', 'at the Harbor', 'deep in the Woods', 'up the Hill', 'by the Tracks', 'past the Park', 'in the Apartments', 'by the Rice Fields', 'up the Slope',
     'by the Sea', 'over the Bridge', 'in Hot Spring Town', 'below the Mountain', 'behind the Empty Lot', 'behind the School', 'on Stargazing Hill']
     : ['川むこう', '駅前', '港', '森のおく', '丘の上', '線路ぞい', '公園の先', '団地', '田んぼ道', '坂の上',
-    '海ぞい', '橋のむこう', '温泉街', '山のふもと', '空き地のおく', '学校のうら', '星のよく見える丘'];
-  const DESTS = EN ? ["Grandma's House", "A Friend's House", 'The Bakery', "Teacher's House", "Uncle's House", 'The Cat Meetup', 'Home', "My Cousins' House"]
-    : ['おばあちゃん家', '友だちの家', 'パン屋さん', '先生の家', 'おじさんの家', 'ねこの集会所', 'おうち', '親せきの家'];
+    '海ぞい', '橋のむこう', '温泉街', '山のふもと', '空き地のおく', '学校のうら', '星のよく見える丘']);
+  const DESTS = ZT(EN ? ["Grandma's House", "A Friend's House", 'The Bakery', "Teacher's House", "Uncle's House", 'The Cat Meetup', 'Home', "My Cousins' House"]
+    : ['おばあちゃん家', '友だちの家', 'パン屋さん', '先生の家', 'おじさんの家', 'ねこの集会所', 'おうち', '親せきの家']);
   const lerp = (a, b, t) => a + (b - a) * t;
   // 障害物の種類（w: 幅, h: 高さの倍率）
   const OBSTACLES = [
@@ -153,7 +155,7 @@
     const name = LEVEL_NAMES[n - 1] || (() => {
       const place = PLACES[Math.floor(rnd() * PLACES.length)]; // 乱数は 場所 → 行き先 の順（日本語と同じ）
       const dest = DESTS[Math.floor(rnd() * DESTS.length)];
-      return EN ? `${hard ? 'Tough: ' : ''}${dest} ${place}` : `${hard ? '難関・' : ''}${place}の${dest}`;
+      return ZH ? `${hard ? '难关·' : ''}${place}的${dest}` : EN ? `${hard ? 'Tough: ' : ''}${dest} ${place}` : `${hard ? '難関・' : ''}${place}の${dest}`;
     })();
     // 時間制限：はじめはゆっくりでも間に合い、レベルが上がると少しずつきびしく（5秒きざみ）
     const needSpeed = Math.min(1.15, lerp(0.6, 0.85, 1 - Math.exp(-(n - 1) / 10)) + 0.05 * e); // 必要な速さ（m/秒）
