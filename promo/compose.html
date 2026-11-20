@@ -1,0 +1,73 @@
+<!doctype html>
+<!-- ヨロヨロおつかい — ゲームサイト用の表紙。?lang=en&w=1920&h=1080（横）・w=800&h=1200（縦）・w=800&h=800（正方形）で開いて画面を撮る。下絵 cover-base.png はピアノの芸の1コマ -->
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#3b2a1e; --pudding:#ffd23a; }
+  html,body { margin:0; padding:0; overflow:hidden; background:#8fd3ff; }
+  #stage { position:relative; overflow:hidden; background:linear-gradient(#6fc4ff, #8fd3ff 300px); }
+  #bg { position:absolute; background:url(cover-base.png) no-repeat; background-size:cover; }
+  .fade #bg { -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 160px); mask-image:linear-gradient(to bottom, transparent 0, #000 160px); }
+  .logo { position:absolute; font-family:"Dela Gothic One",sans-serif; line-height:.95; color:var(--pudding); -webkit-text-stroke:var(--sw) var(--ink); paint-order:stroke fill; white-space:nowrap; }
+  .logo span { display:inline-block; }
+  .logo .l2 { display:block; color:#fff; }
+  .logo .shadow { position:absolute; left:0; top:0; color:var(--ink); -webkit-text-stroke:var(--sw) var(--ink); transform:translate(var(--sh),var(--sh)); z-index:-1; }
+  #mom { position:absolute; }
+  #shout { position:absolute; }
+</style></head>
+<body>
+<div id="stage"><div id="bg"></div><canvas id="mom"></canvas><svg id="shout"></svg><div class="logo" id="logo"></div></div>
+<script src="../src/save.js"></script>
+<script src="../src/zh.js"></script>
+<script src="../src/i18n.js"></script>
+<script src="../src/waiter.js"></script>
+<script>
+const q = new URLSearchParams(location.search);
+const W = +q.get('w') || 1920, H = +q.get('h') || 1080;
+const kind = W > H ? 'land' : W < H ? 'port' : 'sq';
+const S = document.getElementById('stage'); S.style.width = W + 'px'; S.style.height = H + 'px';
+// 絵の置き方：[左, 上, 幅]（幅に合わせて高さは 9/16）
+const L = {
+  land: { bg: [0, 0, W], logo: { x: 50, y: 40, fs: 150, rot: -4 }, mom: { x: 1690, y: 300, r: 150 }, shout: { x: 1225, y: 465, w: 640, h: 320, fs: 64, rot: 5 } },
+  port: { bg: [-339, 259, 1673], logo: { x: 40, y: 40, fs: 118, rot: -4 }, mom: { x: 680, y: 1010, r: 82 }, shout: { x: 400, y: 700, w: 390, h: 175, fs: 40, rot: 5 } },
+  sq:   { bg: [-128, 131, 1190], logo: { x: 30, y: 26, fs: 92, rot: -4 }, mom: { x: 692, y: 650, r: 72 }, shout: { x: 450, y: 395, w: 340, h: 150, fs: 34, rot: 5 } },
+}[kind];
+const bg = document.getElementById('bg'); if (L.bg[1] > 0) S.classList.add('fade');
+bg.style.left = L.bg[0] + 'px'; bg.style.top = L.bg[1] + 'px'; bg.style.width = L.bg[2] + 'px'; bg.style.height = (L.bg[2] * 9 / 16) + 'px';
+
+// ロゴ：一文字ずつ少しずつ傾けて「ヨロヨロ」
+const logo = document.getElementById('logo');
+logo.style.left = L.logo.x + 'px'; logo.style.top = L.logo.y + 'px'; logo.style.fontSize = L.logo.fs + 'px';
+logo.style.setProperty('--sw', Math.round(L.logo.fs * 0.13) + 'px');
+logo.style.transform = `rotate(${L.logo.rot}deg)`; logo.style.transformOrigin = '0 0';
+const tilt = [-7, 5, -4, 8, -6, 4, -8, 6];
+const word = (s, k) => [...s].map((ch, i) => `<span style="transform:rotate(${tilt[(i + k) % tilt.length]}deg) translateY(${(i % 2 ? 1 : -1) * L.logo.fs * 0.04}px)">${ch}</span>`).join('');
+logo.innerHTML = `<div>${word('Yoroyoro', 0)}</div><div class="l2" style="margin-left:${L.logo.fs * 0.9}px">${word('Errand', 3)}</div>`;
+
+// 待っている人（お母さん・おこり顔）
+const mom = document.getElementById('mom');
+const R = L.mom.r, pad = R * 0.9, size = (R + pad) * 2;
+mom.width = size * 2; mom.height = size * 2; mom.style.width = size + 'px'; mom.style.height = size + 'px';
+mom.style.left = (L.mom.x - size / 2) + 'px'; mom.style.top = (L.mom.y - size / 2) + 'px';
+const c = mom.getContext('2d'); c.scale(2, 2);
+// 後ろの丸（家の窓っぽく）
+c.beginPath(); c.arc(size / 2, size / 2, R * 1.45, 0, Math.PI * 2); c.fillStyle = '#ffd23a'; c.fill(); c.lineWidth = R * 0.1; c.strokeStyle = '#3b2a1e'; c.stroke();
+YoroWaiter.drawFace(c, YoroWaiter.WAITERS[0], 'angry', size / 2, size / 2 + R * 0.08, R, 0);
+
+// さけび（ぎざぎざのふきだし）
+const sh = L.shout, svg = document.getElementById('shout');
+svg.setAttribute('width', sh.w); svg.setAttribute('height', sh.h);
+svg.style.left = sh.x + 'px'; svg.style.top = sh.y + 'px'; svg.style.transform = `rotate(${sh.rot}deg)`; svg.style.overflow = 'visible';
+const n = 22, cx = sh.w / 2, cy = sh.h / 2; let pts = [];
+let s = 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+for (let i = 0; i < n * 2; i++) {
+  const a = (i / (n * 2)) * Math.PI * 2, out = i % 2 === 0;
+  const k = out ? 1.02 + rnd() * 0.16 : 0.8 + rnd() * 0.06;
+  pts.push([cx + Math.cos(a) * cx * k, cy + Math.sin(a) * cy * k]);
+}
+const lines = ["WHERE'S MY", 'PUDDING?!'];
+svg.innerHTML = `<polygon points="${pts.map((p) => p.join(',')).join(' ')}" fill="#fff" stroke="#3b2a1e" stroke-width="${sh.fs * 0.14}" stroke-linejoin="round"/>` +
+  lines.map((t, i) => `<text x="${cx}" y="${cy + (i - 0.5) * sh.fs * 1.05 + sh.fs * 0.36}" text-anchor="middle" font-family="Dela Gothic One" font-size="${sh.fs * (i ? 1.15 : 0.85)}" fill="${i ? '#ff5c7a' : '#3b2a1e'}" stroke="#3b2a1e" stroke-width="${i ? sh.fs * 0.1 : 0}" paint-order="stroke fill">${t}</text>`).join('');
+document.fonts.ready.then(() => { document.body.dataset.ready = '1'; });
+</script>
+</body></html>
