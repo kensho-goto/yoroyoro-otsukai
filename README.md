@@ -82,3 +82,9 @@
 - `src/rank.js` じぶんの記録ランキング
 - `src/sound.js` 音（音のファイルは使わず、その場で作って鳴らす）
 - `tools/` 自動で歩かせて難しさを確かめる道具（`npm run tune` / `npm run meter` / `npm run levels`＝レベルごとのゴールできる割合。`--nojump` でジャンプしない場合、`--from=20` で途中のレベルから）
+
+## Cloudflare に出す
+
+- 公開先：https://yoroyoro-otsukai.kensho-goto.workers.dev （GitHub Pages と同じ中身。合言葉も同じ）
+- 出し直すとき：`npm run deploy:cf`（`_site/` に集める → `wrangler deploy`）。この Mac の wrangler に、ブラウザでサインイン済みであること。
+- 載せるファイルを足したときは `tools/build-site.sh` の cp の行だけを直します（GitHub Pages もこれを使います）。

@@ -1,0 +1,7 @@
+// Cloudflare に出す設定（npm run deploy:cf）。
+// 公開先: https://yoroyoro-otsukai.kensho-goto.workers.dev
+{
+  "name": "yoroyoro-otsukai",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./_site" }
+}

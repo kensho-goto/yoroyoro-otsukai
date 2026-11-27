@@ -6,7 +6,9 @@
     "start": "node tools/serve.js",
     "tune": "node tools/tune.js",
     "meter": "node tools/meter.js",
-    "levels": "node tools/levels.js"
+    "levels": "node tools/levels.js",
+    "build:site": "bash tools/build-site.sh",
+    "deploy:cf": "bash tools/build-site.sh && wrangler deploy"
   },
   "keywords": [],
   "author": "",
