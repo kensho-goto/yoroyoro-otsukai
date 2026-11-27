@@ -8,7 +8,7 @@
     "meter": "node tools/meter.js",
     "levels": "node tools/levels.js",
     "build:site": "bash tools/build-site.sh",
-    "deploy:cf": "bash tools/build-site.sh && wrangler deploy"
+    "deploy:cf": "SITE_URL=https://yoroyoro-otsukai.asobiba-games.workers.dev/ bash tools/build-site.sh && wrangler deploy"
   },
   "keywords": [],
   "author": "",

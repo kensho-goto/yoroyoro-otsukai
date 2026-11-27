@@ -85,6 +85,6 @@
 
 ## Cloudflare に出す
 
-- 公開先：https://yoroyoro-otsukai.kensho-goto.workers.dev （GitHub Pages と同じ中身。合言葉も同じ）
+- 公開先：https://yoroyoro-otsukai.asobiba-games.workers.dev （GitHub Pages と同じ中身。合言葉も同じ）
 - 出し直すとき：`npm run deploy:cf`（`_site/` に集める → `wrangler deploy`）。この Mac の wrangler に、ブラウザでサインイン済みであること。
 - 載せるファイルを足したときは `tools/build-site.sh` の cp の行だけを直します（GitHub Pages もこれを使います）。
