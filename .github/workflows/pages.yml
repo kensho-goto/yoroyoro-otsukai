@@ -20,13 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: ゲームのファイルだけを集める
-        run: |
-          mkdir _site
-          cp -r index.html robots.txt manifest.webmanifest src vendor img _site/
-          # 新しい版をすぐ見せる：ファイル名に版の印をつけ、今の版を version.json に書く
-          V=${GITHUB_SHA::7}
-          sed -i "s/?v=dev/?v=$V/g; s/window.BUILD = 'dev'/window.BUILD = '$V'/" _site/index.html
-          echo "{\"v\":\"$V\"}" > _site/version.json
+        run: bash tools/build-site.sh
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
