@@ -106,7 +106,9 @@
     showBanner(tr(msg));
     if (n > 1 && (rare || S.wind)) { snd.play(S.wind ? 'gust' : 'event'); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 3000); }
   }
-  // 道のおたから（？の箱）。ふつうの箱は歩くと取れる高さ、高い箱はジャンプしないと取れない
+  // 道のおたから（？の箱）。歩くだけでは取れない。ふつうの箱はジャンプで、高い箱（むらさき）はためたジャンプで取る
+  //   高さは tools/box-reach.js で決めた（歩くだけで取れてしまうのは、リズムが大きく乱れて体がはねたときの 1〜2% だけ）
+  const BOX_Y = 2.55, BOX_HIGH_Y = 2.95;
   function makeBoxes(R) {
     R = R || Math.random;
     boxes = [];
@@ -119,7 +121,7 @@
         const x = 3 + R() * (g - 5.5);
         if (busy(x)) continue;
         const high = level >= 2 && R() < 0.3;
-        boxes.push({ x, y: game.groundHeightAt(x) + (high ? 2.45 : 1.65), high, taken: 0, item: null });
+        boxes.push({ x, y: game.groundHeightAt(x) + (high ? BOX_HIGH_Y : BOX_Y), high, taken: 0, item: null });
         break;
       }
     }
@@ -194,7 +196,8 @@
     DPR = Math.min(window.devicePixelRatio || 1, 2);
     W = window.innerWidth; H = window.innerHeight;
     canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
-    baseScale = Math.max(48, Math.min(H / 4.4, W / 4.6)); scale = baseScale * zoom;
+    // 横長の画面は高さが足りないので少し引く（頭の上の ？の箱 が、上の残り時間・お題の札にかからないように）
+    baseScale = Math.max(48, Math.min(H / (W > H ? 5.0 : 4.4), W / 4.6)); scale = baseScale * zoom;
   }
   window.addEventListener('resize', resize);
   resize();
@@ -1815,6 +1818,15 @@
         stage.pits.forEach((q, i) => {
           if (!hinted.has('p' + i) && q.x0 - x < 2.8 && q.x0 - x > 0) { hinted.add('p' + i); showBanner(jaen('穴だ！ 左右を同時にタップ！<br>とどかなければ 空中でもう1回！', 'A hole! Tap both sides at once!<br>Too short? Tap again in midair!')); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 2500); }
         });
+        if (level <= 3 && !hinted.has('b') && ui.hint.style.opacity !== '1') { // ？の箱は歩くだけでは取れないので、はじめのうちは手前で教える（出だしの案内が消えてから）
+          const b = boxes.find((q) => !q.taken && q.x - x < 2.6 && q.x - x > 0.8);
+          if (b) {
+            hinted.add('b');
+            showBanner(b.high ? jaen('むらさきの箱は 高い！<br>左右を 長く押して 高くジャンプ', 'Purple boxes are high!<br>Hold both sides to jump higher', '紫色箱子很高！<br>左右一起长按，跳得更高')
+              : jaen('？の箱は ジャンプで取る！<br>左右を 同時にタップ', 'Jump to grab the ? box!<br>Tap both sides at once', '跳起来拿？箱子！<br>左右同时按'));
+            hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 2500);
+          }
+        }
         if (level <= 6) stage.obstacles.forEach((o, i) => {
           if (!hinted.has(i) && o.x - x < 2.6 && o.x - x > 0) {
             hinted.add(i); showBanner(jaen('左右を 同時にタップで ジャンプ！<br>長く押すと 高く飛ぶよ', 'Tap both sides at once to jump!<br>Hold longer to jump higher')); hintTimer = setTimeout(() => { ui.hint.style.opacity = 0; }, 3000);
@@ -1841,7 +1853,10 @@
       const p = S.char.torso.getPosition();
       const gc = gag && gag.cam; // ころび芸のあいだは、芸が見やすい所を見る
       cam.x += ((gc ? gc[0] : p.x + (onTitle ? 1.0 : 0.6)) - cam.x) * 0.08; // タイトルでは家が見えるよう少し左に寄せる
-      cam.y += ((gc ? gc[1] - 0.1 : game.groundHeightAt(p.x) + (onTitle ? 0.2 : 0.9)) - cam.y) * 0.05; // ボタンにかくれないよう地面を上げる
+      // 横長の画面：高く跳んだら少し上を見る（高い ？の箱 が上の札にかくれない・ジャンプ台で画面の外へ出ない）
+      const hp = S.char.head.getPosition(), wide = W > H && !gc && S.status === 'play';
+      const lift = wide ? Math.max(0, hp.y - game.groundHeightAt(hp.x) - 1.95) * 0.8 : 0;
+      cam.y += ((gc ? gc[1] - 0.1 : game.groundHeightAt(p.x) + (onTitle ? 0.2 : 0.9) + lift) - cam.y) * (wide ? 0.1 : 0.05); // ボタンにかくれないよう地面を上げる
     }
     { const [at, ax] = ancTarget(); anc += (at - anc) * 0.12; if (Math.abs(at - anc) < 0.001) anc = at; ancX += (ax - ancX) * 0.12; if (Math.abs(ax - ancX) < 0.001) ancX = ax; }
     shakeA *= 0.86; if (shakeA < 0.3) shakeA = 0;
