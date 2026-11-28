@@ -47,6 +47,12 @@
     jumpVx: [1.0, 2.6], // ジャンプの前向きの速さ（ためなし〜ためきり）
     jumpVy: [2.6, 4.3], // ジャンプの上向きの速さ
     jumpAccScale: 0.15, // ジャンプ中と着地直後は揺れの影響を小さく
+    // 続けて跳ぶと つかれる（ジャンプ連打だけで進めないように）。1回目のジャンプは いつも同じ
+    jumpTiredScale: 0.72, // 歩かずに続けて跳ぶと、1回ごとに 高さと前への速さが この倍に
+    jumpTiredMin: 0.35, // どんなにつかれても、ここより小さくはならない
+    jumpRest: 0.5, // きれいな1歩で取れる つかれ（2歩で ジャンプ1回分）
+    jumpTiredKick: 2.6, // つかれて着地すると よろける強さ（2回目から、続けるほど大きく）
+    jumpTiredShake: 0.35, // つかれているとプリンが揺れやすい（2回目から、1回ごとに足す）
     // 速さ：よい1歩ごとに前へ押す。速く押すほど・リズムが続くほど速い
     drivePerStep: 0.45, // 1秒に1歩ふえるごとの目標の速さ（m/秒）
     driveMin: 1.0, // 目標の速さのいちばん下とうえ
@@ -330,7 +336,7 @@
       state.danger = 0; // ぐらぐらメーター（1で落ちる）
       state.trayV = null;
       state.feet = { L: 0, R: 0 };
-      state.jump = { phase: 'none', crouch: 0, air: 0, grace: 0 };
+      state.jump = { phase: 'none', crouch: 0, air: 0, grace: 0, tired: 0 };
       state.cpReached = cpIndex;
       state.downFrames = 0;
       state.springHit = false;
@@ -424,7 +430,8 @@
         bad = Math.max(0, ratio - Math.log(T.rhythmFree)) * 1.6;
         why = interval > R.lastInterval ? 'slow' : 'fast';
       }
-      if (bad <= 0.08) { // よい1歩：体を保つ力がたまり、リズムの連続が1つふえる
+      if (bad <= 0.08) { // よい1歩：体を保つ力がたまり、リズムの連続が1つふえる。ジャンプのつかれも取れる
+        state.jump.tired = Math.max(0, (state.jump.tired || 0) - T.jumpRest);
         state.steady = Math.min(1, state.steady + T.steadyStep * (R.lastSide ? 1 : 0.5));
         if (R.lastSide && state.settle <= 0 && ++state.combo % 10 === 0) emit('combo', state.combo);
         if (R.lastSide) { // 前へ押す（速く押すほど・リズムが続くほど速い）
@@ -463,23 +470,28 @@
     function launch() {
       const c = state.char, J = state.jump;
       const p = Math.max(0, Math.min(1, (J.crouch - T.jumpMinFrames) / (T.jumpFullFrames - T.jumpMinFrames)));
-      const vx = lerp(T.jumpVx[0], T.jumpVx[1], p), vy = lerp(T.jumpVy[0], T.jumpVy[1], p);
+      const k = tiredK(J.tired); // 続けて跳ぶほど 低く・短く
+      const vx = lerp(T.jumpVx[0], T.jumpVx[1], p) * k, vy = lerp(T.jumpVy[0], T.jumpVy[1], p) * k;
       for (const b of [c.torso, c.tray, c.head, c.L.thigh, c.L.shin, c.R.thigh, c.R.shin]) {
         const v = b.getLinearVelocity();
         b.setLinearVelocity(Vec2(v.x * 0.5 + vx, Math.max(0, v.y) + vy));
       }
       J.phase = 'air'; J.air = 0; J.extra = 0;
+      J.tired = (J.tired || 0) + 1;
       emit('jump', p);
+      if (J.tired >= 2) emit('tired', J.tired);
     }
-    // 2段ジャンプ（空中で1回だけ）
+    const tiredK = (n) => Math.max(T.jumpTiredMin, Math.pow(T.jumpTiredScale, n || 0));
+    // 2段ジャンプ（空中で1回だけ）。つかれていると これも低い
     function jump2() {
-      const c = state.char, J = state.jump;
+      const c = state.char, J = state.jump, k = tiredK((J.tired || 1) - 1);
       for (const b of [c.torso, c.tray, c.head, c.L.thigh, c.L.shin, c.R.thigh, c.R.shin]) {
         const v = b.getLinearVelocity();
-        b.setLinearVelocity(Vec2(Math.max(v.x, T.jump2Vx), T.jump2Vy));
+        b.setLinearVelocity(Vec2(Math.max(v.x, T.jump2Vx * k), T.jump2Vy * k));
       }
       J.extra = 1; J.air = 1;
-      emit('jump2');
+      J.tired = (J.tired || 0) + 1; // 2段ジャンプも つかれに数える
+      emit('jump2', J.tired);
     }
 
     function charX() {
@@ -511,7 +523,16 @@
           } else if (J.phase === 'air') {
             J.air++;
             if (pairNow && !(J.extra > 0) && J.air > 3) jump2(); // 空中でもう1回 同時タップ
-            if (J.air > 8 && grounded()) { J.phase = 'none'; J.grace = 25; emit('land'); }
+            if (J.air > 8 && grounded()) {
+              J.phase = 'none'; J.grace = 25; emit('land');
+              if (J.tired >= 2) { // つかれて着地：よろける（続けて跳ぶほど大きく）
+                const n = J.tired - 1;
+                c.torso.applyAngularImpulse((state.frame % 2 ? 1 : -1) * T.jumpTiredKick * Math.min(2, n) * c.torso.getInertia());
+                state.steady = Math.max(0, state.steady - 0.2 * n);
+                state.combo = 0;
+                emit('tiredLand', J.tired);
+              }
+            }
           }
           if (J.grace > 0) J.grace--;
         }
@@ -588,7 +609,8 @@
         const tilt = Math.abs(c.tray.getAngle());
         const spin = Math.abs(c.torso.getAngularVelocity()); // 体のぐらつき
         if (state.settle <= 0) {
-          const js = state.jump.phase !== 'none' || state.jump.grace > 0 ? T.jumpAccScale : 1;
+          const tj = state.jump.tired || 0; // つかれていると、ジャンプ中もプリンが揺れやすい
+          const js = state.jump.phase !== 'none' || state.jump.grace > 0 ? Math.min(1, T.jumpAccScale + T.jumpTiredShake * Math.max(0, tj - 1)) : 1;
           state.danger += Math.max(0, acc - T.accSafe) * T.accGain * js + Math.max(0, spin - T.spinSafe) * T.spinGain * js
             + Math.max(0, tilt - T.tiltSafe) * T.tiltGain;
           state.danger = Math.max(0, state.danger - T.calm);
