@@ -1738,7 +1738,7 @@
   }
 
   let lastTick = 0, spdShown = 0;
-  let tutSteps = 0, tutDone = store.get('yoro.tut') === '1';
+  let tutSteps = 0, tutDone = store.get('yoro.tut') === '1', tiredTold = false, tiredAt = 0;
   function updateHud() {
     updateGuide();
     const st = S.steady == null ? 1 : S.steady;
@@ -1806,7 +1806,10 @@
           if (ev.type === 'stop') { for (let i = pops.length - 1; i >= 0; i--) if (pops[i].text.startsWith(jaen('ふらふら', 'Wobbly'))) pops.splice(i, 1); pop(jaen('止まっちゃだめ！', "Don't stop!"), '#e8303a'); }
           if (ev.type === 'wobble') pop(jaen('ふらふら…', 'Wobbly…'), '#ff8a00');
           if (ev.type === 'combo') pop(jaen(`ナイスリズム ×${ev.v} スピードUP！`, `Nice rhythm ×${ev.v} Speed UP!`, `节奏不错 ×${ev.v} 加速！`), '#2f9e44');
-          if (ev.type === 'jump2') pop(jaen('2だんジャンプ！', 'Double jump!'), '#2f6fd6');
+          if (ev.type === 'jump2' && !(ev.v >= 3)) pop(jaen('2だんジャンプ！', 'Double jump!'), '#2f6fd6'); // 連打でつかれているときは出さない（文字が重なる）
+          // 続けて跳ぶと つかれる（はじめは わけも出す。そのあとは 1.5秒に1回まで）
+          if (ev.type === 'tired' && performance.now() - tiredAt > 1500) { tiredAt = performance.now(); pop(tiredTold ? jaen('ハァハァ…', 'Huff huff…', '呼哧呼哧…') : jaen('跳びすぎ！ ハァハァ…', 'Too many jumps! Huff…', '跳太多了！呼哧…'), '#ff8a00'); tiredTold = true; }
+          if (ev.type === 'tiredLand') { snd.play('stumble', { bad: 0.6 }); shakeA = Math.max(shakeA, 6); }
           if (ev.type === 'step') { const fp = S.char && S.char[ev.v] && S.char[ev.v].shin.getWorldPoint(planck.Vec2(0.07, -0.25)); if (fp) puff(fp.x, game.groundHeightAt(fp.x), 3, false); addPrint(ev.v); if (++tutSteps === 6 && !tutDone) { tutDone = true; store.set('yoro.tut', '1'); } }
         }
       }
